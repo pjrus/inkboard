@@ -15,35 +15,27 @@ import type { FontFamilyId } from "../document/schema";
  * its measurement cache and repaint once loading finishes.
  */
 
-// Latin subsets, 400 + 700 only: this milestone deliberately has no italics
-// and no extra weights (see README).
+// Latin subsets, regular weight only: this milestone deliberately has no
+// italics, no bold and no extra weights (see README). Adding one means adding
+// its @fontsource CSS and .woff here and a weight to the two maps below.
 import "@fontsource/open-sans/latin-400.css";
-import "@fontsource/open-sans/latin-700.css";
 import "@fontsource/inter/latin-400.css";
-import "@fontsource/inter/latin-700.css";
 import "@fontsource/roboto/latin-400.css";
-import "@fontsource/roboto/latin-700.css";
 import "@fontsource/lato/latin-400.css";
-import "@fontsource/lato/latin-700.css";
 
 // WOFF (v1) copies for PDF embedding. Vite turns these into asset URLs that
-// are part of the build output, so export works offline too.
+// are part of the build output, so export works offline too. WOFF rather than
+// WOFF2 because it is what @pdf-lib/fontkit subsets reliably.
 import openSansRegular from "@fontsource/open-sans/files/open-sans-latin-400-normal.woff?url";
-import openSansBold from "@fontsource/open-sans/files/open-sans-latin-700-normal.woff?url";
 import interRegular from "@fontsource/inter/files/inter-latin-400-normal.woff?url";
-import interBold from "@fontsource/inter/files/inter-latin-700-normal.woff?url";
 import robotoRegular from "@fontsource/roboto/files/roboto-latin-400-normal.woff?url";
-import robotoBold from "@fontsource/roboto/files/roboto-latin-700-normal.woff?url";
 import latoRegular from "@fontsource/lato/files/lato-latin-400-normal.woff?url";
-import latoBold from "@fontsource/lato/files/lato-latin-700-normal.woff?url";
 
-export type FontWeight = "regular" | "bold";
-
-const FILES: Record<FontFamilyId, Record<FontWeight, string>> = {
-  "open-sans": { regular: openSansRegular, bold: openSansBold },
-  inter: { regular: interRegular, bold: interBold },
-  roboto: { regular: robotoRegular, bold: robotoBold },
-  lato: { regular: latoRegular, bold: latoBold },
+const FILES: Record<FontFamilyId, string> = {
+  "open-sans": openSansRegular,
+  inter: interRegular,
+  roboto: robotoRegular,
+  lato: latoRegular,
 };
 
 let ready = false;
@@ -58,12 +50,7 @@ export async function loadFonts(): Promise<void> {
   if (ready) return;
   try {
     if (typeof document !== "undefined" && document.fonts) {
-      await Promise.all(
-        FONTS.flatMap((f) => [
-          document.fonts.load(`400 16px "${f.cssFamily}"`),
-          document.fonts.load(`700 16px "${f.cssFamily}"`),
-        ]),
-      );
+      await Promise.all(FONTS.map((f) => document.fonts.load(`400 16px "${f.cssFamily}"`)));
     }
   } catch (err) {
     // A failed load is not fatal: the CSS fallback stack still renders text.
@@ -85,11 +72,11 @@ export function onFontsReady(fn: () => void): () => void {
 const byteCache = new Map<string, Promise<Uint8Array>>();
 
 /** Raw font bytes for PDF embedding. Cached, so repeated exports are cheap. */
-export function loadFontBytes(id: FontFamilyId, weight: FontWeight = "regular"): Promise<Uint8Array> {
-  const key = `${id}:${weight}`;
+export function loadFontBytes(id: FontFamilyId): Promise<Uint8Array> {
+  const key = id;
   let p = byteCache.get(key);
   if (!p) {
-    const url = FILES[id]?.[weight] ?? FILES["open-sans"][weight];
+    const url = FILES[id] ?? FILES["open-sans"];
     p = fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`Could not load font ${key} (${r.status})`);

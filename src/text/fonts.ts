@@ -47,6 +47,6 @@ export function fontStack(id: string | undefined): string {
 }
 
 /** A CSS `font` shorthand for canvas 2D measurement and drawing. */
-export function canvasFont(id: string | undefined, sizePx: number, bold = false): string {
-  return `${bold ? "700 " : ""}${sizePx}px ${getFont(id).stack}`;
+export function canvasFont(id: string | undefined, sizePx: number): string {
+  return `${sizePx}px ${getFont(id).stack}`;
 }
