@@ -19,6 +19,7 @@ npm run build      # typecheck + production bundle in dist/
 - Object eraser, undo/redo (Yjs UndoManager, CRDT-aware)
 - PDF import via PDF.js in a worker: each page rasterised to a JPEG asset in IndexedDB and placed as a static "printout" page, vertical or horizontal layout, switchable after import, progressive rendering with a progress toast
 - Move/delete pages with the hand tool, remove a whole PDF
+- Lasso tool (L): freeform selection of handwriting with a forgiving 40%-inside rule, shift-lasso to add. Selected strokes can be made thinner/thicker ([ and ]), set to a preset, recoloured, moved as a group, or deleted. Every edit is one undo step and flows through the CRDT; the selection itself is local-only
 - Multiple boards, autosave with incremental CRDT updates and periodic compaction, viewport + tool preferences restored on reopen
 
 ## Architecture
@@ -28,10 +29,11 @@ src/
   canvas/          coordinates.ts (all screen<->world maths), gestures.ts (pinch),
                    strokeGeometry.ts (outline, hit test, simplify),
                    CanvasRenderer.ts (2 stacked <canvas>, Path2D cache, culling, LRU image cache),
-                   CanvasInteractionController.ts (state machine: idle/drawing/erasing/panning/pinching/movingObject),
+                   CanvasInteractionController.ts (state machine: idle/drawing/erasing/panning/pinching/movingObject/lassoing/movingSelection),
                    CanvasViewport.tsx (thin React host)
   document/        schema.ts (CanvasObject = stroke | pdf-page | text[reserved]),
-                   crdt.ts (Yjs wrapper: objects, pdfDocuments, undo),
+                   crdt.ts (Yjs wrapper: objects, pdfDocuments, undo, stroke property commands),
+                   strokeCommands.ts (shared thickness scale, width stepping),
                    persistence.ts (incremental update log in IndexedDB + compaction)
   pdf/             PDFImporter.ts (PDF.js -> JPEG assets), PDFLayoutEngine.ts (vertical/horizontal placement)
   storage/         db.ts (Dexie: boards, updates, assets, preferences), assetRepository.ts

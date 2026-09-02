@@ -2,7 +2,7 @@ import type { CanvasDocument } from "../document/crdt";
 import { unpackPoints, type Bounds, type PDFPageObject, type PenTool, type StrokeObject, type StrokePoint, type Viewport } from "../document/schema";
 import { boundsIntersect, DEFAULT_VIEWPORT, visibleWorldBounds } from "./coordinates";
 import { ImageCache } from "./ImageCache";
-import { strokeOutline } from "./strokeGeometry";
+import { strokeOutline, type XY } from "./strokeGeometry";
 
 export const BACKGROUND = "#f3f1ec";
 const PAGE_BORDER = "rgba(0,0,0,0.12)";
@@ -59,6 +59,11 @@ export class CanvasRenderer {
   eraserCursor: EraserCursor | null = null;
   selectedId: string | null = null;
   dragPreview: { id: string; dx: number; dy: number } | null = null;
+  /** Local-only stroke selection (never persisted or synced). */
+  selectedStrokeIds = new Set<string>();
+  selectionDrag: { dx: number; dy: number } | null = null;
+  /** Temporary lasso outline in world space while the user drags. */
+  lassoPath: XY[] | null = null;
   /** Pages whose asset is still being rasterised (for placeholder text). */
   pendingAssets = new Set<string>();
 
@@ -138,6 +143,29 @@ export class CanvasRenderer {
     return this.strokes;
   }
 
+  /** Strokes whose bounds intersect the given world rectangle (candidate query). */
+  getStrokesInBounds(b: Bounds): StrokeObject[] {
+    return this.strokes.filter((s) => boundsIntersect(s.bounds, b));
+  }
+
+  /** World-space bounds of the current stroke selection (including drag offset). */
+  getSelectionBounds(): Bounds | null {
+    if (this.selectedStrokeIds.size === 0) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of this.strokes) {
+      if (!this.selectedStrokeIds.has(s.id)) continue;
+      const b = s.bounds;
+      if (b.minX < minX) minX = b.minX;
+      if (b.minY < minY) minY = b.minY;
+      if (b.maxX > maxX) maxX = b.maxX;
+      if (b.maxY > maxY) maxY = b.maxY;
+    }
+    if (!isFinite(minX)) return null;
+    const dx = this.selectionDrag?.dx ?? 0;
+    const dy = this.selectionDrag?.dy ?? 0;
+    return { minX: minX + dx, minY: minY + dy, maxX: maxX + dx, maxY: maxY + dy };
+  }
+
   destroy() {
     this.unsubscribe();
     if (this.rafId !== null) cancelAnimationFrame(this.rafId);
@@ -195,10 +223,34 @@ export class CanvasRenderer {
       this.drawPage(ctx, page, b);
     }
 
-    // Layer 20: strokes
+    // Layer 20: strokes (selected ones are drawn last, with their drag offset)
+    const hasSelection = this.selectedStrokeIds.size > 0;
+    const deferred: StrokeObject[] = [];
     for (const stroke of this.strokes) {
+      if (hasSelection && this.selectedStrokeIds.has(stroke.id)) {
+        deferred.push(stroke);
+        continue;
+      }
       if (!boundsIntersect(stroke.bounds, visible)) continue;
-      this.drawStroke(ctx, stroke);
+      this.drawStroke(ctx, stroke, false);
+    }
+    if (deferred.length) {
+      const dx = this.selectionDrag?.dx ?? 0;
+      const dy = this.selectionDrag?.dy ?? 0;
+      ctx.save();
+      ctx.translate(dx, dy);
+      for (const stroke of deferred) this.drawStroke(ctx, stroke, true);
+      ctx.restore();
+      const sb = this.getSelectionBounds();
+      if (sb) {
+        const pad = 6 / viewport.scale;
+        ctx.save();
+        ctx.setLineDash([6 / viewport.scale, 4 / viewport.scale]);
+        ctx.strokeStyle = SELECTION;
+        ctx.lineWidth = 1.5 / viewport.scale;
+        ctx.strokeRect(sb.minX - pad, sb.minY - pad, sb.maxX - sb.minX + pad * 2, sb.maxY - sb.minY + pad * 2);
+        ctx.restore();
+      }
     }
 
     // Layer 100: selection
@@ -243,12 +295,19 @@ export class CanvasRenderer {
     ctx.strokeRect(b.minX, b.minY, w, h);
   }
 
-  private drawStroke(ctx: CanvasRenderingContext2D, stroke: StrokeObject) {
+  private drawStroke(ctx: CanvasRenderingContext2D, stroke: StrokeObject, selected: boolean) {
     let path = this.pathCache.get(stroke.id);
     if (!path) {
       const pts = unpackPoints(stroke.points);
       path = outlineToPath(strokeOutline(pts, stroke.tool, stroke.width, stroke.tool === "pen" && hasVaryingPressure(pts)));
       this.pathCache.set(stroke.id, path);
+    }
+    if (selected) {
+      // Subtle halo so selected ink stays readable.
+      ctx.strokeStyle = "rgba(43,109,233,0.35)";
+      ctx.lineWidth = 5 / this.viewport.scale;
+      ctx.lineJoin = "round";
+      ctx.stroke(path);
     }
     ctx.fillStyle = stroke.color;
     ctx.globalAlpha = stroke.tool === "pencil" ? 0.82 : 1;
@@ -271,6 +330,20 @@ export class CanvasRenderer {
       ctx.globalAlpha = s.tool === "pencil" ? 0.82 : 1;
       ctx.fill(outlineToPath(outline));
       ctx.globalAlpha = 1;
+    }
+
+    if (this.lassoPath && this.lassoPath.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(this.lassoPath[0].x, this.lassoPath[0].y);
+      for (let i = 1; i < this.lassoPath.length; i++) ctx.lineTo(this.lassoPath[i].x, this.lassoPath[i].y);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(43,109,233,0.08)";
+      ctx.fill();
+      ctx.setLineDash([5 / viewport.scale, 4 / viewport.scale]);
+      ctx.strokeStyle = "rgba(43,109,233,0.9)";
+      ctx.lineWidth = 1.5 / viewport.scale;
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     if (this.eraserCursor) {

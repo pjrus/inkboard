@@ -3,7 +3,7 @@ import type { Tool } from "../document/schema";
 import { useToolStore } from "../store/toolStore";
 import { ColourPicker } from "./ColourPicker";
 import { ThicknessPicker } from "./ThicknessPicker";
-import { EraserIcon, HandIcon, PdfIcon, PenIcon, PencilIcon, RedoIcon, UndoIcon } from "./icons";
+import { EraserIcon, HandIcon, LassoIcon, PdfIcon, PenIcon, PencilIcon, RedoIcon, UndoIcon } from "./icons";
 
 interface Props {
   onInsertPDF: (file: File) => void;
@@ -16,6 +16,7 @@ const TOOLS: { tool: Tool; label: string; key: string; icon: () => JSX.Element }
   { tool: "pen", label: "Pen", key: "P", icon: PenIcon },
   { tool: "pencil", label: "Pencil", key: "N", icon: PencilIcon },
   { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon },
+  { tool: "lasso", label: "Lasso", key: "L", icon: LassoIcon },
 ];
 
 export function Toolbar({ onInsertPDF, onUndo, onRedo }: Props) {
@@ -23,6 +24,7 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo }: Props) {
   const setTool = useToolStore((s) => s.setTool);
   const canUndo = useToolStore((s) => s.canUndo);
   const canRedo = useToolStore((s) => s.canRedo);
+  const hasSelection = useToolStore((s) => s.strokeSelection !== null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -44,7 +46,8 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo }: Props) {
         ))}
       </div>
       <span className="tb-sep" />
-      <div className="tb-group">
+      <div className={"tb-group" + (hasSelection ? " tb-group-selection" : "")} title={hasSelection ? "Editing selected strokes" : undefined}>
+        {hasSelection && <span className="tb-badge">Selection</span>}
         <ColourPicker />
         <ThicknessPicker />
       </div>

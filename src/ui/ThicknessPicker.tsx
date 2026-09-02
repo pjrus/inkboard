@@ -1,14 +1,24 @@
 import { useState } from "react";
 import { THICKNESS_PRESETS, useToolStore } from "../store/toolStore";
+import { summarise } from "../document/strokeCommands";
 import { Popover } from "./Popover";
 import { ChevronIcon } from "./icons";
 
 export function ThicknessPicker() {
-  const width = useToolStore((s) => s.width);
-  const color = useToolStore((s) => s.color);
-  const setWidth = useToolStore((s) => s.setWidth);
+  const penWidth = useToolStore((s) => s.width);
+  const penColor = useToolStore((s) => s.color);
+  const setPenWidth = useToolStore((s) => s.setWidth);
+  const selection = useToolStore((s) => s.strokeSelection);
+  const commands = useToolStore((s) => s.selectionCommands);
   const [open, setOpen] = useState(false);
+  const wSummary = selection ? summarise(selection.widths) : null;
+  const cSummary = selection ? summarise(selection.colors) : null;
+  const mixed = wSummary?.mixed ?? false;
+  const width = wSummary ? (wSummary.value ?? penWidth) : penWidth;
+  const color = cSummary ? (cSummary.value ?? "#1b1b1f") : penColor;
+  const setWidth = (w: number) => (selection && commands ? commands.setWidth(w) : setPenWidth(w));
   const current = THICKNESS_PRESETS.find((p) => p.value === width);
+  const label = selection ? "Selection thickness" : "Thickness";
   return (
     <div className="tb-anchor">
       <button
@@ -16,17 +26,22 @@ export function ThicknessPicker() {
         className="tb-btn tb-btn-wide"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Thickness: ${current?.name ?? width}`}
-        title="Thickness"
+        aria-label={`${label}: ${mixed ? "mixed" : (current?.name ?? width)}`}
+        title={label}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="thickness-dot" style={{ width: Math.min(18, 4 + width * 1.2), height: Math.min(18, 4 + width * 1.2), background: color }} />
+        {mixed ? (
+          <span className="thickness-mixed">Mixed</span>
+        ) : (
+          <span className="thickness-dot" style={{ width: Math.min(18, 4 + width * 1.2), height: Math.min(18, 4 + width * 1.2), background: color }} />
+        )}
         <ChevronIcon />
       </button>
       <Popover open={open} onClose={() => setOpen(false)} label="Choose thickness">
-        <div className="thickness-list" role="radiogroup" aria-label="Stroke thickness">
+        {mixed && <div className="popover-hint">Mixed thicknesses</div>}
+        <div className="thickness-list" role="radiogroup" aria-label={label}>
           {THICKNESS_PRESETS.map((p) => {
-            const selected = p.value === width;
+            const selected = !mixed && p.value === width;
             return (
               <button
                 key={p.value}

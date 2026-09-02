@@ -1,5 +1,7 @@
 import * as Y from "yjs";
 import { nanoid } from "nanoid";
+import { nextWidthStep } from "./strokeCommands";
+import { computeBoundsFlat } from "../canvas/strokeGeometry";
 import type {
   CanvasObject,
   PDFDocumentMetadata,
@@ -157,6 +159,66 @@ export class CanvasDocument {
     this.transact(() => {
       for (const [k, v] of Object.entries(patch)) m.set(k, v);
     }, undoable);
+  }
+
+  /** Apply the same field patch to many objects in one undo step. */
+  updateObjects(ids: string[], patch: Record<string, unknown>): void {
+    if (ids.length === 0) return;
+    this.transact(() => {
+      for (const id of ids) {
+        const m = this.objects.get(id);
+        if (!m) continue;
+        for (const [k, v] of Object.entries(patch)) m.set(k, v);
+      }
+    });
+  }
+
+  /** Set the base width of the given strokes (bounds are recomputed). */
+  setStrokeWidth(ids: string[], width: number): void {
+    this.transact(() => {
+      for (const id of ids) {
+        const m = this.objects.get(id);
+        if (!m || m.get("type") !== "stroke") continue;
+        m.set("width", width);
+        m.set("bounds", computeBoundsFlat(m.get("points") as number[], width));
+      }
+    });
+  }
+
+  /** Step every stroke's width to the next/previous preset relative to its own width. */
+  adjustStrokeWidths(ids: string[], direction: 1 | -1): void {
+    this.transact(() => {
+      for (const id of ids) {
+        const m = this.objects.get(id);
+        if (!m || m.get("type") !== "stroke") continue;
+        const width = nextWidthStep(m.get("width") as number, direction);
+        m.set("width", width);
+        m.set("bounds", computeBoundsFlat(m.get("points") as number[], width));
+      }
+    });
+  }
+
+  setStrokeColor(ids: string[], color: string): void {
+    this.updateObjects(ids, { color });
+  }
+
+  /** Translate strokes by rewriting their points (one undo step). */
+  translateStrokes(ids: string[], dx: number, dy: number): void {
+    if (ids.length === 0 || (dx === 0 && dy === 0)) return;
+    this.transact(() => {
+      for (const id of ids) {
+        const m = this.objects.get(id);
+        if (!m || m.get("type") !== "stroke") continue;
+        const pts = (m.get("points") as number[]).slice();
+        for (let i = 0; i + 2 < pts.length; i += 3) {
+          pts[i] += dx;
+          pts[i + 1] += dy;
+        }
+        const b = m.get("bounds") as { minX: number; minY: number; maxX: number; maxY: number };
+        m.set("points", pts);
+        m.set("bounds", { minX: b.minX + dx, minY: b.minY + dy, maxX: b.maxX + dx, maxY: b.maxY + dy });
+      }
+    });
   }
 
   /** Move a set of objects by a world-space delta in one undo step. */

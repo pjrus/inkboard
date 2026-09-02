@@ -62,6 +62,7 @@ button { font: inherit; color: inherit; }
 /* ---- toolbar ---------------------------------------------------------- */
 .toolbar {
   width: max-content;
+  z-index: 30;
   position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 4px; padding: 4px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -118,6 +119,7 @@ button { font: inherit; color: inherit; }
 /* ---- selection bar ---------------------------------------------------- */
 .selection-bar {
   width: max-content;
+  z-index: 25;
   position: absolute; top: 104px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
@@ -202,3 +204,14 @@ button { font: inherit; color: inherit; }
   .board-title { max-width: 30vw; }
   .selection-bar { top: 150px; }
 }
+
+/* ---- lasso selection -------------------------------------------------- */
+.tb-group-selection { border-radius: 8px; box-shadow: inset 0 0 0 1.5px var(--accent); padding-left: 6px; }
+.tb-badge { font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 0.02em; margin-right: 2px; }
+.swatch-mixed { background: conic-gradient(#d93025, #f2c94c, #2e9e5b, #2b6de9, #8e44ad, #d93025); }
+.thickness-mixed { font-size: 11px; font-weight: 600; color: var(--accent); }
+.popover-hint { font-size: 12px; color: var(--text-muted); padding: 2px 4px 6px; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+.stepper button { border: none; background: transparent; width: 36px; height: 34px; cursor: pointer; font-size: 16px; }
+.stepper button:hover { background: var(--surface-2); }
+.stepper-value { min-width: 52px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }

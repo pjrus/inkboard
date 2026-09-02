@@ -35,7 +35,26 @@ export interface ImportProgress {
   error?: string;
 }
 
+export interface StrokeSelection {
+  ids: string[];
+  widths: number[];
+  colors: string[];
+}
+
+/** Document-level commands for the current stroke selection (set by the canvas). */
+export interface SelectionCommands {
+  setWidth: (width: number) => void;
+  adjustWidth: (direction: 1 | -1) => void;
+  setColor: (color: string) => void;
+  remove: () => void;
+  clear: () => void;
+}
+
 interface ToolState {
+  strokeSelection: StrokeSelection | null;
+  selectionCommands: SelectionCommands | null;
+  setStrokeSelection: (sel: StrokeSelection | null) => void;
+  setSelectionCommands: (cmds: SelectionCommands | null) => void;
   tool: Tool;
   color: string;
   width: number;
@@ -70,6 +89,10 @@ function persistPrefs(get: () => ToolState) {
 }
 
 export const useToolStore = create<ToolState>((set, get) => ({
+  strokeSelection: null,
+  selectionCommands: null,
+  setStrokeSelection: (strokeSelection) => set({ strokeSelection }),
+  setSelectionCommands: (selectionCommands) => set({ selectionCommands }),
   tool: "pen",
   color: "#1b1b1f",
   width: 3,

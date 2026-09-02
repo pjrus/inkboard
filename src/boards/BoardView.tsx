@@ -9,6 +9,7 @@ import { ImportPDFDialog } from "../ui/ImportPDFDialog";
 import { ImportProgressToast } from "../ui/ImportProgressToast";
 import { PageSelectionBar } from "../ui/PageSelectionBar";
 import { StatusChip } from "../ui/StatusChip";
+import { StrokeSelectionBar } from "../ui/StrokeSelectionBar";
 import { Toolbar } from "../ui/Toolbar";
 import { ZoomControls } from "../ui/ZoomControls";
 import { boardRepository } from "./BoardRepository";
@@ -116,6 +117,13 @@ export function BoardView({ boardId, onBack }: Props) {
         return;
       }
       if (mod) return;
+      const sel = store.strokeSelection;
+      const cmds = store.selectionCommands;
+      if (sel && cmds && (e.key === "[" || e.key === "]")) {
+        e.preventDefault();
+        cmds.adjustWidth(e.key === "]" ? 1 : -1);
+        return;
+      }
       switch (e.key.toLowerCase()) {
         case "p":
           store.setTool("pen");
@@ -130,11 +138,20 @@ export function BoardView({ boardId, onBack }: Props) {
         case "v":
           store.setTool("pan");
           break;
+        case "l":
+          store.setTool("lasso");
+          break;
         case "escape":
           h?.controller.setSelection(null);
+          cmds?.clear();
           break;
         case "delete":
         case "backspace": {
+          if (sel && cmds) {
+            e.preventDefault();
+            cmds.remove();
+            break;
+          }
           const id = store.selectedObjectId;
           if (id) {
             e.preventDefault();
@@ -256,6 +273,7 @@ export function BoardView({ boardId, onBack }: Props) {
         <StatusChip />
       </header>
       <Toolbar onInsertPDF={onInsertPDF} onUndo={() => session.doc.undo()} onRedo={() => session.doc.redo()} />
+      <StrokeSelectionBar />
       {selectedPage?.type === "pdf-page" && (
         <PageSelectionBar doc={session.doc} page={selectedPage} onDeselect={() => handlesRef.current?.controller.setSelection(null)} />
       )}

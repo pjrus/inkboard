@@ -6,7 +6,10 @@
  * PDFs) are stored separately in IndexedDB and referenced by `assetId`.
  */
 
-export type Tool = "pan" | "pen" | "pencil" | "eraser";
+export type Tool = "pan" | "pen" | "pencil" | "eraser" | "lasso";
+
+export const MIN_STROKE_WIDTH = 0.5;
+export const MAX_STROKE_WIDTH = 40;
 
 export type PenTool = "pen" | "pencil";
 
