@@ -45,6 +45,14 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
         onViewportChange(vp);
       },
       onSelectionChange: (id) => store.getState().setSelectedObjectId(id),
+      onStrokeSelectionChange: (sel) => store.getState().setStrokeSelection(sel),
+    });
+    store.getState().setSelectionCommands({
+      setWidth: (w) => controller.setSelectionWidth(w),
+      adjustWidth: (d) => controller.adjustSelectionWidth(d),
+      setColor: (c) => controller.setSelectionColor(c),
+      remove: () => controller.deleteSelection(),
+      clear: () => controller.clearStrokeSelection(),
     });
 
     const resize = () => {
@@ -61,6 +69,8 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
     store.getState().setZoom(initialViewport.scale);
 
     return () => {
+      store.getState().setSelectionCommands(null);
+      store.getState().setStrokeSelection(null);
       onReady(null);
       handlesRef.current = null;
       ro.disconnect();
@@ -75,6 +85,7 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
   useEffect(() => {
     handlesRef.current?.controller.updateCursor();
     if (tool !== "pan") handlesRef.current?.controller.setSelection(null);
+    if (tool !== "lasso") handlesRef.current?.controller.clearStrokeSelection();
   }, [tool]);
 
   return (

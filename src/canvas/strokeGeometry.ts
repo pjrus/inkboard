@@ -124,3 +124,68 @@ export function strokeSegmentHitTest(
   }
   return false;
 }
+
+/** Bounds from a flat [x,y,p,...] point array. */
+export function computeBoundsFlat(flat: number[], width: number): Bounds {
+  const pts: StrokePoint[] = [];
+  for (let i = 0; i + 2 < flat.length; i += 3) pts.push({ x: flat[i], y: flat[i + 1] });
+  return computeBounds(pts, width);
+}
+
+export interface XY {
+  x: number;
+  y: number;
+}
+
+/** Ray-casting point-in-polygon. */
+export function pointInPolygon(p: XY, poly: XY[]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+export function polygonBounds(poly: XY[]): Bounds {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of poly) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { minX, minY, maxX, maxY };
+}
+
+function distanceToPolygonEdge(p: XY, poly: XY[]): number {
+  let best = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const d = pointSegmentDistance(p, poly[j], poly[i]);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** Fraction of a stroke's sampled points that must be inside the lasso. */
+export const LASSO_INSIDE_FRACTION = 0.4;
+
+/**
+ * Forgiving lasso test: a stroke is selected when at least
+ * LASSO_INSIDE_FRACTION of its points are inside the polygon. A point counts
+ * as inside if its centre is inside or within half the stroke width of the
+ * polygon edge, so thick handwriting near the boundary still selects.
+ */
+export function lassoSelectsStroke(points: StrokePoint[], width: number, poly: XY[], polyBounds?: Bounds): boolean {
+  if (poly.length < 3 || points.length === 0) return false;
+  const pb = polyBounds ?? polygonBounds(poly);
+  const half = width / 2;
+  let inside = 0;
+  for (const p of points) {
+    const nearBox = p.x >= pb.minX - half && p.x <= pb.maxX + half && p.y >= pb.minY - half && p.y <= pb.maxY + half;
+    if (!nearBox) continue;
+    if (pointInPolygon(p, poly) || (half > 0 && distanceToPolygonEdge(p, poly) <= half)) inside++;
+  }
+  return inside / points.length >= LASSO_INSIDE_FRACTION;
+}

@@ -4,7 +4,9 @@ import { packPoints } from "../document/schema";
 import { pan, screenLengthToWorld, screenToWorld, zoomBy, type Point } from "./coordinates";
 import { beginPinch, updatePinch, type PinchStart } from "./gestures";
 import type { CanvasRenderer } from "./CanvasRenderer";
-import { computeBounds, simplifyPoints, strokeSegmentHitTest } from "./strokeGeometry";
+import { computeBounds, lassoSelectsStroke, polygonBounds, simplifyPoints, strokeSegmentHitTest, type XY } from "./strokeGeometry";
+import { unpackPoints } from "../document/schema";
+import type { StrokeSelection } from "../store/toolStore";
 
 /**
  * Central pointer/wheel/keyboard state machine for the canvas.
@@ -18,7 +20,9 @@ type State =
   | { type: "erasing"; pointerId: number; last: Point }
   | { type: "panning"; pointerId: number; last: Point }
   | { type: "pinching"; pinch: PinchStart }
-  | { type: "movingObject"; pointerId: number; objectId: string; start: Point; moved: boolean };
+  | { type: "movingObject"; pointerId: number; objectId: string; start: Point; moved: boolean }
+  | { type: "lassoing"; pointerId: number; points: XY[]; additive: boolean; startScreen: Point; maxDistPx: number }
+  | { type: "movingSelection"; pointerId: number; start: Point; moved: boolean };
 
 export interface ControllerHost {
   getTool(): Tool;
@@ -29,9 +33,12 @@ export interface ControllerHost {
   onStylusSeen(): void;
   onViewportChange(vp: Viewport): void;
   onSelectionChange(id: string | null): void;
+  onStrokeSelectionChange(sel: StrokeSelection | null): void;
 }
 
 const ERASER_RADIUS_PX = 12;
+const LASSO_CLICK_TOLERANCE_PX = 4;
+const SELECTION_GRAB_PAD_PX = 8;
 const DRAG_THRESHOLD_PX = 3;
 
 export class CanvasInteractionController {
@@ -39,6 +46,8 @@ export class CanvasInteractionController {
   private touches = new Map<number, Point>();
   private spaceDown = false;
   private disposers: (() => void)[] = [];
+  /** Local stroke selection; never enters the document. */
+  private selectedIds = new Set<string>();
 
   constructor(
     private readonly el: HTMLElement,
@@ -48,6 +57,91 @@ export class CanvasInteractionController {
   ) {
     this.bind();
     this.updateCursor();
+    // Keep the selection consistent with the document (remote deletes/edits).
+    this.disposers.push(
+      doc.onChange((changes) => {
+        if (this.selectedIds.size === 0) return;
+        let touched = false;
+        for (const c of changes) {
+          if (!this.selectedIds.has(c.id)) continue;
+          touched = true;
+          if (c.kind === "remove") this.selectedIds.delete(c.id);
+        }
+        if (touched) this.publishStrokeSelection();
+      }),
+    );
+  }
+
+  // ---- stroke selection ---------------------------------------------
+
+  getSelectedStrokeIds(): string[] {
+    return Array.from(this.selectedIds);
+  }
+
+  setSelectedStrokes(ids: Iterable<string>) {
+    this.selectedIds = new Set(ids);
+    this.publishStrokeSelection();
+  }
+
+  clearStrokeSelection() {
+    if (this.selectedIds.size === 0) return;
+    this.selectedIds.clear();
+    this.publishStrokeSelection();
+  }
+
+  setSelectionWidth(width: number) {
+    this.doc.setStrokeWidth(this.getSelectedStrokeIds(), width);
+  }
+
+  adjustSelectionWidth(direction: 1 | -1) {
+    this.doc.adjustStrokeWidths(this.getSelectedStrokeIds(), direction);
+  }
+
+  setSelectionColor(color: string) {
+    this.doc.setStrokeColor(this.getSelectedStrokeIds(), color);
+  }
+
+  deleteSelection() {
+    const ids = this.getSelectedStrokeIds();
+    this.selectedIds.clear();
+    this.doc.removeObjects(ids);
+    this.publishStrokeSelection();
+  }
+
+  private publishStrokeSelection() {
+    this.renderer.selectedStrokeIds = new Set(this.selectedIds);
+    this.renderer.invalidateStatic();
+    if (this.selectedIds.size === 0) {
+      this.host.onStrokeSelectionChange(null);
+      return;
+    }
+    const widths: number[] = [];
+    const colors: string[] = [];
+    for (const id of this.selectedIds) {
+      const o = this.doc.get(id);
+      if (o?.type === "stroke") {
+        widths.push(o.width);
+        colors.push(o.color);
+      }
+    }
+    this.host.onStrokeSelectionChange({ ids: Array.from(this.selectedIds), widths, colors });
+  }
+
+  /** Strokes inside a world-space lasso polygon: bounds prefilter, then polygon test. */
+  private strokesInLasso(poly: XY[]): string[] {
+    const pb = polygonBounds(poly);
+    const out: string[] = [];
+    for (const s of this.renderer.getStrokesInBounds(pb)) {
+      if (lassoSelectsStroke(unpackPoints(s.points), s.width, poly, pb)) out.push(s.id);
+    }
+    return out;
+  }
+
+  private pointInSelection(wp: Point): boolean {
+    const b = this.renderer.getSelectionBounds();
+    if (!b) return false;
+    const pad = screenLengthToWorld(SELECTION_GRAB_PAD_PX, this.viewport);
+    return wp.x >= b.minX - pad && wp.x <= b.maxX + pad && wp.y >= b.minY - pad && wp.y <= b.maxY + pad;
   }
 
   // ---- viewport helpers ----------------------------------------------
@@ -76,9 +170,9 @@ export class CanvasInteractionController {
     const tool = this.host.getTool();
     let cursor = "default";
     if (this.state.type === "panning" || this.state.type === "pinching") cursor = "grabbing";
-    else if (this.state.type === "movingObject") cursor = "move";
+    else if (this.state.type === "movingObject" || this.state.type === "movingSelection") cursor = "move";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
-    else if (tool === "pen" || tool === "pencil") cursor = "crosshair";
+    else if (tool === "pen" || tool === "pencil" || tool === "lasso") cursor = "crosshair";
     else if (tool === "eraser") cursor = "none";
     this.el.style.cursor = cursor;
   }
@@ -173,7 +267,11 @@ export class CanvasInteractionController {
     const tool = this.host.getTool();
     const fingerNavigates = e.pointerType === "touch" && this.host.stylusSeen();
 
-    this.el.setPointerCapture(e.pointerId);
+    try {
+      this.el.setPointerCapture(e.pointerId);
+    } catch {
+      // Some browsers throw if the pointer is already gone; drawing still works.
+    }
 
     if (e.button === 1 || this.spaceDown || fingerNavigates || tool === "pan") {
       if (tool === "pan" && !this.spaceDown && e.button === 0) {
@@ -197,6 +295,19 @@ export class CanvasInteractionController {
       const points: StrokePoint[] = [{ x: wp.x, y: wp.y, pressure: hasPressure ? e.pressure : 0.5 }];
       this.state = { type: "drawing", pointerId: e.pointerId, points, tool, color: this.host.getColor(), width: this.host.getWidth(), hasPressure };
       this.renderer.activeStroke = { points, tool, color: this.host.getColor(), width: this.host.getWidth(), hasPressure };
+      this.renderer.invalidateOverlay();
+      return;
+    }
+
+    if (tool === "lasso") {
+      const wp = screenToWorld(sp, this.viewport);
+      if (this.selectedIds.size > 0 && this.pointInSelection(wp)) {
+        this.state = { type: "movingSelection", pointerId: e.pointerId, start: sp, moved: false };
+        this.updateCursor();
+        return;
+      }
+      this.state = { type: "lassoing", pointerId: e.pointerId, points: [wp], additive: e.shiftKey, startScreen: sp, maxDistPx: 0 };
+      this.renderer.lassoPath = this.state.points;
       this.renderer.invalidateOverlay();
       return;
     }
@@ -266,6 +377,24 @@ export class CanvasInteractionController {
         this.renderer.invalidateStatic();
         return;
       }
+      case "lassoing": {
+        if (e.pointerId !== s.pointerId) return;
+        const wp = screenToWorld(sp, this.viewport);
+        s.points.push(wp);
+        s.maxDistPx = Math.max(s.maxDistPx, Math.hypot(sp.x - s.startScreen.x, sp.y - s.startScreen.y));
+        this.renderer.invalidateOverlay();
+        return;
+      }
+      case "movingSelection": {
+        if (e.pointerId !== s.pointerId) return;
+        const dxPx = sp.x - s.start.x;
+        const dyPx = sp.y - s.start.y;
+        if (!s.moved && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD_PX) return;
+        s.moved = true;
+        this.renderer.selectionDrag = { dx: dxPx / this.viewport.scale, dy: dyPx / this.viewport.scale };
+        this.renderer.invalidateStatic();
+        return;
+      }
       case "pinching":
         return;
     }
@@ -305,11 +434,45 @@ export class CanvasInteractionController {
         this.renderer.invalidateStatic();
         break;
       }
+      case "lassoing":
+        this.finishLasso(s, e.type === "pointercancel");
+        break;
+      case "movingSelection": {
+        const drag = this.renderer.selectionDrag;
+        this.renderer.selectionDrag = null;
+        // A tap inside the selection without movement keeps the selection.
+        if (s.moved && drag) this.doc.translateStrokes(this.getSelectedStrokeIds(), drag.dx, drag.dy);
+        this.renderer.invalidateStatic();
+        break;
+      }
       case "panning":
         break;
     }
     this.state = { type: "idle" };
     this.updateCursor();
+  }
+
+  private finishLasso(s: Extract<State, { type: "lassoing" }>, cancelled: boolean) {
+    this.renderer.lassoPath = null;
+    this.renderer.invalidateOverlay();
+    if (cancelled) return;
+    if (s.maxDistPx < LASSO_CLICK_TOLERANCE_PX) {
+      // A tap/click rather than a lasso: deselect.
+      if (!s.additive) this.clearStrokeSelection();
+      return;
+    }
+    const poly = simplifyPoints(
+      s.points.map((p) => ({ x: p.x, y: p.y })),
+      screenLengthToWorld(1.5, this.viewport),
+    );
+    if (poly.length < 3) {
+      if (!s.additive) this.clearStrokeSelection();
+      return;
+    }
+    const hits = this.strokesInLasso(poly);
+    if (s.additive) for (const id of hits) this.selectedIds.add(id);
+    else this.selectedIds = new Set(hits);
+    this.publishStrokeSelection();
   }
 
   /** Abort whatever is in progress (used when a second finger lands). */
@@ -327,6 +490,14 @@ export class CanvasInteractionController {
     } else if (s.type === "erasing") {
       this.doc.closeUndoGroup();
       this.hideEraserCursor();
+    } else if (s.type === "lassoing") {
+      // Second finger landed: this was a gesture, not a lasso.
+      this.renderer.lassoPath = null;
+      this.renderer.invalidateOverlay();
+      if (this.el.hasPointerCapture(s.pointerId)) this.el.releasePointerCapture(s.pointerId);
+    } else if (s.type === "movingSelection") {
+      this.renderer.selectionDrag = null;
+      this.renderer.invalidateStatic();
     }
     this.state = { type: "idle" };
   }
