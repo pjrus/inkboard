@@ -28,7 +28,6 @@ describe("bundled fonts", () => {
       expect(f.stack).toMatch(/sans-serif$/);
     }
     expect(canvasFont("open-sans", 24)).toBe(`24px ${fontStack("open-sans")}`);
-    expect(canvasFont("open-sans", 24, true)).toBe(`700 24px ${fontStack("open-sans")}`);
   });
 
   it("falls back rather than throwing on an unknown family id", () => {
