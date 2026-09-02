@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { InkboardDB, setDB } from "../storage/db";
-import { boardRepository } from "../boards/BoardRepository";
+import { boardRepository, DEFAULT_TOOL_PREFS } from "../boards/BoardRepository";
 import { CanvasDocument } from "./crdt";
 import { DocumentPersistence } from "./persistence";
 
@@ -57,12 +57,53 @@ describe("board persistence", () => {
     expect(doc2.getAll()).toHaveLength(20);
   });
 
+  it("restores text boxes, their styling and their collaborative text type", async () => {
+    const board = await boardRepository.create("Text");
+
+    const doc1 = new CanvasDocument();
+    const p1 = new DocumentPersistence(board.id, doc1);
+    await p1.load();
+    p1.start();
+    const t = doc1.addText({
+      x: 120,
+      y: -40,
+      width: 260,
+      text: "",
+      fontFamily: "open-sans",
+      fontSize: 24,
+      color: "#d93025",
+      textAlign: "center",
+    });
+    for (const ch of "Typed on the canvas") doc1.editText(t.id, (y) => y.insert(y.length, ch));
+    await p1.destroy();
+
+    const doc2 = new CanvasDocument();
+    const p2 = new DocumentPersistence(board.id, doc2);
+    await p2.load();
+    expect(doc2.get(t.id)).toMatchObject({
+      type: "text",
+      x: 120,
+      y: -40,
+      width: 260,
+      text: "Typed on the canvas",
+      fontFamily: "open-sans",
+      fontSize: 24,
+      color: "#d93025",
+      textAlign: "center",
+    });
+    // Still a Y.Text after a reload, so a later collaborator can splice it.
+    expect(doc2.getTextHandle(t.id)?.toString()).toBe("Typed on the canvas");
+    doc2.editText(t.id, (y) => y.insert(0, "> "));
+    expect(doc2.getTextHandle(t.id)?.toString()).toBe("> Typed on the canvas");
+  });
+
   it("persists and restores the viewport and tool preferences", async () => {
     const board = await boardRepository.create("VP");
     await boardRepository.saveViewport(board.id, { x: 12, y: -30, scale: 1.75 });
     expect((await boardRepository.get(board.id))?.viewport).toEqual({ x: 12, y: -30, scale: 1.75 });
-    await boardRepository.saveToolPreferences({ tool: "pencil", color: "#ff0000", width: 7 });
-    expect(await boardRepository.getToolPreferences()).toEqual({ tool: "pencil", color: "#ff0000", width: 7 });
+    const prefs = { ...DEFAULT_TOOL_PREFS, tool: "pencil" as const, color: "#ff0000", colorExplicit: true, width: 7, textFontSize: 24 };
+    await boardRepository.saveToolPreferences(prefs);
+    expect(await boardRepository.getToolPreferences()).toEqual(prefs);
   });
 
   it("deleting a board removes its updates", async () => {

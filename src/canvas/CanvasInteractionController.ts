@@ -1,18 +1,30 @@
 import type { CanvasDocument } from "../document/crdt";
-import type { PenTool, StrokePoint, Tool, Viewport } from "../document/schema";
-import { packPoints } from "../document/schema";
+import type { FontFamilyId, PenTool, SelectableCanvasObject, StrokePoint, TextAlign, TextObject, Tool, Viewport } from "../document/schema";
+import { MAX_TEXT_WIDTH, MIN_TEXT_WIDTH, packPoints, unpackPoints } from "../document/schema";
+import { DEFAULT_TEXT_WIDTH } from "../document/schema";
+import { lineHeightFor } from "../text/textLayout";
+import { textBounds } from "../text/textMeasure";
 import { pan, screenLengthToWorld, screenToWorld, zoomBy, type Point } from "./coordinates";
 import { beginPinch, updatePinch, type PinchStart } from "./gestures";
 import type { CanvasRenderer } from "./CanvasRenderer";
-import { computeBounds, lassoSelectsStroke, polygonBounds, simplifyPoints, strokeSegmentHitTest, type XY } from "./strokeGeometry";
-import { unpackPoints } from "../document/schema";
-import type { StrokeSelection } from "../store/toolStore";
+import {
+  computeBounds,
+  lassoSelectsBox,
+  lassoSelectsStroke,
+  polygonBounds,
+  simplifyPoints,
+  strokeSegmentHitTest,
+  type XY,
+} from "./strokeGeometry";
+import type { CanvasSelection } from "../store/toolStore";
 
 /**
  * Central pointer/wheel/keyboard state machine for the canvas.
  *
  * States are explicit so conflicting interactions (pinch while drawing,
- * dragging a page while inking, etc.) are impossible by construction.
+ * dragging a page while inking, resizing a text box while panning) are
+ * impossible by construction. Text editing lives in a DOM overlay outside this
+ * class; the controller only decides when it opens and closes.
  */
 type State =
   | { type: "idle" }
@@ -22,32 +34,48 @@ type State =
   | { type: "pinching"; pinch: PinchStart }
   | { type: "movingObject"; pointerId: number; objectId: string; start: Point; moved: boolean }
   | { type: "lassoing"; pointerId: number; points: XY[]; additive: boolean; startScreen: Point; maxDistPx: number }
-  | { type: "movingSelection"; pointerId: number; start: Point; moved: boolean };
+  | { type: "movingSelection"; pointerId: number; start: Point; moved: boolean }
+  | { type: "resizingText"; pointerId: number; id: string; startScreenX: number; startWidth: number };
+
+export interface TextStyle {
+  fontFamily: FontFamilyId;
+  fontSize: number;
+  color: string;
+  textAlign: TextAlign;
+}
 
 export interface ControllerHost {
   getTool(): Tool;
   getColor(): string;
   getWidth(): number;
+  /** Settings applied to the *next* text box the user creates. */
+  getTextStyle(): TextStyle;
   /** True once a stylus has been used: fingers then navigate only. */
   stylusSeen(): boolean;
   onStylusSeen(): void;
   onViewportChange(vp: Viewport): void;
   onSelectionChange(id: string | null): void;
-  onStrokeSelectionChange(sel: StrokeSelection | null): void;
+  onObjectSelectionChange(sel: CanvasSelection | null): void;
+  onEditingTextChange(id: string | null): void;
 }
 
 const ERASER_RADIUS_PX = 12;
 const LASSO_CLICK_TOLERANCE_PX = 4;
 const SELECTION_GRAB_PAD_PX = 8;
 const DRAG_THRESHOLD_PX = 3;
+const TEXT_HIT_PAD_PX = 4;
+const DOUBLE_TAP_MS = 400;
+const DOUBLE_TAP_SLOP_PX = 16;
 
 export class CanvasInteractionController {
   private state: State = { type: "idle" };
   private touches = new Map<number, Point>();
   private spaceDown = false;
   private disposers: (() => void)[] = [];
-  /** Local stroke selection; never enters the document. */
+  /** Local object selection; never enters the document. */
   private selectedIds = new Set<string>();
+  private editingTextId: string | null = null;
+  private lastTap: { t: number; x: number; y: number; id: string | null } | null = null;
 
   constructor(
     private readonly el: HTMLElement,
@@ -60,6 +88,9 @@ export class CanvasInteractionController {
     // Keep the selection consistent with the document (remote deletes/edits).
     this.disposers.push(
       doc.onChange((changes) => {
+        for (const c of changes) {
+          if (c.kind === "remove" && c.id === this.editingTextId) this.endTextEdit(false);
+        }
         if (this.selectedIds.size === 0) return;
         let touched = false;
         for (const c of changes) {
@@ -67,73 +98,187 @@ export class CanvasInteractionController {
           touched = true;
           if (c.kind === "remove") this.selectedIds.delete(c.id);
         }
-        if (touched) this.publishStrokeSelection();
+        if (touched) this.publishSelection();
       }),
     );
   }
 
-  // ---- stroke selection ---------------------------------------------
+  // ---- object selection ----------------------------------------------
 
-  getSelectedStrokeIds(): string[] {
+  getSelectedIds(): string[] {
     return Array.from(this.selectedIds);
   }
 
-  setSelectedStrokes(ids: Iterable<string>) {
-    this.selectedIds = new Set(ids);
-    this.publishStrokeSelection();
+  clearObjectSelection() {
+    if (this.selectedIds.size === 0) {
+      if (this.editingTextId) this.endTextEdit();
+      return;
+    }
+    this.selectedIds.clear();
+    if (this.editingTextId) this.endTextEdit();
+    this.publishSelection();
   }
 
-  clearStrokeSelection() {
-    if (this.selectedIds.size === 0) return;
-    this.selectedIds.clear();
-    this.publishStrokeSelection();
+  /** The selectable object behind an id, or undefined for a PDF page. */
+  private selectable(id: string): SelectableCanvasObject | undefined {
+    const o = this.doc.get(id);
+    return o && o.type !== "pdf-page" ? o : undefined;
+  }
+
+  private selectedIdsOfType(type: "stroke" | "text"): string[] {
+    const out: string[] = [];
+    for (const id of this.selectedIds) if (this.selectable(id)?.type === type) out.push(id);
+    return out;
   }
 
   setSelectionWidth(width: number) {
-    this.doc.setStrokeWidth(this.getSelectedStrokeIds(), width);
+    this.doc.setStrokeWidth(this.selectedIdsOfType("stroke"), width);
   }
 
   adjustSelectionWidth(direction: 1 | -1) {
-    this.doc.adjustStrokeWidths(this.getSelectedStrokeIds(), direction);
+    this.doc.adjustStrokeWidths(this.selectedIdsOfType("stroke"), direction);
   }
 
+  /** Colour applies to the whole selection: strokes and text both have one. */
   setSelectionColor(color: string) {
-    this.doc.setStrokeColor(this.getSelectedStrokeIds(), color);
+    this.doc.setStrokeColor(this.getSelectedIds(), color);
+  }
+
+  setSelectionFont(fontFamily: FontFamilyId) {
+    this.doc.setTextProperties(this.selectedIdsOfType("text"), { fontFamily });
+  }
+
+  setSelectionFontSize(fontSize: number) {
+    this.doc.setTextProperties(this.selectedIdsOfType("text"), { fontSize });
+  }
+
+  adjustSelectionFontSize(direction: 1 | -1) {
+    this.doc.adjustTextFontSizes(this.selectedIdsOfType("text"), direction);
+  }
+
+  setSelectionAlign(textAlign: TextAlign) {
+    this.doc.setTextProperties(this.selectedIdsOfType("text"), { textAlign });
   }
 
   deleteSelection() {
-    const ids = this.getSelectedStrokeIds();
+    const ids = this.getSelectedIds();
     this.selectedIds.clear();
+    if (this.editingTextId) this.endTextEdit(false);
     this.doc.removeObjects(ids);
-    this.publishStrokeSelection();
+    this.publishSelection();
   }
 
-  private publishStrokeSelection() {
-    this.renderer.selectedStrokeIds = new Set(this.selectedIds);
+  private publishSelection() {
+    this.renderer.selectedIds = new Set(this.selectedIds);
     this.renderer.invalidateStatic();
     if (this.selectedIds.size === 0) {
-      this.host.onStrokeSelectionChange(null);
+      this.host.onObjectSelectionChange(null);
       return;
     }
-    const widths: number[] = [];
-    const colors: string[] = [];
+    const sel: CanvasSelection = { ids: [], strokeIds: [], textIds: [], widths: [], colors: [], fonts: [], fontSizes: [], aligns: [] };
     for (const id of this.selectedIds) {
-      const o = this.doc.get(id);
-      if (o?.type === "stroke") {
-        widths.push(o.width);
-        colors.push(o.color);
+      const o = this.selectable(id);
+      if (!o) continue;
+      sel.ids.push(id);
+      if (o.type === "stroke") {
+        sel.strokeIds.push(id);
+        sel.widths.push(o.width);
+        sel.colors.push(o.color);
+      } else if (o.type === "text") {
+        sel.textIds.push(id);
+        sel.colors.push(o.color);
+        sel.fonts.push(o.fontFamily);
+        sel.fontSizes.push(o.fontSize);
+        sel.aligns.push(o.textAlign ?? "left");
       }
     }
-    this.host.onStrokeSelectionChange({ ids: Array.from(this.selectedIds), widths, colors });
+    this.host.onObjectSelectionChange(sel.ids.length ? sel : null);
   }
 
-  /** Strokes inside a world-space lasso polygon: bounds prefilter, then polygon test. */
-  private strokesInLasso(poly: XY[]): string[] {
+  // ---- text ----------------------------------------------------------
+
+  /** Create a text box at a world point and open the inline editor on it. */
+  createTextAt(wp: Point): TextObject {
+    const style = this.host.getTextStyle();
+    // Anchor the click at the middle of the first line, where a caret would be.
+    const y = wp.y - lineHeightFor(style.fontSize) / 2;
+    this.doc.closeUndoGroup();
+    const obj = this.doc.addText(
+      {
+        x: wp.x,
+        y,
+        width: DEFAULT_TEXT_WIDTH,
+        text: "",
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize,
+        color: style.color,
+        textAlign: style.textAlign,
+      },
+      true,
+    );
+    this.selectedIds = new Set([obj.id]);
+    this.publishSelection();
+    this.beginTextEdit(obj.id);
+    return obj;
+  }
+
+  beginTextEdit(id: string) {
+    if (this.editingTextId === id) return;
+    if (this.doc.get(id)?.type !== "text") return;
+    this.editingTextId = id;
+    this.renderer.editingTextId = id;
+    this.renderer.invalidateStatic();
+    this.host.onEditingTextChange(id);
+  }
+
+  /**
+   * Leave editing. A box the user never typed into is removed again; because
+   * creation and removal share one undo capture group, an abandoned box does
+   * not litter the history with a phantom object.
+   */
+  endTextEdit(removeIfEmpty = true) {
+    const id = this.editingTextId;
+    if (!id) return;
+    this.editingTextId = null;
+    this.renderer.editingTextId = null;
+    const obj = this.doc.get(id);
+    if (removeIfEmpty && obj?.type === "text" && obj.text.trim() === "") {
+      this.doc.removeObjects([id], true);
+      this.selectedIds.delete(id);
+      this.publishSelection();
+    } else if (obj?.type === "text") {
+      this.doc.touchText(id);
+    }
+    this.doc.closeUndoGroup();
+    this.renderer.invalidateStatic();
+    this.host.onEditingTextChange(null);
+    this.publishSelection();
+  }
+
+  /** Enter editing on the single selected text box (used by the toolbar). */
+  editSelectedText() {
+    const ids = this.selectedIdsOfType("text");
+    if (ids.length === 1) this.beginTextEdit(ids[0]);
+  }
+
+  setTextWidth(id: string, width: number) {
+    this.doc.setTextProperties([id], { width: clampTextWidth(width) });
+  }
+
+  // ---- lasso ---------------------------------------------------------
+
+  /** Objects inside a world-space lasso polygon: bounds prefilter, then test. */
+  private objectsInLasso(poly: XY[]): string[] {
     const pb = polygonBounds(poly);
     const out: string[] = [];
     for (const s of this.renderer.getStrokesInBounds(pb)) {
       if (lassoSelectsStroke(unpackPoints(s.points), s.width, poly, pb)) out.push(s.id);
     }
+    for (const t of this.renderer.getTextsInBounds(pb)) {
+      if (lassoSelectsBox(textBounds(t), poly, pb)) out.push(t.id);
+    }
+    // PDF pages are deliberately not lasso-selectable: the lasso is for
+    // annotations, and pages are managed with the hand tool.
     return out;
   }
 
@@ -142,6 +287,12 @@ export class CanvasInteractionController {
     if (!b) return false;
     const pad = screenLengthToWorld(SELECTION_GRAB_PAD_PX, this.viewport);
     return wp.x >= b.minX - pad && wp.x <= b.maxX + pad && wp.y >= b.minY - pad && wp.y <= b.maxY + pad;
+  }
+
+  private onResizeHandle(wp: Point): boolean {
+    const h = this.renderer.textResizeHandle();
+    if (!h) return false;
+    return Math.hypot(wp.x - h.x, wp.y - h.y) <= h.radius;
   }
 
   // ---- viewport helpers ----------------------------------------------
@@ -171,7 +322,9 @@ export class CanvasInteractionController {
     let cursor = "default";
     if (this.state.type === "panning" || this.state.type === "pinching") cursor = "grabbing";
     else if (this.state.type === "movingObject" || this.state.type === "movingSelection") cursor = "move";
+    else if (this.state.type === "resizingText") cursor = "ew-resize";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
+    else if (tool === "text") cursor = "text";
     else if (tool === "pen" || tool === "pencil" || tool === "lasso") cursor = "crosshair";
     else if (tool === "eraser") cursor = "none";
     this.el.style.cursor = cursor;
@@ -243,6 +396,20 @@ export class CanvasInteractionController {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  /** Second tap on the same object within the double-tap window. */
+  private isDoubleTap(sp: Point, id: string | null): boolean {
+    const now = Date.now();
+    const prev = this.lastTap;
+    this.lastTap = { t: now, x: sp.x, y: sp.y, id };
+    return (
+      prev !== null &&
+      prev.id === id &&
+      id !== null &&
+      now - prev.t < DOUBLE_TAP_MS &&
+      Math.hypot(sp.x - prev.x, sp.y - prev.y) < DOUBLE_TAP_SLOP_PX
+    );
+  }
+
   // ---- pointer down --------------------------------------------------
 
   private onPointerDown(e: PointerEvent) {
@@ -264,8 +431,16 @@ export class CanvasInteractionController {
     if (this.state.type !== "idle") return;
     if (e.button === 2) return;
 
+    // A press anywhere on the canvas means "outside the editor": commit the
+    // text and swallow this press, so finishing an edit never also draws.
+    if (this.editingTextId) {
+      this.endTextEdit();
+      return;
+    }
+
     const tool = this.host.getTool();
     const fingerNavigates = e.pointerType === "touch" && this.host.stylusSeen();
+    const wp = screenToWorld(sp, this.viewport);
 
     try {
       this.el.setPointerCapture(e.pointerId);
@@ -273,9 +448,26 @@ export class CanvasInteractionController {
       // Some browsers throw if the pointer is already gone; drawing still works.
     }
 
+    // The width grip wins over everything else while it is showing.
+    if ((tool === "lasso" || tool === "text" || tool === "pan") && this.onResizeHandle(wp)) {
+      const t = this.renderer.soleSelectedText();
+      if (t) {
+        this.state = { type: "resizingText", pointerId: e.pointerId, id: t.id, startScreenX: sp.x, startWidth: t.width };
+        this.updateCursor();
+        return;
+      }
+    }
+
     if (e.button === 1 || this.spaceDown || fingerNavigates || tool === "pan") {
       if (tool === "pan" && !this.spaceDown && e.button === 0) {
-        const page = this.renderer.hitTestPage(screenToWorld(sp, this.viewport));
+        // Text sits above pages, so it is hit-tested first.
+        const text = this.renderer.hitTestText(wp, screenLengthToWorld(TEXT_HIT_PAD_PX, this.viewport));
+        if (text) {
+          this.setSelection(null);
+          this.beginTextInteraction(text, sp, e);
+          return;
+        }
+        const page = this.renderer.hitTestPage(wp);
         if (page) {
           this.setSelection(page.id);
           this.state = { type: "movingObject", pointerId: e.pointerId, objectId: page.id, start: sp, moved: false };
@@ -283,14 +475,30 @@ export class CanvasInteractionController {
           return;
         }
         this.setSelection(null);
+        this.clearObjectSelection();
       }
       this.state = { type: "panning", pointerId: e.pointerId, last: sp };
       this.updateCursor();
       return;
     }
 
+    if (tool === "text") {
+      const text = this.renderer.hitTestText(wp, screenLengthToWorld(TEXT_HIT_PAD_PX, this.viewport));
+      if (text) {
+        this.beginTextInteraction(text, sp, e);
+        return;
+      }
+      this.lastTap = null;
+      // Cancelling the press suppresses the compatibility mouse events, and
+      // with them the browser's default "focus what was clicked" behaviour -
+      // which would otherwise pull focus out of the editor we are about to
+      // open and end the edit before a single character could be typed.
+      e.preventDefault();
+      this.createTextAt(wp);
+      return;
+    }
+
     if (tool === "pen" || tool === "pencil") {
-      const wp = screenToWorld(sp, this.viewport);
       const hasPressure = e.pointerType === "pen";
       const points: StrokePoint[] = [{ x: wp.x, y: wp.y, pressure: hasPressure ? e.pressure : 0.5 }];
       this.state = { type: "drawing", pointerId: e.pointerId, points, tool, color: this.host.getColor(), width: this.host.getWidth(), hasPressure };
@@ -300,10 +508,20 @@ export class CanvasInteractionController {
     }
 
     if (tool === "lasso") {
-      const wp = screenToWorld(sp, this.viewport);
       if (this.selectedIds.size > 0 && this.pointInSelection(wp)) {
+        // Double-tapping a selected text box opens it for editing.
+        const text = this.renderer.hitTestText(wp);
+        if (text && this.selectedIds.has(text.id) && this.isDoubleTap(sp, text.id)) {
+          this.beginTextEdit(text.id);
+          return;
+        }
         this.state = { type: "movingSelection", pointerId: e.pointerId, start: sp, moved: false };
         this.updateCursor();
+        return;
+      }
+      const text = this.renderer.hitTestText(wp, screenLengthToWorld(TEXT_HIT_PAD_PX, this.viewport));
+      if (text) {
+        this.beginTextInteraction(text, sp, e);
         return;
       }
       this.state = { type: "lassoing", pointerId: e.pointerId, points: [wp], additive: e.shiftKey, startScreen: sp, maxDistPx: 0 };
@@ -313,12 +531,27 @@ export class CanvasInteractionController {
     }
 
     if (tool === "eraser") {
-      const wp = screenToWorld(sp, this.viewport);
       this.doc.closeUndoGroup();
       this.state = { type: "erasing", pointerId: e.pointerId, last: wp };
       this.eraseAlong(wp, wp);
       this.showEraserCursor(wp);
     }
+  }
+
+  /** Click selects a text box; a second click on the same box edits it. */
+  private beginTextInteraction(text: TextObject, sp: Point, e: PointerEvent) {
+    const doubled = this.isDoubleTap(sp, text.id);
+    if (!e.shiftKey && !this.selectedIds.has(text.id)) this.selectedIds = new Set([text.id]);
+    else if (e.shiftKey) this.selectedIds.add(text.id);
+    this.publishSelection();
+    if (doubled) {
+      e.preventDefault(); // keep focus for the editor (see the text tool above)
+      this.beginTextEdit(text.id);
+      this.state = { type: "idle" };
+      return;
+    }
+    this.state = { type: "movingSelection", pointerId: e.pointerId, start: sp, moved: false };
+    this.updateCursor();
   }
 
   // ---- pointer move --------------------------------------------------
@@ -391,7 +624,15 @@ export class CanvasInteractionController {
         const dyPx = sp.y - s.start.y;
         if (!s.moved && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD_PX) return;
         s.moved = true;
+        // Transient: the CRDT only hears about the move on pointer up.
         this.renderer.selectionDrag = { dx: dxPx / this.viewport.scale, dy: dyPx / this.viewport.scale };
+        this.renderer.invalidateStatic();
+        return;
+      }
+      case "resizingText": {
+        if (e.pointerId !== s.pointerId) return;
+        const width = clampTextWidth(s.startWidth + (sp.x - s.startScreenX) / this.viewport.scale);
+        this.renderer.textResize = { id: s.id, width };
         this.renderer.invalidateStatic();
         return;
       }
@@ -441,7 +682,14 @@ export class CanvasInteractionController {
         const drag = this.renderer.selectionDrag;
         this.renderer.selectionDrag = null;
         // A tap inside the selection without movement keeps the selection.
-        if (s.moved && drag) this.doc.translateStrokes(this.getSelectedStrokeIds(), drag.dx, drag.dy);
+        if (s.moved && drag) this.doc.translateSelection(this.getSelectedIds(), drag.dx, drag.dy);
+        this.renderer.invalidateStatic();
+        break;
+      }
+      case "resizingText": {
+        const resize = this.renderer.textResize;
+        this.renderer.textResize = null;
+        if (resize && Math.abs(resize.width - s.startWidth) > 0.5) this.setTextWidth(s.id, resize.width);
         this.renderer.invalidateStatic();
         break;
       }
@@ -458,7 +706,7 @@ export class CanvasInteractionController {
     if (cancelled) return;
     if (s.maxDistPx < LASSO_CLICK_TOLERANCE_PX) {
       // A tap/click rather than a lasso: deselect.
-      if (!s.additive) this.clearStrokeSelection();
+      if (!s.additive) this.clearObjectSelection();
       return;
     }
     const poly = simplifyPoints(
@@ -466,13 +714,13 @@ export class CanvasInteractionController {
       screenLengthToWorld(1.5, this.viewport),
     );
     if (poly.length < 3) {
-      if (!s.additive) this.clearStrokeSelection();
+      if (!s.additive) this.clearObjectSelection();
       return;
     }
-    const hits = this.strokesInLasso(poly);
+    const hits = this.objectsInLasso(poly);
     if (s.additive) for (const id of hits) this.selectedIds.add(id);
     else this.selectedIds = new Set(hits);
-    this.publishStrokeSelection();
+    this.publishSelection();
   }
 
   /** Abort whatever is in progress (used when a second finger lands). */
@@ -497,6 +745,9 @@ export class CanvasInteractionController {
       if (this.el.hasPointerCapture(s.pointerId)) this.el.releasePointerCapture(s.pointerId);
     } else if (s.type === "movingSelection") {
       this.renderer.selectionDrag = null;
+      this.renderer.invalidateStatic();
+    } else if (s.type === "resizingText") {
+      this.renderer.textResize = null;
       this.renderer.invalidateStatic();
     }
     this.state = { type: "idle" };
@@ -576,6 +827,10 @@ export class CanvasInteractionController {
       this.setViewport(pan(this.viewport, -dx, -dy));
     }
   }
+}
+
+export function clampTextWidth(width: number): number {
+  return Math.min(MAX_TEXT_WIDTH, Math.max(MIN_TEXT_WIDTH, width));
 }
 
 export function isTypingTarget(t: EventTarget | null): boolean {

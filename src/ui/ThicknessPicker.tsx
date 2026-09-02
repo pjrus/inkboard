@@ -8,9 +8,12 @@ export function ThicknessPicker() {
   const penWidth = useToolStore((s) => s.width);
   const penColor = useToolStore((s) => s.color);
   const setPenWidth = useToolStore((s) => s.setWidth);
-  const selection = useToolStore((s) => s.strokeSelection);
+  const rawSelection = useToolStore((s) => s.selection);
   const commands = useToolStore((s) => s.selectionCommands);
   const [open, setOpen] = useState(false);
+  // Thickness only means something for handwriting: a text-only selection
+  // falls back to configuring the pen.
+  const selection = rawSelection && rawSelection.strokeIds.length > 0 ? rawSelection : null;
   const wSummary = selection ? summarise(selection.widths) : null;
   const cSummary = selection ? summarise(selection.colors) : null;
   const mixed = wSummary?.mixed ?? false;

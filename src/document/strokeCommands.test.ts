@@ -66,7 +66,7 @@ describe("stroke property commands", () => {
   it("moves strokes as a group and undoes in one step", () => {
     const d = new CanvasDocument();
     const ids = [d.addStroke(stroke(2)).id, d.addStroke(stroke(2)).id, d.addStroke(stroke(2)).id];
-    d.translateStrokes(ids, 100, -50);
+    d.translateSelection(ids, 100, -50);
     for (const id of ids) {
       const s = d.get(id) as StrokeObject;
       expect(s.points).toEqual([100, -50, 0.7, 110, -40, 0.3]);

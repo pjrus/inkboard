@@ -6,7 +6,7 @@
  * PDFs) are stored separately in IndexedDB and referenced by `assetId`.
  */
 
-export type Tool = "pan" | "pen" | "pencil" | "eraser" | "lasso";
+export type Tool = "pan" | "pen" | "pencil" | "eraser" | "lasso" | "text";
 
 export const MIN_STROKE_WIDTH = 0.5;
 export const MAX_STROKE_WIDTH = 40;
@@ -51,22 +51,61 @@ export interface PDFPageObject {
   createdAt: number;
 }
 
-/** Reserved for a later milestone. Not rendered or created yet. */
+/** Ids of the bundled open-source families (see text/fonts.ts). */
+export type FontFamilyId = "open-sans" | "inter" | "roboto" | "lato";
+
+export type TextAlign = "left" | "center" | "right";
+
+/** World-space defaults for new text boxes. */
+export const DEFAULT_TEXT_WIDTH = 300;
+export const MIN_TEXT_WIDTH = 80;
+export const MAX_TEXT_WIDTH = 1600;
+export const DEFAULT_FONT_SIZE = 20;
+export const MIN_FONT_SIZE = 8;
+export const MAX_FONT_SIZE = 200;
+export const DEFAULT_FONT_FAMILY: FontFamilyId = "open-sans";
+/** Multiple of the font size used as the distance between baselines. */
+export const TEXT_LINE_HEIGHT = 1.35;
+
+/**
+ * A freeform text box.
+ *
+ * `width` is user-controlled and text wraps inside it; the height follows the
+ * wrapped content and is therefore derived rather than stored (see
+ * text/textMeasure.ts, which is the single place layout is computed so the
+ * canvas, hit testing, lasso and the PDF exporter always agree).
+ *
+ * Inside the CRDT the `text` field is a Y.Text so two replicas can type into
+ * the same box without clobbering each other; `toJSON()` flattens it back to a
+ * plain string for the shapes used everywhere else in the app.
+ */
 export interface TextObject {
   id: string;
   type: "text";
   x: number;
   y: number;
-  width?: number;
+  width: number;
+  /** Derived from the wrapped layout; present only on snapshots that cached it. */
   height?: number;
   text: string;
+  fontFamily: FontFamilyId;
+  /** World-space, so text zooms with strokes and pages. */
   fontSize: number;
-  fontFamily?: string;
   color: string;
+  textAlign?: TextAlign;
   createdAt: number;
+  updatedAt: number;
+  createdBy?: string;
 }
 
 export type CanvasObject = StrokeObject | PDFPageObject | TextObject;
+
+/**
+ * What the lasso and the contextual toolbar can act on. PDF pages are
+ * deliberately excluded: pages are managed with the hand tool, and a lasso
+ * over an annotated page should pick up the annotations, not the page.
+ */
+export type SelectableCanvasObject = StrokeObject | TextObject;
 
 export type PDFLayout = "vertical" | "horizontal";
 

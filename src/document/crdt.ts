@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import { nanoid } from "nanoid";
 import { nextWidthStep } from "./strokeCommands";
+import { nextFontSizeStep } from "../text/textCommands";
 import { computeBoundsFlat } from "../canvas/strokeGeometry";
 import type {
   CanvasObject,
@@ -8,6 +9,7 @@ import type {
   PDFLayout,
   PDFPageObject,
   StrokeObject,
+  TextObject,
 } from "./schema";
 
 /**
@@ -23,6 +25,9 @@ import type {
  * fields (e.g. one peer moves a page while another rotates it) merge cleanly.
  * Stroke points are stored as a plain array: strokes are immutable once
  * committed, so there is no benefit to a Y.Array here and a lot of overhead.
+ * A text object's `text` field is the exception: it is a Y.Text, so two
+ * replicas typing into the same box merge character by character instead of
+ * overwriting each other's string.
  *
  * All local mutations pass through `transact()` with LOCAL_ORIGIN so the
  * UndoManager only tracks this replica's edits.
@@ -131,6 +136,84 @@ export class CanvasDocument {
     return obj;
   }
 
+  /**
+   * Create a text box. The initial content is a Y.Text so later edits are
+   * collaborative splices rather than whole-string replacements.
+   */
+  addText(
+    input: Omit<TextObject, "id" | "type" | "createdAt" | "updatedAt"> & { id?: string },
+    grouped = false,
+  ): TextObject {
+    const now = Date.now();
+    const obj: TextObject = { ...input, id: input.id ?? nanoid(12), type: "text", createdAt: now, updatedAt: now };
+    const fn = () => {
+      const m = toYMap({ ...obj, text: undefined });
+      const ytext = new Y.Text();
+      if (obj.text) ytext.insert(0, obj.text);
+      m.set("text", ytext);
+      this.objects.set(obj.id, m);
+    };
+    // `grouped` lets "create a box, then type into it" become one undo step.
+    if (grouped) this.transactGrouped(fn);
+    else this.transact(fn);
+    return obj;
+  }
+
+  /** The live Y.Text behind a text object, for the inline editor to bind to. */
+  getTextHandle(id: string): Y.Text | undefined {
+    const m = this.objects.get(id);
+    if (!m || m.get("type") !== "text") return undefined;
+    const t = m.get("text");
+    return t instanceof Y.Text ? t : undefined;
+  }
+
+  /**
+   * Apply an editor splice to a text box.
+   *
+   * Deliberately *not* wrapped in `transact()`: leaving the undo capture group
+   * open lets the UndoManager coalesce a burst of typing into one undo item
+   * instead of one per keystroke. `closeUndoGroup()` ends the burst.
+   */
+  editText(id: string, edit: (text: Y.Text) => void): void {
+    const ytext = this.getTextHandle(id);
+    if (!ytext) return;
+    this.transactGrouped(() => edit(ytext));
+  }
+
+  /** Stamp `updatedAt` without starting a new undo step. */
+  touchText(id: string): void {
+    const m = this.objects.get(id);
+    if (!m || m.get("type") !== "text") return;
+    this.transactGrouped(() => m.set("updatedAt", Date.now()));
+  }
+
+  /** Apply text properties (font, size, colour, alignment, width) in one undo step. */
+  setTextProperties(ids: string[], patch: Partial<Pick<TextObject, "fontFamily" | "fontSize" | "color" | "textAlign" | "width">>): void {
+    if (ids.length === 0) return;
+    const now = Date.now();
+    this.transact(() => {
+      for (const id of ids) {
+        const m = this.objects.get(id);
+        if (!m || m.get("type") !== "text") continue;
+        for (const [k, v] of Object.entries(patch)) if (v !== undefined) m.set(k, v);
+        m.set("updatedAt", now);
+      }
+    });
+  }
+
+  /** Step each text box's size to the next/previous preset, in one undo step. */
+  adjustTextFontSizes(ids: string[], direction: 1 | -1): void {
+    const now = Date.now();
+    this.transact(() => {
+      for (const id of ids) {
+        const m = this.objects.get(id);
+        if (!m || m.get("type") !== "text") continue;
+        m.set("fontSize", nextFontSizeStep(m.get("fontSize") as number, direction));
+        m.set("updatedAt", now);
+      }
+    });
+  }
+
   removeObjects(ids: string[], grouped = false): void {
     if (ids.length === 0) return;
     const fn = () => {
@@ -198,25 +281,37 @@ export class CanvasDocument {
     });
   }
 
+  /** Recolour a selection. Strokes and text boxes both carry a `color`. */
   setStrokeColor(ids: string[], color: string): void {
     this.updateObjects(ids, { color });
   }
 
-  /** Translate strokes by rewriting their points (one undo step). */
-  translateStrokes(ids: string[], dx: number, dy: number): void {
+  /**
+   * Move a mixed selection of strokes and text boxes by a world-space delta,
+   * as one undo step. Strokes are translated by rewriting their points; text
+   * boxes just move their origin.
+   */
+  translateSelection(ids: string[], dx: number, dy: number): void {
     if (ids.length === 0 || (dx === 0 && dy === 0)) return;
     this.transact(() => {
       for (const id of ids) {
         const m = this.objects.get(id);
-        if (!m || m.get("type") !== "stroke") continue;
-        const pts = (m.get("points") as number[]).slice();
-        for (let i = 0; i + 2 < pts.length; i += 3) {
-          pts[i] += dx;
-          pts[i + 1] += dy;
+        if (!m) continue;
+        const type = m.get("type");
+        if (type === "stroke") {
+          const pts = (m.get("points") as number[]).slice();
+          for (let i = 0; i + 2 < pts.length; i += 3) {
+            pts[i] += dx;
+            pts[i + 1] += dy;
+          }
+          const b = m.get("bounds") as { minX: number; minY: number; maxX: number; maxY: number };
+          m.set("points", pts);
+          m.set("bounds", { minX: b.minX + dx, minY: b.minY + dy, maxX: b.maxX + dx, maxY: b.maxY + dy });
+        } else if (type === "text") {
+          m.set("x", (m.get("x") as number) + dx);
+          m.set("y", (m.get("y") as number) + dy);
+          m.set("updatedAt", Date.now());
         }
-        const b = m.get("bounds") as { minX: number; minY: number; maxX: number; maxY: number };
-        m.set("points", pts);
-        m.set("bounds", { minX: b.minX + dx, minY: b.minY + dy, maxX: b.maxX + dx, maxY: b.maxY + dy });
       }
     });
   }

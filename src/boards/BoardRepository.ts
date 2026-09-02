@@ -1,8 +1,18 @@
 import { nanoid } from "nanoid";
 import { getDB, type BoardRecord, type ToolPreferences } from "../storage/db";
-import type { Viewport } from "../document/schema";
+import { DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, type Viewport } from "../document/schema";
 
-const DEFAULT_TOOL_PREFS: ToolPreferences = { tool: "pen", color: "#1b1b1f", width: 3 };
+export const DEFAULT_TOOL_PREFS: ToolPreferences = {
+  tool: "pen",
+  color: "#1b1b1f",
+  colorExplicit: false,
+  width: 3,
+  textColor: "#1b1b1f",
+  textColorExplicit: false,
+  textFont: DEFAULT_FONT_FAMILY,
+  textFontSize: DEFAULT_FONT_SIZE,
+  textAlign: "left",
+};
 
 export const boardRepository = {
   async list(): Promise<BoardRecord[]> {

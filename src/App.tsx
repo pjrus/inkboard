@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { BoardList } from "./boards/BoardList";
 import { BoardView } from "./boards/BoardView";
+import { loadFonts } from "./text/fontLoader";
+import { ThemeProvider } from "./theme/ThemeProvider";
 
 type Route = { view: "list" } | { view: "board"; id: string };
 
@@ -17,8 +19,18 @@ export function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  if (route.view === "board") {
-    return <BoardView boardId={route.id} onBack={() => (window.location.hash = "#/")} />;
-  }
-  return <BoardList onOpen={(id) => (window.location.hash = `#/b/${id}`)} />;
+  // Bundled fonts, not a web request: text measures correctly offline too.
+  useEffect(() => {
+    void loadFonts();
+  }, []);
+
+  return (
+    <ThemeProvider>
+      {route.view === "board" ? (
+        <BoardView boardId={route.id} onBack={() => (window.location.hash = "#/")} />
+      ) : (
+        <BoardList onOpen={(id) => (window.location.hash = `#/b/${id}`)} />
+      )}
+    </ThemeProvider>
+  );
 }

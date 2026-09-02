@@ -12,7 +12,9 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "types": ["vite/client", "vitest/globals"]
+    // "node" is here for the test files only: they read bundled font
+    // files and fixtures straight from disk.
+    "types": ["vite/client", "vitest/globals", "node"]
   },
   "include": ["src"]
 }

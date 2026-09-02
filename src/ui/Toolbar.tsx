@@ -1,14 +1,19 @@
 import { useRef } from "react";
 import type { Tool } from "../document/schema";
 import { useToolStore } from "../store/toolStore";
+import { AppMenu } from "./AppMenu";
 import { ColourPicker } from "./ColourPicker";
+import { FontSelector } from "./FontSelector";
+import { FontSizeSelector } from "./FontSizeSelector";
+import { TextAlignmentControls } from "./TextAlignmentControls";
 import { ThicknessPicker } from "./ThicknessPicker";
-import { EraserIcon, HandIcon, LassoIcon, PdfIcon, PenIcon, PencilIcon, RedoIcon, UndoIcon } from "./icons";
+import { EraserIcon, HandIcon, LassoIcon, PdfIcon, PenIcon, PencilIcon, RedoIcon, TextIcon, UndoIcon } from "./icons";
 
 interface Props {
   onInsertPDF: (file: File) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onExportPDF: () => void;
 }
 
 const TOOLS: { tool: Tool; label: string; key: string; icon: () => JSX.Element }[] = [
@@ -17,15 +22,26 @@ const TOOLS: { tool: Tool; label: string; key: string; icon: () => JSX.Element }
   { tool: "pencil", label: "Pencil", key: "N", icon: PencilIcon },
   { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon },
   { tool: "lasso", label: "Lasso", key: "L", icon: LassoIcon },
+  { tool: "text", label: "Text", key: "T", icon: TextIcon },
 ];
 
-export function Toolbar({ onInsertPDF, onUndo, onRedo }: Props) {
+export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
   const tool = useToolStore((s) => s.tool);
   const setTool = useToolStore((s) => s.setTool);
   const canUndo = useToolStore((s) => s.canUndo);
   const canRedo = useToolStore((s) => s.canRedo);
-  const hasSelection = useToolStore((s) => s.strokeSelection !== null);
+  const selection = useToolStore((s) => s.selection);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Which property controls make sense right now.
+  //
+  // Colour applies to everything, so it is always offered. Thickness appears
+  // whenever the selection contains ink. Font, size and alignment appear only
+  // for a text-only selection: a font picker over a selection that includes
+  // handwriting would be offering something it cannot change.
+  const hasSelection = selection !== null;
+  const showStrokeControls = hasSelection ? selection.strokeIds.length > 0 : tool !== "text";
+  const showTextControls = hasSelection ? selection.textIds.length > 0 && selection.strokeIds.length === 0 : tool === "text";
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Drawing tools">
@@ -46,17 +62,20 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo }: Props) {
         ))}
       </div>
       <span className="tb-sep" />
-      <div className={"tb-group" + (hasSelection ? " tb-group-selection" : "")} title={hasSelection ? "Editing selected strokes" : undefined}>
+      <div className={"tb-group" + (hasSelection ? " tb-group-selection" : "")} title={hasSelection ? "Editing the selection" : undefined}>
         {hasSelection && <span className="tb-badge">Selection</span>}
         <ColourPicker />
-        <ThicknessPicker />
+        {showStrokeControls && <ThicknessPicker />}
+        {showTextControls && <FontSelector />}
+        {showTextControls && <FontSizeSelector />}
+        {showTextControls && <TextAlignmentControls />}
       </div>
       <span className="tb-sep" />
       <div className="tb-group">
-        <button type="button" className="tb-btn" aria-label="Undo (⌘Z)" title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
+        <button type="button" className="tb-btn" aria-label="Undo (Cmd+Z)" title="Undo (Cmd+Z)" disabled={!canUndo} onClick={onUndo}>
           <UndoIcon />
         </button>
-        <button type="button" className="tb-btn" aria-label="Redo (⌘⇧Z)" title="Redo (⌘⇧Z)" disabled={!canRedo} onClick={onRedo}>
+        <button type="button" className="tb-btn" aria-label="Redo (Cmd+Shift+Z)" title="Redo (Cmd+Shift+Z)" disabled={!canRedo} onClick={onRedo}>
           <RedoIcon />
         </button>
       </div>
@@ -77,6 +96,7 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo }: Props) {
             e.target.value = "";
           }}
         />
+        <AppMenu onExportPDF={onExportPDF} />
       </div>
     </div>
   );

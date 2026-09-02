@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CanvasViewport, type CanvasHandles } from "../canvas/CanvasViewport";
 import { isTypingTarget } from "../canvas/CanvasInteractionController";
 import { DEFAULT_VIEWPORT, screenToWorld, zoomAt } from "../canvas/coordinates";
-import type { PDFLayout, PDFPageObject, Viewport } from "../document/schema";
+import type { CanvasObject, PDFLayout, PDFPageObject, Viewport } from "../document/schema";
+import { ExportDialog, type ExportChoice } from "../export/ExportDialog";
 import { importPDF, inspectPDF, type InspectedPDF } from "../pdf/PDFImporter";
 import { useToolStore } from "../store/toolStore";
 import { ImportPDFDialog } from "../ui/ImportPDFDialog";
 import { ImportProgressToast } from "../ui/ImportProgressToast";
 import { PageSelectionBar } from "../ui/PageSelectionBar";
+import { SelectionBar } from "../ui/SelectionBar";
 import { StatusChip } from "../ui/StatusChip";
-import { StrokeSelectionBar } from "../ui/StrokeSelectionBar";
 import { Toolbar } from "../ui/Toolbar";
 import { ZoomControls } from "../ui/ZoomControls";
 import { boardRepository } from "./BoardRepository";
@@ -20,11 +21,18 @@ interface Props {
   onBack: () => void;
 }
 
+interface ExportState {
+  busy: { done: number; total: number; label: string } | null;
+  error: string | null;
+}
+
 export function BoardView({ boardId, onBack }: Props) {
   const [session, setSession] = useState<BoardSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [pendingImport, setPendingImport] = useState<{ file: File; inspected: InspectedPDF } | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportState, setExportState] = useState<ExportState>({ busy: null, error: null });
   const handlesRef = useRef<CanvasHandles | null>(null);
   const sessionRef = useRef<BoardSession | null>(null);
   const selectedId = useToolStore((s) => s.selectedObjectId);
@@ -86,10 +94,13 @@ export function BoardView({ boardId, onBack }: Props) {
   useEffect(() => {
     if (!session) return;
     const onKey = (e: KeyboardEvent) => {
+      // While a text box is being edited the keyboard belongs to the textarea:
+      // no tool letters, no Delete-the-object, just normal text editing.
       if (isTypingTarget(e.target)) return;
       const mod = e.metaKey || e.ctrlKey;
       const store = useToolStore.getState();
       const h = handlesRef.current;
+      if (store.editingTextId) return;
       if (mod && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) session.doc.redo();
@@ -117,9 +128,9 @@ export function BoardView({ boardId, onBack }: Props) {
         return;
       }
       if (mod) return;
-      const sel = store.strokeSelection;
+      const sel = store.selection;
       const cmds = store.selectionCommands;
-      if (sel && cmds && (e.key === "[" || e.key === "]")) {
+      if (sel && cmds && sel.strokeIds.length > 0 && (e.key === "[" || e.key === "]")) {
         e.preventDefault();
         cmds.adjustWidth(e.key === "]" ? 1 : -1);
         return;
@@ -140,6 +151,15 @@ export function BoardView({ boardId, onBack }: Props) {
           break;
         case "l":
           store.setTool("lasso");
+          break;
+        case "t":
+          store.setTool("text");
+          break;
+        case "enter":
+          if (sel && cmds && sel.textIds.length === 1 && sel.strokeIds.length === 0) {
+            e.preventDefault();
+            cmds.editText();
+          }
           break;
         case "escape":
           h?.controller.setSelection(null);
@@ -225,6 +245,32 @@ export function BoardView({ boardId, onBack }: Props) {
     }
   };
 
+  // ---- PDF export -----------------------------------------------------
+  const runExport = async (choice: ExportChoice) => {
+    if (!session) return;
+    const all = session.doc.getAll();
+    const selectedIds = new Set(handlesRef.current?.controller.getSelectedIds() ?? []);
+    const objects = choice.scope === "selection" ? all.filter((o) => selectedIds.has(o.id)) : all;
+    setExportState({ busy: { done: 0, total: 1, label: "" }, error: null });
+    try {
+      // pdf-lib and its font toolkit are only pulled in when someone actually
+      // exports, so opening a board stays as light as it was before.
+      const { exportToPDF, downloadPDF } = await import("../export/PDFExporter");
+      const result = await exportToPDF({
+        objects,
+        boardName: name,
+        layout: choice.layout,
+        onProgress: (done, total, label) => setExportState({ busy: { done, total, label }, error: null }),
+      });
+      downloadPDF(result);
+      setExportState({ busy: null, error: null });
+      setExportOpen(false);
+    } catch (err) {
+      console.error(err);
+      setExportState({ busy: null, error: err instanceof Error ? err.message : "Export failed. See console for details." });
+    }
+  };
+
   // ---- rename ---------------------------------------------------------
   const commitName = () => {
     const trimmed = name.trim() || "Untitled board";
@@ -243,10 +289,18 @@ export function BoardView({ boardId, onBack }: Props) {
       </div>
     );
   }
-  if (!session) return <div className="board-loading muted">Opening board…</div>;
+  if (!session) return <div className="board-loading muted">Opening board...</div>;
 
   const selectedPage = selectedId ? (session.doc.get(selectedId) as PDFPageObject | undefined) : undefined;
   void docVersion; // re-render trigger for selection bar contents
+
+  let exportObjects: CanvasObject[] = [];
+  let exportSelection: CanvasObject[] = [];
+  if (exportOpen) {
+    exportObjects = session.doc.getAll();
+    const ids = new Set(handlesRef.current?.controller.getSelectedIds() ?? []);
+    exportSelection = exportObjects.filter((o) => ids.has(o.id));
+  }
 
   return (
     <div className="board-view">
@@ -258,7 +312,7 @@ export function BoardView({ boardId, onBack }: Props) {
       />
       <header className="topbar">
         <button type="button" className="btn btn-ghost" onClick={onBack} aria-label="Back to boards">
-          ← Boards
+          &larr; Boards
         </button>
         <input
           className="board-title"
@@ -272,11 +326,23 @@ export function BoardView({ boardId, onBack }: Props) {
         />
         <StatusChip />
       </header>
-      <Toolbar onInsertPDF={onInsertPDF} onUndo={() => session.doc.undo()} onRedo={() => session.doc.redo()} />
-      <StrokeSelectionBar />
-      {selectedPage?.type === "pdf-page" && (
-        <PageSelectionBar doc={session.doc} page={selectedPage} onDeselect={() => handlesRef.current?.controller.setSelection(null)} />
-      )}
+      {/* One stack, so a wrapped toolbar pushes the contextual bars down
+          instead of hiding underneath them. */}
+      <div className="top-stack">
+        <Toolbar
+          onInsertPDF={onInsertPDF}
+          onUndo={() => session.doc.undo()}
+          onRedo={() => session.doc.redo()}
+          onExportPDF={() => {
+            setExportState({ busy: null, error: null });
+            setExportOpen(true);
+          }}
+        />
+        <SelectionBar />
+        {selectedPage?.type === "pdf-page" && (
+          <PageSelectionBar doc={session.doc} page={selectedPage} onDeselect={() => handlesRef.current?.controller.setSelection(null)} />
+        )}
+      </div>
       <ZoomControls
         onZoomIn={() => handlesRef.current?.controller.zoomAtCenter(1.2)}
         onZoomOut={() => handlesRef.current?.controller.zoomAtCenter(1 / 1.2)}
@@ -292,6 +358,16 @@ export function BoardView({ boardId, onBack }: Props) {
             setPendingImport(null);
           }}
           onImport={runImport}
+        />
+      )}
+      {exportOpen && (
+        <ExportDialog
+          objects={exportObjects}
+          selectedObjects={exportSelection}
+          busy={exportState.busy}
+          error={exportState.error}
+          onCancel={() => setExportOpen(false)}
+          onExport={runExport}
         />
       )}
     </div>

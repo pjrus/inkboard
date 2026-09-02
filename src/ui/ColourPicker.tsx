@@ -4,19 +4,34 @@ import { summarise } from "../document/strokeCommands";
 import { Popover } from "./Popover";
 import { ChevronIcon } from "./icons";
 
+/**
+ * Colour for the current target, in priority order: the selection, then the
+ * text tool's next box, then the pen. Pen and text colours are stored
+ * separately so choosing a text colour never changes the ink you draw with.
+ */
 export function ColourPicker() {
+  const tool = useToolStore((s) => s.tool);
   const penColor = useToolStore((s) => s.color);
   const setPenColor = useToolStore((s) => s.setColor);
-  const selection = useToolStore((s) => s.strokeSelection);
+  const textColor = useToolStore((s) => s.textColor);
+  const setTextColor = useToolStore((s) => s.setTextColor);
+  const selection = useToolStore((s) => s.selection);
   const commands = useToolStore((s) => s.selectionCommands);
   const [open, setOpen] = useState(false);
-  // With a selection, the picker edits the selected strokes instead of the pen.
+
+  const target = selection ? "selection" : tool === "text" ? "text" : "pen";
+  const toolColor = target === "text" ? textColor : penColor;
   const summary = selection ? summarise(selection.colors) : null;
   const mixed = summary?.mixed ?? false;
-  const color = summary ? (summary.value ?? penColor) : penColor;
-  const setColor = (c: string) => (selection && commands ? commands.setColor(c) : setPenColor(c));
+  const color = summary ? (summary.value ?? toolColor) : toolColor;
+  const setColor = (c: string) => {
+    if (target === "selection" && commands) commands.setColor(c);
+    else if (target === "text") setTextColor(c);
+    else setPenColor(c);
+  };
   const current = PALETTE.find((p) => p.value.toLowerCase() === color.toLowerCase());
-  const label = selection ? "Selection colour" : "Colour";
+  const label = target === "selection" ? "Selection colour" : target === "text" ? "Text colour" : "Colour";
+
   return (
     <div className="tb-anchor">
       <button
