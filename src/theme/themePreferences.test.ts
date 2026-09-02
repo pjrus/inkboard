@@ -2,13 +2,24 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CanvasDocument } from "../document/crdt";
 import { DEFAULT_TEXT_WIDTH } from "../document/schema";
-import { InkboardDB, setDB } from "../storage/db";
+import { getDB, InkboardDB, setDB } from "../storage/db";
 import { canvasTheme, defaultInk } from "./canvasTheme";
-import { DEFAULT_THEME_PREFERENCE, loadThemePreference, saveThemePreference } from "./themePreferences";
+import { cachedThemePreference, DEFAULT_THEME_PREFERENCE, loadThemePreference, saveThemePreference } from "./themePreferences";
 
 let counter = 0;
 beforeEach(() => {
   setDB(new InkboardDB(`theme-test-${Date.now()}-${counter++}`));
+  // Node has no Storage by default; the mirror is optional in the app, so a
+  // minimal stand-in is enough to exercise it here.
+  const store = new Map<string, string>();
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    },
+  });
 });
 
 describe("theme preference", () => {
@@ -22,6 +33,15 @@ describe("theme preference", () => {
     expect(await loadThemePreference()).toBe("dark");
     await saveThemePreference("light");
     expect(await loadThemePreference()).toBe("light");
+  });
+
+  it("keeps a synchronous mirror so a chosen theme paints without a flash", async () => {
+    await saveThemePreference("dark");
+    expect(cachedThemePreference()).toBe("dark");
+    // Reading IndexedDB refreshes the mirror, so the two cannot drift.
+    await getDB().preferences.put({ key: "theme", value: "light" });
+    expect(await loadThemePreference()).toBe("light");
+    expect(cachedThemePreference()).toBe("light");
   });
 
   it("ignores a corrupted stored value instead of breaking the app", async () => {
