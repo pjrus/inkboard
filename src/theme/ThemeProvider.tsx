@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  DEFAULT_THEME_PREFERENCE,
+  cachedThemePreference,
   loadThemePreference,
   onSystemThemeChange,
   resolveTheme,
@@ -17,7 +17,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  preference: DEFAULT_THEME_PREFERENCE,
+  preference: "system",
   theme: "light",
   setPreference: () => {},
 });
@@ -30,7 +30,8 @@ const META_THEME_COLOR: Record<ResolvedTheme, string> = { light: "#f3f1ec", dark
  * document state is rewritten and no object is re-created.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(DEFAULT_THEME_PREFERENCE);
+  // Paint from the synchronous mirror, then reconcile with IndexedDB below.
+  const [preference, setPreferenceState] = useState<ThemePreference>(cachedThemePreference);
   const [system, setSystem] = useState<ResolvedTheme>(() => systemTheme());
 
   useEffect(() => {

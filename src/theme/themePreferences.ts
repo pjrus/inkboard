@@ -10,16 +10,44 @@ export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
 const KEY = "theme";
+/** Mirror of the same value, for the one read that cannot wait. */
+const CACHE_KEY = "inkboard.theme";
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = "system";
 
 function isPreference(v: unknown): v is ThemePreference {
   return v === "light" || v === "dark" || v === "system";
 }
 
+function cache(preference: ThemePreference): void {
+  try {
+    globalThis.localStorage?.setItem(CACHE_KEY, preference);
+  } catch {
+    // Private browsing and blocked site data: the IndexedDB copy still works.
+  }
+}
+
+/**
+ * The preference as far as we can tell without waiting.
+ *
+ * IndexedDB is the record of truth, but reading it is asynchronous, and a
+ * theme that arrives a frame late is a theme that visibly flashes the wrong
+ * one first. The provider paints from this and reconciles a moment later.
+ */
+export function cachedThemePreference(): ThemePreference {
+  try {
+    const v = globalThis.localStorage?.getItem(CACHE_KEY);
+    return isPreference(v) ? v : DEFAULT_THEME_PREFERENCE;
+  } catch {
+    return DEFAULT_THEME_PREFERENCE;
+  }
+}
+
 export async function loadThemePreference(): Promise<ThemePreference> {
   try {
     const row = await getDB().preferences.get(KEY);
-    return isPreference(row?.value) ? row.value : DEFAULT_THEME_PREFERENCE;
+    const preference = isPreference(row?.value) ? row.value : DEFAULT_THEME_PREFERENCE;
+    cache(preference);
+    return preference;
   } catch {
     // A board can still be used if preferences are unreadable.
     return DEFAULT_THEME_PREFERENCE;
@@ -27,6 +55,7 @@ export async function loadThemePreference(): Promise<ThemePreference> {
 }
 
 export async function saveThemePreference(preference: ThemePreference): Promise<void> {
+  cache(preference);
   await getDB().preferences.put({ key: KEY, value: preference });
 }
 
