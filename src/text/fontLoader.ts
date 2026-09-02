@@ -1,0 +1,106 @@
+import { FONTS } from "./fonts";
+import type { FontFamilyId } from "../document/schema";
+
+/**
+ * Font loading for a local-first app.
+ *
+ * The @font-face declarations come from @fontsource, which Vite bundles
+ * together with the WOFF2 files, so nothing is fetched from Google Fonts and
+ * the app renders its fonts with no network at all. The same families are
+ * needed as raw bytes when exporting a PDF; those come from the WOFF (v1)
+ * variants, which are what @pdf-lib/fontkit can subset reliably.
+ *
+ * Canvas text is measured with the real font, so any layout computed before
+ * the faces are ready would be wrong. `onFontsReady` lets the renderer drop
+ * its measurement cache and repaint once loading finishes.
+ */
+
+// Latin subsets, 400 + 700 only: this milestone deliberately has no italics
+// and no extra weights (see README).
+import "@fontsource/open-sans/latin-400.css";
+import "@fontsource/open-sans/latin-700.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-700.css";
+import "@fontsource/roboto/latin-400.css";
+import "@fontsource/roboto/latin-700.css";
+import "@fontsource/lato/latin-400.css";
+import "@fontsource/lato/latin-700.css";
+
+// WOFF (v1) copies for PDF embedding. Vite turns these into asset URLs that
+// are part of the build output, so export works offline too.
+import openSansRegular from "@fontsource/open-sans/files/open-sans-latin-400-normal.woff?url";
+import openSansBold from "@fontsource/open-sans/files/open-sans-latin-700-normal.woff?url";
+import interRegular from "@fontsource/inter/files/inter-latin-400-normal.woff?url";
+import interBold from "@fontsource/inter/files/inter-latin-700-normal.woff?url";
+import robotoRegular from "@fontsource/roboto/files/roboto-latin-400-normal.woff?url";
+import robotoBold from "@fontsource/roboto/files/roboto-latin-700-normal.woff?url";
+import latoRegular from "@fontsource/lato/files/lato-latin-400-normal.woff?url";
+import latoBold from "@fontsource/lato/files/lato-latin-700-normal.woff?url";
+
+export type FontWeight = "regular" | "bold";
+
+const FILES: Record<FontFamilyId, Record<FontWeight, string>> = {
+  "open-sans": { regular: openSansRegular, bold: openSansBold },
+  inter: { regular: interRegular, bold: interBold },
+  roboto: { regular: robotoRegular, bold: robotoBold },
+  lato: { regular: latoRegular, bold: latoBold },
+};
+
+let ready = false;
+const readyListeners = new Set<() => void>();
+
+/**
+ * Ask the browser to load every bundled face, then notify listeners.
+ * Safe to call more than once; resolves immediately where the Font Loading
+ * API is unavailable (the CSS still applies, only the repaint hint is lost).
+ */
+export async function loadFonts(): Promise<void> {
+  if (ready) return;
+  try {
+    if (typeof document !== "undefined" && document.fonts) {
+      await Promise.all(
+        FONTS.flatMap((f) => [
+          document.fonts.load(`400 16px "${f.cssFamily}"`),
+          document.fonts.load(`700 16px "${f.cssFamily}"`),
+        ]),
+      );
+    }
+  } catch (err) {
+    // A failed load is not fatal: the CSS fallback stack still renders text.
+    console.warn("Some bundled fonts could not be loaded", err);
+  }
+  ready = true;
+  for (const l of readyListeners) l();
+}
+
+export function onFontsReady(fn: () => void): () => void {
+  if (ready) {
+    fn();
+    return () => {};
+  }
+  readyListeners.add(fn);
+  return () => readyListeners.delete(fn);
+}
+
+const byteCache = new Map<string, Promise<Uint8Array>>();
+
+/** Raw font bytes for PDF embedding. Cached, so repeated exports are cheap. */
+export function loadFontBytes(id: FontFamilyId, weight: FontWeight = "regular"): Promise<Uint8Array> {
+  const key = `${id}:${weight}`;
+  let p = byteCache.get(key);
+  if (!p) {
+    const url = FILES[id]?.[weight] ?? FILES["open-sans"][weight];
+    p = fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Could not load font ${key} (${r.status})`);
+        return r.arrayBuffer();
+      })
+      .then((b) => new Uint8Array(b))
+      .catch((err) => {
+        byteCache.delete(key);
+        throw err;
+      });
+    byteCache.set(key, p);
+  }
+  return p;
+}

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { Tool, Viewport } from "../document/schema";
+import type { FontFamilyId, TextAlign, Tool, Viewport } from "../document/schema";
 
 /**
  * IndexedDB layout (via Dexie).
@@ -8,7 +8,7 @@ import type { Tool, Viewport } from "../document/schema";
  *  updates      incremental Yjs updates, appended as the user works and
  *               periodically compacted into a single snapshot row
  *  assets       binary blobs (rendered PDF pages, original PDFs) keyed by id
- *  preferences  small key/value store for tool preferences
+ *  preferences  small key/value store for tool and appearance preferences
  */
 
 export interface BoardRecord {
@@ -46,6 +46,17 @@ export interface ToolPreferences {
   tool: Tool;
   color: string;
   width: number;
+  /**
+   * Whether the user picked the ink colour themselves. While false the colour
+   * tracks the theme's default ink, so a dark board starts with light ink
+   * without ever rewriting colours the user chose.
+   */
+  colorExplicit: boolean;
+  textColor: string;
+  textColorExplicit: boolean;
+  textFont: FontFamilyId;
+  textFontSize: number;
+  textAlign: TextAlign;
 }
 
 export class InkboardDB extends Dexie {

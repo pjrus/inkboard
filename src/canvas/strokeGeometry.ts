@@ -189,3 +189,33 @@ export function lassoSelectsStroke(points: StrokePoint[], width: number, poly: X
   }
   return inside / points.length >= LASSO_INSIDE_FRACTION;
 }
+
+/** Fraction of a box's sampled area that must be inside the lasso. */
+export const LASSO_BOX_FRACTION = 0.5;
+const BOX_SAMPLES = 5;
+
+/**
+ * Lasso test for rectangular objects (text boxes).
+ *
+ * A box is selected when its centre is inside the polygon, or when a
+ * substantial part of it overlaps: sampling a grid keeps the rule intuitive
+ * for boxes much larger or much smaller than the lasso.
+ */
+export function lassoSelectsBox(box: Bounds, poly: XY[], polyBounds?: Bounds): boolean {
+  if (poly.length < 3) return false;
+  const pb = polyBounds ?? polygonBounds(poly);
+  if (box.maxX < pb.minX || box.minX > pb.maxX || box.maxY < pb.minY || box.minY > pb.maxY) return false;
+  const centre = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  if (pointInPolygon(centre, poly)) return true;
+  let inside = 0;
+  for (let i = 0; i < BOX_SAMPLES; i++) {
+    for (let j = 0; j < BOX_SAMPLES; j++) {
+      const p = {
+        x: box.minX + ((box.maxX - box.minX) * i) / (BOX_SAMPLES - 1),
+        y: box.minY + ((box.maxY - box.minY) * j) / (BOX_SAMPLES - 1),
+      };
+      if (pointInPolygon(p, poly)) inside++;
+    }
+  }
+  return inside / (BOX_SAMPLES * BOX_SAMPLES) >= LASSO_BOX_FRACTION;
+}
