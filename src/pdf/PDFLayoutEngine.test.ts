@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutExtent, layoutPages } from "./PDFLayoutEngine";
+import { layoutPages } from "./PDFLayoutEngine";
 
 const sizes = [
   { width: 612, height: 792 },
@@ -27,11 +27,5 @@ describe("PDF layout engine", () => {
       const p = layoutPages(sizes, layout, { x: 0, y: 0 });
       p.forEach((pl, i) => expect(pl.width / pl.height).toBeCloseTo(sizes[i].width / sizes[i].height));
     }
-  });
-
-  it("computes the total extent", () => {
-    const p = layoutPages(sizes, "vertical", { x: 0, y: 0 }, 40);
-    expect(layoutExtent(p)).toEqual({ width: 842, height: 792 * 2 + 595 + 80 });
-    expect(layoutExtent([])).toEqual({ width: 0, height: 0 });
   });
 });

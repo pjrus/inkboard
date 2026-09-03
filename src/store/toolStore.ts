@@ -1,8 +1,8 @@
 import { create } from "zustand";
 import type { CanvasMode, FontFamilyId, LassoFilter, TextAlign, Tool } from "../document/schema";
-import { DEFAULT_LASSO_FILTER } from "../document/schema";
 import type { SaveStatus } from "../document/persistence";
-import { boardRepository } from "../boards/BoardRepository";
+import type { ToolPreferences } from "../storage/db";
+import { boardRepository, DEFAULT_TOOL_PREFS } from "../boards/BoardRepository";
 import { defaultInk } from "../theme/canvasTheme";
 import type { ResolvedTheme } from "../theme/themePreferences";
 
@@ -78,7 +78,7 @@ export interface SelectionCommands {
   clear: () => void;
 }
 
-interface ToolState {
+interface ToolState extends ToolPreferences {
   selection: CanvasSelection | null;
   selectionCommands: SelectionCommands | null;
   setSelection: (sel: CanvasSelection | null) => void;
@@ -87,21 +87,6 @@ interface ToolState {
   editingTextId: string | null;
   setEditingTextId: (id: string | null) => void;
 
-  tool: Tool;
-  /**
-   * Edit or View. Kept separate from `tool` on purpose: View is an
-   * application mode that outranks whichever tool happens to be selected.
-   */
-  canvasMode: CanvasMode;
-  lassoFilter: LassoFilter;
-  color: string;
-  colorExplicit: boolean;
-  width: number;
-  textColor: string;
-  textColorExplicit: boolean;
-  textFont: FontFamilyId;
-  textFontSize: number;
-  textAlign: TextAlign;
   /** Mirrored from the ThemeProvider so default ink can follow the theme. */
   theme: ResolvedTheme;
 
@@ -133,23 +118,16 @@ interface ToolState {
   hydrate: () => Promise<void>;
 }
 
+const PREF_KEYS = Object.keys(DEFAULT_TOOL_PREFS) as (keyof ToolPreferences)[];
+
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 function persistPrefs(get: () => ToolState) {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     const s = get();
     void boardRepository.saveToolPreferences({
-      tool: s.tool,
-      color: s.color,
-      colorExplicit: s.colorExplicit,
-      width: s.width,
-      textColor: s.textColor,
-      textColorExplicit: s.textColorExplicit,
-      textFont: s.textFont,
-      textFontSize: s.textFontSize,
-      textAlign: s.textAlign,
-      canvasMode: s.canvasMode,
-      lassoFilter: s.lassoFilter,
+      ...DEFAULT_TOOL_PREFS,
+      ...(Object.fromEntries(PREF_KEYS.map((k) => [k, s[k]])) as Partial<ToolPreferences>),
     });
   }, 200);
 }
@@ -162,17 +140,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   editingTextId: null,
   setEditingTextId: (editingTextId) => set({ editingTextId }),
 
-  tool: "pen",
-  canvasMode: "edit",
-  lassoFilter: DEFAULT_LASSO_FILTER,
-  color: "#1b1b1f",
-  colorExplicit: false,
-  width: 3,
-  textColor: "#1b1b1f",
-  textColorExplicit: false,
-  textFont: "open-sans",
-  textFontSize: 20,
-  textAlign: "left",
+  ...DEFAULT_TOOL_PREFS,
   theme: "light",
 
   stylusSeen: false,
@@ -260,17 +228,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
     const prefs = await boardRepository.getToolPreferences();
     const ink = defaultInk(get().theme);
     set({
-      tool: prefs.tool,
+      ...prefs,
       color: prefs.colorExplicit ? prefs.color : ink,
-      colorExplicit: prefs.colorExplicit,
-      width: prefs.width,
       textColor: prefs.textColorExplicit ? prefs.textColor : ink,
-      textColorExplicit: prefs.textColorExplicit,
-      textFont: prefs.textFont,
-      textFontSize: prefs.textFontSize,
-      textAlign: prefs.textAlign,
-      canvasMode: prefs.canvasMode,
-      lassoFilter: prefs.lassoFilter,
     });
   },
 }));

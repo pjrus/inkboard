@@ -123,14 +123,6 @@ export interface TextObject {
 
 export type CanvasObject = StrokeObject | PDFPageObject | TextObject;
 
-/**
- * What the lasso and the contextual toolbar can act on: everything on the
- * board. Which of those types a given lasso actually picks up is decided by
- * the user's LassoFilter, not by the type system, so a new object type only
- * has to teach canvas/transform.ts about its geometry to become selectable.
- */
-export type SelectableCanvasObject = CanvasObject;
-
 export type PDFLayout = "vertical" | "horizontal";
 
 export interface PDFDocumentMetadata {
@@ -157,24 +149,6 @@ export interface Viewport {
   /** Screen px per world unit. */
   scale: number;
 }
-
-export interface BoardMetadata {
-  id: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
-  viewport?: Viewport;
-}
-
-/** Deterministic z-order for rendering layers. */
-export const LAYER = {
-  background: 0,
-  pdfPages: 10,
-  strokes: 20,
-  text: 30,
-  selection: 100,
-  ui: 1000,
-} as const;
 
 /** Explode a flat stroke point array into StrokePoint objects. */
 export function unpackPoints(flat: number[]): StrokePoint[] {

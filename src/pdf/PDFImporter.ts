@@ -1,8 +1,8 @@
 import * as pdfjsLib from "pdfjs-dist";
-import { nanoid } from "nanoid";
+import { newId } from "../document/ids";
 import type { CanvasDocument } from "../document/crdt";
 import type { PDFDocumentMetadata, PDFLayout, PDFPageObject } from "../document/schema";
-import { assetRepository } from "../storage/assetRepository";
+import { putAsset } from "../storage/assetRepository";
 import { layoutPages, type PageSize } from "./PDFLayoutEngine";
 
 // PDF.js does its parsing/rendering work in a worker so the UI stays responsive.
@@ -68,12 +68,12 @@ export interface ImportResult {
  */
 export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   const { boardId, doc, file, inspected, layout, origin, onProgress, onPageReady, onPagesPlanned, signal } = opts;
-  const pdfDocumentId = nanoid(10);
+  const pdfDocumentId = newId(10);
   const placements = layoutPages(inspected.sizes, layout, origin);
   const now = Date.now();
 
   const pages: PDFPageObject[] = placements.map((p, i) => ({
-    id: nanoid(12),
+    id: newId(),
     type: "pdf-page",
     assetId: `${pdfDocumentId}-p${i + 1}`,
     pdfDocumentId,
@@ -90,7 +90,7 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   if (opts.keepSource !== false) {
     sourceAssetId = `${pdfDocumentId}-src`;
     try {
-      await assetRepository.put({
+      await putAsset({
         id: sourceAssetId,
         boardId,
         mimeType: "application/pdf",
@@ -134,7 +134,7 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
       page.cleanup();
       const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
-      await assetRepository.put({
+      await putAsset({
         id: pageObj.assetId,
         boardId,
         mimeType: blob.type,

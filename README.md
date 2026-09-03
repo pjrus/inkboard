@@ -41,7 +41,7 @@ src/
   document/        schema.ts (CanvasObject = stroke | pdf-page | text),
                    crdt.ts (Yjs wrapper: objects, pdfDocuments, Y.Text editing, undo, commands),
                    strokeCommands.ts (shared thickness scale, width stepping),
-                   persistence.ts (incremental update log in IndexedDB + compaction)
+                   ids.ts (short random ids), persistence.ts (incremental update log + compaction)
   text/            fonts.ts (the four bundled families + their real vertical metrics),
                    fontLoader.ts (self-hosted @fontsource faces + WOFF bytes for export),
                    textLayout.ts (pure wrapping/baselines with an injected measurer),
@@ -53,7 +53,6 @@ src/
                    ExportRenderer.ts (draws objects onto a page), PDFExporter.ts, ExportDialog.tsx
   pdf/             PDFImporter.ts (PDF.js -> JPEG assets), PDFLayoutEngine.ts (vertical/horizontal placement)
   storage/         db.ts (Dexie: boards, updates, assets, preferences), assetRepository.ts
-  collaboration/   SyncProvider.ts (interface), LocalProvider.ts (current implementation)
   boards/          BoardRepository.ts, BoardSession.ts, BoardList.tsx, BoardView.tsx
   ui/              Toolbar, ColourPicker, ThicknessPicker, FontSelector, FontSizeSelector,
                    TextAlignmentControls, ThemeSelector, AppMenu, SelectionBar, ...
@@ -70,4 +69,4 @@ Key decisions:
 - **Fonts.** Four permissively licensed families ship with the app as `@fontsource` WOFF2 (screen) and WOFF (PDF embedding) files, regular weight only. Nothing is fetched from Google Fonts, so the same text renders and exports with the network off. Each family's real ascent/descent is baked into `text/fonts.ts` and checked against the font files by a test, which is what lets the canvas and the exporter agree on baselines without either consulting a platform text engine.
 - **Theme.** One set of CSS variables for the DOM, mirrored in `theme/canvasTheme.ts` for the `<canvas>`, which cannot read them. The preference is local (IndexedDB preferences, never the CRDT) and switching it stamps one attribute on `<html>` - no document object is rewritten. Imported pages are never inverted and saved colours are never mutated; only the defaults for new content follow the theme.
 - **Export.** A dedicated renderer, not a screenshot: geometry comes from the CRDT, page images from IndexedDB and fonts from the bundled files, so the UI cannot leak into the output and the whole thing works offline. Strokes are exported as vector paths from the same perfect-freehand geometry the screen uses, text as embedded, selectable text wrapped with the embedded font's own metrics. All world-to-PDF conversion lives in `export/exportCoordinates.ts`, so the canvas' top-left origin and PDF's bottom-left one are reconciled in one place. pdf-lib is loaded on demand, so it costs nothing until you export.
-- **Future.** A WebRTC/WebSocket provider only has to implement `SyncProvider` and exchange Yjs updates plus referenced assets.
+- **Future.** The document is already a CRDT, so a WebRTC/WebSocket layer only has to exchange Yjs updates plus the assets they reference. No such layer exists yet, and no interface is reserved for one until it does.

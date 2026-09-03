@@ -73,14 +73,6 @@ export function boundsIntersect(a: Bounds, b: Bounds): boolean {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
 }
 
-export function boundsContainPoint(b: Bounds, p: Point): boolean {
-  return p.x >= b.minX && p.x <= b.maxX && p.y >= b.minY && p.y <= b.maxY;
-}
-
-export function expandBounds(b: Bounds, by: number): Bounds {
-  return { minX: b.minX - by, minY: b.minY - by, maxX: b.maxX + by, maxY: b.maxY + by };
-}
-
 /** Viewport that centres the given world point on screen at the given scale. */
 export function centerOn(worldPoint: Point, scale: number, screenWidth: number, screenHeight: number): Viewport {
   const s = clampScale(scale);

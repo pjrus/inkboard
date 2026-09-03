@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CanvasDocument } from "../document/crdt";
 import { DEFAULT_TEXT_WIDTH, type CanvasObject } from "../document/schema";
-import { assetRepository } from "../storage/assetRepository";
+import { putAsset } from "../storage/assetRepository";
 import { InkboardDB, setDB } from "../storage/db";
 import { exportToPDF } from "./PDFExporter";
 
@@ -43,7 +43,7 @@ let counter = 0;
 async function buildBoard(): Promise<CanvasObject[]> {
   const doc = new CanvasDocument();
   const boardId = "board";
-  await assetRepository.put({
+  await putAsset({
     id: "doc-p1",
     boardId,
     mimeType: "image/png",
