@@ -5,6 +5,7 @@ import {
   moveTo,
   popGraphicsState,
   pushGraphicsState,
+  degrees,
   rgb,
   type PDFDocument,
   type PDFFont,
@@ -21,6 +22,7 @@ import {
   type TextObject,
 } from "../document/schema";
 import { strokeOutline } from "../canvas/strokeGeometry";
+import { objectCenter, rotatePoint } from "../canvas/transform";
 import { getFont } from "../text/fonts";
 import { loadFontBytes } from "../text/fontLoader";
 import { layoutText } from "../text/textLayout";
@@ -112,16 +114,31 @@ export async function renderPage(
   page.pushOperators(popGraphicsState());
 }
 
+/**
+ * World rotation to a pdf-lib angle.
+ *
+ * The canvas turns clockwise about a y-down axis; PDF measures anticlockwise
+ * about a y-up one, so the same visual rotation is the negated angle here.
+ */
+function pdfRotation(radians: number) {
+  return degrees((-radians * 180) / Math.PI);
+}
+
 async function drawPDFPage(page: PDFPage, obj: PDFPageObject, g: PageGeometry, resources: ExportResources) {
   const image = await resources.image(obj.assetId);
   if (!image) return;
-  // The page's *bottom-left* corner in PDF space is where drawImage anchors.
-  const bottomLeft = toPdf(g, obj.x, obj.y + obj.height);
+  const angle = obj.rotation ?? 0;
+  // drawImage anchors at the image's bottom-left corner and rotates about it,
+  // so the corner is rotated into place first and the angle applied there.
+  // The stored bitmap is never re-rendered: rotation is purely a transform.
+  const corner = rotatePoint({ x: obj.x, y: obj.y + obj.height }, objectCenter(obj), angle);
+  const bottomLeft = toPdf(g, corner.x, corner.y);
   page.drawImage(image, {
     x: bottomLeft.x,
     y: bottomLeft.y,
     width: obj.width * g.scale,
     height: obj.height * g.scale,
+    rotate: pdfRotation(angle),
   });
 }
 
@@ -153,14 +170,22 @@ async function drawText(page: PDFPage, text: TextObject, g: PageGeometry, resour
   const left = contentX(g, text.x);
   const top = contentY(g, text.y);
   const color = pdfColor(text.color);
+  const angle = text.rotation ?? 0;
+  // The box turns as a unit: each line keeps its wrapped position and is
+  // rotated about the box's centre, so the exported text reads exactly as the
+  // canvas draws it.
+  const centre = objectCenter(text);
+  const pivot = { x: contentX(g, centre.x), y: contentY(g, centre.y) };
   for (const line of layout.lines) {
     if (line.text === "") continue;
+    const anchor = rotatePoint({ x: left + line.x, y: top + line.baseline }, pivot, angle);
     page.drawText(safeText(font, line.text), {
-      x: left + line.x,
-      y: g.pageHeight - (top + line.baseline),
+      x: anchor.x,
+      y: g.pageHeight - anchor.y,
       size,
       font,
       color,
+      rotate: pdfRotation(angle),
     });
   }
 }

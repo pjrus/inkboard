@@ -7,6 +7,8 @@ import { FontSelector } from "./FontSelector";
 import { FontSizeSelector } from "./FontSizeSelector";
 import { TextAlignmentControls } from "./TextAlignmentControls";
 import { ThicknessPicker } from "./ThicknessPicker";
+import { LassoFilterControls } from "./LassoFilterControls";
+import { ModeSwitch } from "./ModeSwitch";
 import { EraserIcon, HandIcon, LassoIcon, PdfIcon, PenIcon, PencilIcon, RedoIcon, TextIcon, UndoIcon } from "./icons";
 
 interface Props {
@@ -28,10 +30,32 @@ const TOOLS: { tool: Tool; label: string; key: string; icon: () => JSX.Element }
 export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
   const tool = useToolStore((s) => s.tool);
   const setTool = useToolStore((s) => s.setTool);
+  const canvasMode = useToolStore((s) => s.canvasMode);
   const canUndo = useToolStore((s) => s.canUndo);
   const canRedo = useToolStore((s) => s.canRedo);
   const selection = useToolStore((s) => s.selection);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * View mode strips the toolbar back to navigation: no tools, no property
+   * pickers, no undo, no import. Nothing on the board can be changed from
+   * here, which is the entire point of the mode.
+   */
+  if (canvasMode === "view") {
+    return (
+      <div className="toolbar" role="toolbar" aria-label="View mode">
+        <ModeSwitch />
+        <span className="tb-sep" />
+        <span className="tb-badge" aria-live="polite">
+          View mode &middot; editing off
+        </span>
+        <span className="tb-sep" />
+        <div className="tb-group">
+          <AppMenu onExportPDF={onExportPDF} />
+        </div>
+      </div>
+    );
+  }
 
   // Which property controls make sense right now.
   //
@@ -45,6 +69,8 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Drawing tools">
+      <ModeSwitch />
+      <span className="tb-sep" />
       <div className="tb-group" role="radiogroup" aria-label="Tool">
         {TOOLS.map((t) => (
           <button
@@ -61,6 +87,12 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
           </button>
         ))}
       </div>
+      {tool === "lasso" && (
+        <>
+          <span className="tb-sep" />
+          <LassoFilterControls />
+        </>
+      )}
       <span className="tb-sep" />
       <div className={"tb-group" + (hasSelection ? " tb-group-selection" : "")} title={hasSelection ? "Editing the selection" : undefined}>
         {hasSelection && <span className="tb-badge">Selection</span>}

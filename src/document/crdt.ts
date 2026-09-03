@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { nextWidthStep } from "./strokeCommands";
 import { nextFontSizeStep } from "../text/textCommands";
 import { computeBoundsFlat } from "../canvas/strokeGeometry";
+import { objectCenter, rotatePoint } from "../canvas/transform";
 import type {
   CanvasObject,
   PDFDocumentMetadata,
@@ -287,48 +288,92 @@ export class CanvasDocument {
   }
 
   /**
-   * Move a mixed selection of strokes and text boxes by a world-space delta,
-   * as one undo step. Strokes are translated by rewriting their points; text
-   * boxes just move their origin.
+   * Move any mix of strokes, text boxes and imported pages by a world-space
+   * delta, as one undo step.
+   *
+   * This is the only translation command in the app: the lasso, a page drag
+   * and the keyboard all route through it, so every object type's idea of
+   * "where it is" is understood in exactly one place. Strokes move by
+   * rewriting their points - once, on commit, never per pointer frame.
    */
-  translateSelection(ids: string[], dx: number, dy: number): void {
+  translateObjects(ids: string[], dx: number, dy: number): void {
     if (ids.length === 0 || (dx === 0 && dy === 0)) return;
+    this.transact(() => {
+      for (const id of ids) this.applyTranslation(id, dx, dy);
+    });
+  }
+
+  /**
+   * Rotate objects by `angleDelta` radians about a shared world-space pivot,
+   * as one undo step.
+   *
+   * Each object's centre orbits the pivot and its own rotation advances by the
+   * same delta, so a group keeps its arrangement instead of every member
+   * spinning in place. Strokes have no rotation field: their points are
+   * rotated about the pivot directly (see canvas/transform.ts for why).
+   */
+  rotateObjects(ids: string[], angleDelta: number, pivot: { x: number; y: number }): void {
+    if (ids.length === 0 || angleDelta === 0) return;
+    const now = Date.now();
     this.transact(() => {
       for (const id of ids) {
         const m = this.objects.get(id);
-        if (!m) continue;
-        const type = m.get("type");
-        if (type === "stroke") {
+        const obj = this.get(id);
+        if (!m || !obj) continue;
+        if (obj.type === "stroke") {
           const pts = (m.get("points") as number[]).slice();
+          const cos = Math.cos(angleDelta);
+          const sin = Math.sin(angleDelta);
           for (let i = 0; i + 2 < pts.length; i += 3) {
-            pts[i] += dx;
-            pts[i + 1] += dy;
+            const x = pts[i] - pivot.x;
+            const y = pts[i + 1] - pivot.y;
+            pts[i] = pivot.x + x * cos - y * sin;
+            pts[i + 1] = pivot.y + x * sin + y * cos;
           }
-          const b = m.get("bounds") as { minX: number; minY: number; maxX: number; maxY: number };
           m.set("points", pts);
-          m.set("bounds", { minX: b.minX + dx, minY: b.minY + dy, maxX: b.maxX + dx, maxY: b.maxY + dy });
-        } else if (type === "text") {
-          m.set("x", (m.get("x") as number) + dx);
-          m.set("y", (m.get("y") as number) + dy);
-          m.set("updatedAt", Date.now());
+          m.set("bounds", computeBoundsFlat(pts, m.get("width") as number));
+        } else {
+          const centre = objectCenter(obj);
+          const moved = rotatePoint(centre, pivot, angleDelta);
+          m.set("x", (m.get("x") as number) + (moved.x - centre.x));
+          m.set("y", (m.get("y") as number) + (moved.y - centre.y));
+          m.set("rotation", ((m.get("rotation") as number) ?? 0) + angleDelta);
+          if (obj.type === "text") m.set("updatedAt", now);
         }
       }
     });
   }
 
-  /** Move a set of objects by a world-space delta in one undo step. */
-  translateObjects(ids: string[], dx: number, dy: number): void {
+  /** Absolute rotation for objects that carry one; strokes are left alone. */
+  setObjectRotation(ids: string[], rotation: number): void {
+    if (ids.length === 0) return;
     this.transact(() => {
       for (const id of ids) {
         const m = this.objects.get(id);
-        if (!m) continue;
-        const type = m.get("type");
-        if (type === "pdf-page" || type === "text") {
-          m.set("x", (m.get("x") as number) + dx);
-          m.set("y", (m.get("y") as number) + dy);
-        }
+        if (!m || m.get("type") === "stroke") continue;
+        m.set("rotation", rotation);
+        if (m.get("type") === "text") m.set("updatedAt", Date.now());
       }
     });
+  }
+
+  private applyTranslation(id: string, dx: number, dy: number): void {
+    const m = this.objects.get(id);
+    if (!m) return;
+    if (m.get("type") === "stroke") {
+      const pts = (m.get("points") as number[]).slice();
+      for (let i = 0; i + 2 < pts.length; i += 3) {
+        pts[i] += dx;
+        pts[i + 1] += dy;
+      }
+      const b = m.get("bounds") as { minX: number; minY: number; maxX: number; maxY: number };
+      m.set("points", pts);
+      m.set("bounds", { minX: b.minX + dx, minY: b.minY + dy, maxX: b.maxX + dx, maxY: b.maxY + dy });
+      return;
+    }
+    m.set("x", (m.get("x") as number) + dx);
+    m.set("y", (m.get("y") as number) + dy);
+    if (m.get("type") === "text") m.set("updatedAt", Date.now());
   }
 
   setPDFLayout(pdfDocumentId: string, layout: PDFLayout, positions: { id: string; x: number; y: number }[]): void {

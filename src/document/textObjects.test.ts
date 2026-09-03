@@ -127,7 +127,7 @@ describe("text objects in the CRDT", () => {
       bounds: { minX: -3, minY: -3, maxX: 13, maxY: 13 },
     });
     const text = d.addText(textInput({ x: 100, y: 50, text: "note" }));
-    d.translateSelection([stroke.id, text.id], 25, -10);
+    d.translateObjects([stroke.id, text.id], 25, -10);
     expect(d.get(text.id)).toMatchObject({ x: 125, y: 40 });
     expect((d.get(stroke.id) as { points: number[] }).points.slice(0, 2)).toEqual([25, -10]);
     d.undo();

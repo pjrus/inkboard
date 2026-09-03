@@ -109,3 +109,20 @@ export const SystemIcon = () => (
     <path d="M9 21h6" />
   </svg>
 );
+export const EyeIcon = () => (
+  <svg {...base} width={16} height={16} aria-hidden="true">
+    <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z" />
+    <circle cx="12" cy="12" r="2.6" />
+  </svg>
+);
+export const EditModeIcon = () => (
+  <svg {...base} width={16} height={16} aria-hidden="true">
+    <path d="M4 20l4.2-1 9.4-9.4a2 2 0 0 0-2.8-2.8L5.4 16.2 4 20z" />
+  </svg>
+);
+export const RotateIcon = () => (
+  <svg {...base} width={16} height={16} aria-hidden="true">
+    <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+    <path d="M20 4v4h-4" />
+  </svg>
+);

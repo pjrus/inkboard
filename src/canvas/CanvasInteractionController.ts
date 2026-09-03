@@ -1,21 +1,13 @@
 import type { CanvasDocument } from "../document/crdt";
-import type { FontFamilyId, PenTool, SelectableCanvasObject, StrokePoint, TextAlign, TextObject, Tool, Viewport } from "../document/schema";
-import { MAX_TEXT_WIDTH, MIN_TEXT_WIDTH, packPoints, unpackPoints } from "../document/schema";
+import type { CanvasMode, CanvasObject, FontFamilyId, LassoFilter, PenTool, StrokePoint, TextAlign, TextObject, Tool, Viewport } from "../document/schema";
+import { MAX_TEXT_WIDTH, MIN_TEXT_WIDTH, packPoints } from "../document/schema";
 import { DEFAULT_TEXT_WIDTH } from "../document/schema";
 import { lineHeightFor } from "../text/textLayout";
-import { textBounds } from "../text/textMeasure";
 import { pan, screenLengthToWorld, screenToWorld, zoomBy, type Point } from "./coordinates";
 import { beginPinch, updatePinch, type PinchStart } from "./gestures";
 import type { CanvasRenderer } from "./CanvasRenderer";
-import {
-  computeBounds,
-  lassoSelectsBox,
-  lassoSelectsStroke,
-  polygonBounds,
-  simplifyPoints,
-  strokeSegmentHitTest,
-  type XY,
-} from "./strokeGeometry";
+import { computeBounds, polygonBounds, simplifyPoints, strokeSegmentHitTest, type XY } from "./strokeGeometry";
+import { isImageLikeObject, lassoHits, snapAngle, toDegrees } from "./transform";
 import type { CanvasSelection } from "../store/toolStore";
 
 /**
@@ -35,6 +27,7 @@ type State =
   | { type: "movingObject"; pointerId: number; objectId: string; start: Point; moved: boolean }
   | { type: "lassoing"; pointerId: number; points: XY[]; additive: boolean; startScreen: Point; maxDistPx: number }
   | { type: "movingSelection"; pointerId: number; start: Point; moved: boolean }
+  | { type: "rotatingSelection"; pointerId: number; pivot: Point; startAngle: number; angle: number }
   | { type: "resizingText"; pointerId: number; id: string; startScreenX: number; startWidth: number };
 
 export interface TextStyle {
@@ -46,6 +39,13 @@ export interface TextStyle {
 
 export interface ControllerHost {
   getTool(): Tool;
+  /**
+   * View mode outranks the tool: while it is active nothing on the board can
+   * be created, moved, rotated, edited or deleted, whatever tool is selected.
+   */
+  getMode(): CanvasMode;
+  /** Which object types the lasso may pick up. Local preference, never synced. */
+  getLassoFilter(): LassoFilter;
   getColor(): string;
   getWidth(): number;
   /** Settings applied to the *next* text box the user creates. */
@@ -119,16 +119,35 @@ export class CanvasInteractionController {
     this.publishSelection();
   }
 
-  /** The selectable object behind an id, or undefined for a PDF page. */
-  private selectable(id: string): SelectableCanvasObject | undefined {
-    const o = this.doc.get(id);
-    return o && o.type !== "pdf-page" ? o : undefined;
+  /** The object behind a selected id. Every object type is selectable. */
+  private selectable(id: string): CanvasObject | undefined {
+    return this.doc.get(id);
   }
 
   private selectedIdsOfType(type: "stroke" | "text"): string[] {
     const out: string[] = [];
     for (const id of this.selectedIds) if (this.selectable(id)?.type === type) out.push(id);
     return out;
+  }
+
+  /** Editing is refused outright while the board is in View mode. */
+  private get editable(): boolean {
+    return this.host.getMode() === "edit";
+  }
+
+  /**
+   * Leave any in-flight interaction and drop the local selection.
+   *
+   * Called when switching into View mode: pending text is committed, handles
+   * and lassos disappear and the viewport is left exactly where it was.
+   * Nothing in the document is deleted or modified.
+   */
+  cancelInteractions() {
+    if (this.editingTextId) this.endTextEdit();
+    this.cancelCurrent();
+    this.clearObjectSelection();
+    this.setSelection(null);
+    this.updateCursor();
   }
 
   setSelectionWidth(width: number) {
@@ -160,6 +179,17 @@ export class CanvasInteractionController {
     this.doc.setTextProperties(this.selectedIdsOfType("text"), { textAlign });
   }
 
+  /**
+   * Rotate the whole selection about its shared centre, as one undo step.
+   * Used by the contextual toolbar's quarter-turn buttons; the drag handle
+   * commits through the same document command.
+   */
+  rotateSelection(angleDelta: number) {
+    const pivot = this.renderer.selectionPivot();
+    if (!pivot) return;
+    this.doc.rotateObjects(this.getSelectedIds(), angleDelta, pivot);
+  }
+
   deleteSelection() {
     const ids = this.getSelectedIds();
     this.selectedIds.clear();
@@ -175,12 +205,14 @@ export class CanvasInteractionController {
       this.host.onObjectSelectionChange(null);
       return;
     }
-    const sel: CanvasSelection = { ids: [], strokeIds: [], textIds: [], widths: [], colors: [], fonts: [], fontSizes: [], aligns: [] };
+    const sel: CanvasSelection = { ids: [], strokeIds: [], textIds: [], imageIds: [], widths: [], colors: [], fonts: [], fontSizes: [], aligns: [] };
     for (const id of this.selectedIds) {
       const o = this.selectable(id);
       if (!o) continue;
       sel.ids.push(id);
-      if (o.type === "stroke") {
+      if (isImageLikeObject(o)) {
+        sel.imageIds.push(id);
+      } else if (o.type === "stroke") {
         sel.strokeIds.push(id);
         sel.widths.push(o.width);
         sel.colors.push(o.color);
@@ -267,19 +299,50 @@ export class CanvasInteractionController {
 
   // ---- lasso ---------------------------------------------------------
 
-  /** Objects inside a world-space lasso polygon: bounds prefilter, then test. */
+  /**
+   * Objects inside a world-space lasso polygon.
+   *
+   * The user's type filter is applied *first*, so a disabled type costs one
+   * boolean rather than a polygon test per object. That ordering is what makes
+   * "select my handwriting, not the PDF page underneath it" cheap as well as
+   * possible. Then a bounds prefilter, then the real geometry.
+   */
   private objectsInLasso(poly: XY[]): string[] {
+    const filter = this.host.getLassoFilter();
     const pb = polygonBounds(poly);
-    const out: string[] = [];
-    for (const s of this.renderer.getStrokesInBounds(pb)) {
-      if (lassoSelectsStroke(unpackPoints(s.points), s.width, poly, pb)) out.push(s.id);
-    }
-    for (const t of this.renderer.getTextsInBounds(pb)) {
-      if (lassoSelectsBox(textBounds(t), poly, pb)) out.push(t.id);
-    }
-    // PDF pages are deliberately not lasso-selectable: the lasso is for
-    // annotations, and pages are managed with the hand tool.
-    return out;
+    // Bounds prefilter here (an index query the renderer already keeps lists
+    // for), type filter and polygon geometry in lassoHits.
+    const candidates: CanvasObject[] = [];
+    if (filter.ink) candidates.push(...this.renderer.getStrokesInBounds(pb));
+    if (filter.text) candidates.push(...this.renderer.getTextsInBounds(pb));
+    if (filter.images) candidates.push(...this.renderer.getPagesInBounds(pb));
+    return lassoHits(candidates, poly, filter).map((o) => o.id);
+  }
+
+  /** True while the pointer is over the selection's rotation grip. */
+  private onRotationHandle(wp: Point): boolean {
+    const h = this.renderer.rotationHandle();
+    return h !== null && Math.hypot(wp.x - h.x, wp.y - h.y) <= h.radius;
+  }
+
+  private beginRotation(wp: Point, pointerId: number): boolean {
+    const pivot = this.renderer.selectionPivot();
+    if (!pivot) return false;
+    this.state = {
+      type: "rotatingSelection",
+      pointerId,
+      pivot,
+      // Every frame measures against this starting angle rather than the
+      // previous frame, so a long gesture cannot accumulate drift.
+      startAngle: Math.atan2(wp.y - pivot.y, wp.x - pivot.x),
+      angle: 0,
+    };
+    this.renderer.selectionPreview = { dx: 0, dy: 0, angle: 0, pivot };
+    this.renderer.angleLabel = "0°";
+    this.renderer.invalidateStatic();
+    this.renderer.invalidateOverlay();
+    this.updateCursor();
+    return true;
   }
 
   private pointInSelection(wp: Point): boolean {
@@ -322,7 +385,10 @@ export class CanvasInteractionController {
     let cursor = "default";
     if (this.state.type === "panning" || this.state.type === "pinching") cursor = "grabbing";
     else if (this.state.type === "movingObject" || this.state.type === "movingSelection") cursor = "move";
+    else if (this.state.type === "rotatingSelection") cursor = "grabbing";
     else if (this.state.type === "resizingText") cursor = "ew-resize";
+    // In View mode the canvas is one big pannable surface, whatever the tool.
+    else if (!this.editable) cursor = "grab";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
     else if (tool === "text") cursor = "text";
     else if (tool === "pen" || tool === "pencil" || tool === "lasso") cursor = "crosshair";
@@ -448,7 +514,17 @@ export class CanvasInteractionController {
       // Some browsers throw if the pointer is already gone; drawing still works.
     }
 
-    // The width grip wins over everything else while it is showing.
+    // View mode: every press navigates, including a stylus drag. No drawing,
+    // no erasing, no lasso, no moving a page by accident.
+    if (!this.editable) {
+      this.state = { type: "panning", pointerId: e.pointerId, last: sp };
+      this.updateCursor();
+      return;
+    }
+
+    // Grips win over everything else while they are showing.
+    if (this.selectedIds.size > 0 && this.onRotationHandle(wp) && this.beginRotation(wp, e.pointerId)) return;
+
     if ((tool === "lasso" || tool === "text" || tool === "pan") && this.onResizeHandle(wp)) {
       const t = this.renderer.soleSelectedText();
       if (t) {
@@ -625,8 +701,26 @@ export class CanvasInteractionController {
         if (!s.moved && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD_PX) return;
         s.moved = true;
         // Transient: the CRDT only hears about the move on pointer up.
-        this.renderer.selectionDrag = { dx: dxPx / this.viewport.scale, dy: dyPx / this.viewport.scale };
+        this.renderer.selectionPreview = {
+          dx: dxPx / this.viewport.scale,
+          dy: dyPx / this.viewport.scale,
+          angle: 0,
+          pivot: { x: 0, y: 0 },
+        };
         this.renderer.invalidateStatic();
+        return;
+      }
+      case "rotatingSelection": {
+        if (e.pointerId !== s.pointerId) return;
+        const wp = screenToWorld(sp, this.viewport);
+        const current = Math.atan2(wp.y - s.pivot.y, wp.x - s.pivot.x);
+        // Always measured from the gesture's starting angle, never from the
+        // previous frame: no accumulated drift over a long rotation.
+        s.angle = e.shiftKey ? snapAngle(current - s.startAngle) : current - s.startAngle;
+        this.renderer.selectionPreview = { dx: 0, dy: 0, angle: s.angle, pivot: s.pivot };
+        this.renderer.angleLabel = `${toDegrees(s.angle)}°`;
+        this.renderer.invalidateStatic();
+        this.renderer.invalidateOverlay();
         return;
       }
       case "resizingText": {
@@ -679,11 +773,21 @@ export class CanvasInteractionController {
         this.finishLasso(s, e.type === "pointercancel");
         break;
       case "movingSelection": {
-        const drag = this.renderer.selectionDrag;
-        this.renderer.selectionDrag = null;
+        const drag = this.renderer.selectionPreview;
+        this.renderer.selectionPreview = null;
         // A tap inside the selection without movement keeps the selection.
-        if (s.moved && drag) this.doc.translateSelection(this.getSelectedIds(), drag.dx, drag.dy);
+        // One drag, one CRDT transaction, one undo entry.
+        if (s.moved && drag) this.doc.translateObjects(this.getSelectedIds(), drag.dx, drag.dy);
         this.renderer.invalidateStatic();
+        break;
+      }
+      case "rotatingSelection": {
+        this.renderer.selectionPreview = null;
+        this.renderer.angleLabel = null;
+        // One gesture, one CRDT transaction, one undo entry.
+        if (s.angle !== 0) this.doc.rotateObjects(this.getSelectedIds(), s.angle, s.pivot);
+        this.renderer.invalidateStatic();
+        this.renderer.invalidateOverlay();
         break;
       }
       case "resizingText": {
@@ -743,9 +847,11 @@ export class CanvasInteractionController {
       this.renderer.lassoPath = null;
       this.renderer.invalidateOverlay();
       if (this.el.hasPointerCapture(s.pointerId)) this.el.releasePointerCapture(s.pointerId);
-    } else if (s.type === "movingSelection") {
-      this.renderer.selectionDrag = null;
+    } else if (s.type === "movingSelection" || s.type === "rotatingSelection") {
+      this.renderer.selectionPreview = null;
+      this.renderer.angleLabel = null;
       this.renderer.invalidateStatic();
+      this.renderer.invalidateOverlay();
     } else if (s.type === "resizingText") {
       this.renderer.textResize = null;
       this.renderer.invalidateStatic();

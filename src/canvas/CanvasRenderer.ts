@@ -15,10 +15,29 @@ import { canvasTheme, type CanvasTheme } from "../theme/canvasTheme";
 import { boundsIntersect, DEFAULT_VIEWPORT, visibleWorldBounds } from "./coordinates";
 import { ImageCache } from "./ImageCache";
 import { strokeOutline, type XY } from "./strokeGeometry";
+import { boundsCenter, objectCenter, pointsBounds, rectContains, rotatePoint, rotationOf, transformedBounds, unionBounds } from "./transform";
 
 const OVERSCAN_PX = 200;
 /** Screen-space size of the width-resize grip on a selected text box. */
 export const TEXT_HANDLE_PX = 10;
+/** Screen-space radius of the rotation grip (generous, for finger and stylus). */
+export const ROTATE_HANDLE_PX = 22;
+/** How far above the selection the rotation grip floats, in screen pixels. */
+const ROTATE_HANDLE_OFFSET_PX = 34;
+
+/**
+ * A transform being previewed on the current selection.
+ *
+ * Purely transient: the CRDT hears about a move or a rotation once, when the
+ * gesture ends, so a drag is one undo step and not one per pointer frame.
+ */
+export interface SelectionPreview {
+  dx: number;
+  dy: number;
+  /** Radians about `pivot`. */
+  angle: number;
+  pivot: XY;
+}
 
 export interface ActiveStroke {
   points: StrokePoint[];
@@ -78,7 +97,10 @@ export class CanvasRenderer {
   dragPreview: { id: string; dx: number; dy: number } | null = null;
   /** Local-only object selection (never persisted or synced). */
   selectedIds = new Set<string>();
-  selectionDrag: { dx: number; dy: number } | null = null;
+  /** Uncommitted move/rotation of the selection while a gesture is running. */
+  selectionPreview: SelectionPreview | null = null;
+  /** Live angle readout shown while rotating, e.g. "45°". */
+  angleLabel: string | null = null;
   /** Live width while a text box is being resized (not yet committed). */
   textResize: { id: string; width: number } | null = null;
   /** The text box whose DOM editor is open; drawn by the overlay, not here. */
@@ -172,26 +194,25 @@ export class CanvasRenderer {
     this.invalidateStatic();
   }
 
-  /** Top-most page under a world point, if any. */
+  /**
+   * Top-most page under a world point, if any. Rotation is accounted for: the
+   * point is taken back into the page's own frame before the rectangle test.
+   */
   hitTestPage(p: { x: number; y: number }): PDFPageObject | undefined {
     for (let i = this.pages.length - 1; i >= 0; i--) {
-      const pg = this.pages[i];
-      if (p.x >= pg.x && p.x <= pg.x + pg.width && p.y >= pg.y && p.y <= pg.y + pg.height) return pg;
+      if (rectContains(this.pages[i], p)) return this.pages[i];
     }
     return undefined;
   }
 
   /**
    * Top-most text box under a world point. Hit testing uses the whole box, not
-   * the glyphs, so clicking any blank part of a text box selects it.
+   * the glyphs, so clicking any blank part of a text box selects it, and it
+   * follows the box's rotation.
    */
   hitTestText(p: { x: number; y: number }, padWorld = 0): TextObject | undefined {
     for (let i = this.texts.length - 1; i >= 0; i--) {
-      const t = this.effectiveText(this.texts[i]);
-      const b = textBounds(t);
-      if (p.x >= b.minX - padWorld && p.x <= b.maxX + padWorld && p.y >= b.minY - padWorld && p.y <= b.maxY + padWorld) {
-        return this.texts[i];
-      }
+      if (rectContains(this.effectiveText(this.texts[i]), p, padWorld)) return this.texts[i];
     }
     return undefined;
   }
@@ -206,7 +227,11 @@ export class CanvasRenderer {
   }
 
   getTextsInBounds(b: Bounds): TextObject[] {
-    return this.texts.filter((t) => boundsIntersect(textBounds(t), b));
+    return this.texts.filter((t) => boundsIntersect(transformedBounds(t), b));
+  }
+
+  getPagesInBounds(b: Bounds): PDFPageObject[] {
+    return this.pages.filter((p) => boundsIntersect(transformedBounds(p), b));
   }
 
   /** The text object as it currently looks, including an uncommitted resize. */
@@ -214,22 +239,66 @@ export class CanvasRenderer {
     return this.textResize && this.textResize.id === t.id ? { ...t, width: this.textResize.width } : t;
   }
 
-  /** World-space bounds of the current selection (including drag offset). */
+  /** Every selected object, in document order. */
+  getSelectedObjects(): (StrokeObject | TextObject | PDFPageObject)[] {
+    if (this.selectedIds.size === 0) return [];
+    const out: (StrokeObject | TextObject | PDFPageObject)[] = [];
+    for (const p of this.pages) if (this.selectedIds.has(p.id)) out.push(p);
+    for (const s of this.strokes) if (this.selectedIds.has(s.id)) out.push(s);
+    for (const t of this.texts) if (this.selectedIds.has(t.id)) out.push(this.effectiveText(t));
+    return out;
+  }
+
+  /**
+   * Selection bounds *before* the live preview transform. This is the frame
+   * the dashed outline and the handles are laid out in; the preview transform
+   * is then applied to the whole lot, so the chrome turns with the content.
+   */
+  selectionBaseBounds(): Bounds | null {
+    return unionBounds(this.getSelectedObjects().map(transformedBounds));
+  }
+
+  /** Map a world point through the live selection preview. */
+  previewPoint(p: XY): XY {
+    const pv = this.selectionPreview;
+    if (!pv) return p;
+    const rotated = pv.angle === 0 ? p : rotatePoint(p, pv.pivot, pv.angle);
+    return { x: rotated.x + pv.dx, y: rotated.y + pv.dy };
+  }
+
+  /**
+   * Axis-aligned world bounds of the selection as it currently appears,
+   * preview included. Used to decide whether a press lands "on" the selection.
+   */
   getSelectionBounds(): Bounds | null {
-    if (this.selectedIds.size === 0) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const add = (b: Bounds) => {
-      if (b.minX < minX) minX = b.minX;
-      if (b.minY < minY) minY = b.minY;
-      if (b.maxX > maxX) maxX = b.maxX;
-      if (b.maxY > maxY) maxY = b.maxY;
-    };
-    for (const s of this.strokes) if (this.selectedIds.has(s.id)) add(s.bounds);
-    for (const t of this.texts) if (this.selectedIds.has(t.id)) add(textBounds(this.effectiveText(t)));
-    if (!isFinite(minX)) return null;
-    const dx = this.selectionDrag?.dx ?? 0;
-    const dy = this.selectionDrag?.dy ?? 0;
-    return { minX: minX + dx, minY: minY + dy, maxX: maxX + dx, maxY: maxY + dy };
+    const b = this.selectionBaseBounds();
+    if (!b) return null;
+    if (!this.selectionPreview) return b;
+    return pointsBounds(
+      [
+        { x: b.minX, y: b.minY },
+        { x: b.maxX, y: b.minY },
+        { x: b.maxX, y: b.maxY },
+        { x: b.minX, y: b.maxY },
+      ].map((p) => this.previewPoint(p)),
+    );
+  }
+
+  /** Centre the selection rotates about: the middle of its own bounds. */
+  selectionPivot(): XY | null {
+    const b = this.selectionBaseBounds();
+    return b ? boundsCenter(b) : null;
+  }
+
+  /**
+   * World-space centre of the rotation grip, which floats above the selection.
+   * One grip for the whole selection, never one per object.
+   */
+  rotationHandle(): { x: number; y: number; radius: number } | null {
+    const b = this.selectionBaseBounds();
+    if (!b || this.editingTextId) return null;
+    const p = this.previewPoint({ x: (b.minX + b.maxX) / 2, y: b.minY - ROTATE_HANDLE_OFFSET_PX / this.viewport.scale });
+    return { x: p.x, y: p.y, radius: ROTATE_HANDLE_PX / this.viewport.scale };
   }
 
   /**
@@ -245,12 +314,16 @@ export class CanvasRenderer {
 
   /** World-space centre of the width grip, or null when none is shown. */
   textResizeHandle(): { x: number; y: number; radius: number } | null {
-    const t = this.soleSelectedText();
-    if (!t || this.editingTextId === t.id) return null;
-    const b = textBounds(this.effectiveText(t), this.selectionDrag?.dx ?? 0, this.selectionDrag?.dy ?? 0);
+    const raw = this.soleSelectedText();
+    if (!raw || this.editingTextId === raw.id) return null;
+    const t = this.effectiveText(raw);
+    const b = textBounds(t);
     // Just outside the box, so the grip never sits on top of the last glyph.
     const offset = (TEXT_HANDLE_PX * 0.9) / this.viewport.scale;
-    return { x: b.maxX + offset, y: (b.minY + b.maxY) / 2, radius: TEXT_HANDLE_PX / this.viewport.scale };
+    // The grip lives in the box's own frame, so it turns with a rotated box.
+    const local = rotatePoint({ x: b.maxX + offset, y: (b.minY + b.maxY) / 2 }, boundsCenter(b), rotationOf(t));
+    const p = this.previewPoint(local);
+    return { x: p.x, y: p.y, radius: TEXT_HANDLE_PX / this.viewport.scale };
   }
 
   destroy() {
@@ -306,32 +379,32 @@ export class CanvasRenderer {
     const visible = visibleWorldBounds(viewport, width, height, OVERSCAN_PX);
     this.applyWorldTransform(ctx);
 
-    const dx = this.selectionDrag?.dx ?? 0;
-    const dy = this.selectionDrag?.dy ?? 0;
     const hasSelection = this.selectedIds.size > 0;
+    // A selected object is drawn inside the live preview transform, but stays
+    // in its own layer: selecting a page never lifts it above the ink on it.
+    const inPreview = (id: string, draw: () => void) => {
+      if (!hasSelection || !this.selectedIds.has(id)) {
+        draw();
+        return;
+      }
+      ctx.save();
+      this.applyPreviewTransform(ctx);
+      draw();
+      ctx.restore();
+    };
 
     // Layer 10: PDF pages
     for (const page of this.pages) {
-      const b = pageBounds(page, this.dragPreview);
-      if (!boundsIntersect(b, visible)) continue;
-      this.drawPage(ctx, page, b);
+      const selected = hasSelection && this.selectedIds.has(page.id);
+      if (!selected && !boundsIntersect(transformedBounds(page), visible)) continue;
+      inPreview(page.id, () => this.drawPage(ctx, page, pageBounds(page, this.dragPreview)));
     }
 
-    // Layer 20: strokes (selected ones last, carrying the live drag offset)
-    const deferredStrokes: StrokeObject[] = [];
+    // Layer 20: strokes
     for (const stroke of this.strokes) {
-      if (hasSelection && this.selectedIds.has(stroke.id)) {
-        deferredStrokes.push(stroke);
-        continue;
-      }
-      if (!boundsIntersect(stroke.bounds, visible)) continue;
-      this.drawStroke(ctx, stroke, false);
-    }
-    if (deferredStrokes.length) {
-      ctx.save();
-      ctx.translate(dx, dy);
-      for (const stroke of deferredStrokes) this.drawStroke(ctx, stroke, true);
-      ctx.restore();
+      const selected = hasSelection && this.selectedIds.has(stroke.id);
+      if (!selected && !boundsIntersect(stroke.bounds, visible)) continue;
+      inPreview(stroke.id, () => this.drawStroke(ctx, stroke, selected));
     }
 
     // Layer 30: text boxes, above ink so typed notes read over handwriting
@@ -339,10 +412,8 @@ export class CanvasRenderer {
       if (text.id === this.editingTextId) continue; // the DOM editor draws it
       const selected = hasSelection && this.selectedIds.has(text.id);
       const t = this.effectiveText(text);
-      const ox = selected ? dx : 0;
-      const oy = selected ? dy : 0;
-      if (!boundsIntersect(textBounds(t, ox, oy), visible)) continue;
-      this.drawText(ctx, t, ox, oy);
+      if (!selected && !boundsIntersect(transformedBounds(t), visible)) continue;
+      inPreview(text.id, () => this.drawText(ctx, t));
     }
 
     // Layer 100: selection affordances
@@ -351,24 +422,66 @@ export class CanvasRenderer {
       const page = this.pages.find((p) => p.id === this.selectedId);
       if (page) {
         const b = pageBounds(page, this.dragPreview);
-        ctx.strokeStyle = theme.accent;
-        ctx.lineWidth = 2 / viewport.scale;
-        ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+        this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () => {
+          ctx.strokeStyle = theme.accent;
+          ctx.lineWidth = 2 / viewport.scale;
+          ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+        });
       }
+    }
+  }
+
+  /** Apply the uncommitted selection move/rotation to the current context. */
+  private applyPreviewTransform(ctx: CanvasRenderingContext2D) {
+    const pv = this.selectionPreview;
+    if (!pv) return;
+    ctx.translate(pv.dx, pv.dy);
+    if (pv.angle !== 0) {
+      ctx.translate(pv.pivot.x, pv.pivot.y);
+      ctx.rotate(pv.angle);
+      ctx.translate(-pv.pivot.x, -pv.pivot.y);
     }
   }
 
   private drawSelectionChrome(ctx: CanvasRenderingContext2D) {
     const { theme, viewport } = this;
-    const sb = this.getSelectionBounds();
+    const sb = this.selectionBaseBounds();
     if (!sb) return;
     const pad = 6 / viewport.scale;
     ctx.save();
+    // The outline lives in the same preview transform as the content, so a
+    // rotating selection turns inside its box instead of wobbling in an
+    // axis-aligned one.
+    this.applyPreviewTransform(ctx);
     ctx.setLineDash([6 / viewport.scale, 4 / viewport.scale]);
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 1.5 / viewport.scale;
     ctx.strokeRect(sb.minX - pad, sb.minY - pad, sb.maxX - sb.minX + pad * 2, sb.maxY - sb.minY + pad * 2);
+    ctx.setLineDash([]);
+    // Stem joining the rotation grip to the top of the selection.
+    const stemX = (sb.minX + sb.maxX) / 2;
+    ctx.beginPath();
+    ctx.moveTo(stemX, sb.minY - pad);
+    ctx.lineTo(stemX, sb.minY - ROTATE_HANDLE_OFFSET_PX / viewport.scale);
+    ctx.stroke();
     ctx.restore();
+
+    const rotate = this.rotationHandle();
+    if (rotate) {
+      // Drawn at a constant screen size, upright, so it stays grabbable at any
+      // zoom and never turns into an unreadable smear mid-rotation.
+      const r = ROTATE_HANDLE_PX / 2.4 / viewport.scale;
+      ctx.beginPath();
+      ctx.arc(rotate.x, rotate.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = theme.handleFill;
+      ctx.fill();
+      ctx.strokeStyle = theme.handleStroke;
+      ctx.lineWidth = 1.5 / viewport.scale;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(rotate.x, rotate.y, r * 0.5, Math.PI * 0.6, Math.PI * 2.1);
+      ctx.stroke();
+    }
 
     const handle = this.textResizeHandle();
     if (handle) {
@@ -383,7 +496,31 @@ export class CanvasRenderer {
     }
   }
 
+  /**
+   * Draw a rotated object's contents in its own upright frame.
+   *
+   * The bitmap and the glyphs are never re-rendered or re-rasterised: the
+   * canvas is turned around the object's centre and the object is drawn
+   * exactly as it always was.
+   */
+  private withRotation(ctx: CanvasRenderingContext2D, angle: number, centre: XY, draw: () => void) {
+    if (angle === 0) {
+      draw();
+      return;
+    }
+    ctx.save();
+    ctx.translate(centre.x, centre.y);
+    ctx.rotate(angle);
+    ctx.translate(-centre.x, -centre.y);
+    draw();
+    ctx.restore();
+  }
+
   private drawPage(ctx: CanvasRenderingContext2D, page: PDFPageObject, b: Bounds) {
+    this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () => this.drawPageUpright(ctx, page, b));
+  }
+
+  private drawPageUpright(ctx: CanvasRenderingContext2D, page: PDFPageObject, b: Bounds) {
     const { scale } = this.viewport;
     const { theme } = this;
     const w = b.maxX - b.minX;
@@ -443,19 +580,21 @@ export class CanvasRenderer {
    * and pans like every other object. Only the box being edited gets a DOM
    * editor, which keeps a board with hundreds of text objects cheap.
    */
-  private drawText(ctx: CanvasRenderingContext2D, text: TextObject, dx: number, dy: number) {
-    const layout = measureText(text);
-    ctx.save();
-    ctx.fillStyle = text.color;
-    ctx.font = canvasFont(text.fontFamily, text.fontSize);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    const x = text.x + dx;
-    const y = text.y + dy;
-    for (const line of layout.lines) {
-      if (line.text !== "") ctx.fillText(line.text, x + line.x, y + line.baseline);
-    }
-    ctx.restore();
+  private drawText(ctx: CanvasRenderingContext2D, text: TextObject) {
+    // Rotation turns the whole box: wrapping, font, size and alignment are
+    // untouched, so a rotated box reads exactly as it did upright.
+    this.withRotation(ctx, text.rotation ?? 0, objectCenter(text), () => {
+      const layout = measureText(text);
+      ctx.save();
+      ctx.fillStyle = text.color;
+      ctx.font = canvasFont(text.fontFamily, text.fontSize);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+      for (const line of layout.lines) {
+        if (line.text !== "") ctx.fillText(line.text, text.x + line.x, text.y + line.baseline);
+      }
+      ctx.restore();
+    });
   }
 
   private renderOverlay() {
@@ -487,6 +626,34 @@ export class CanvasRenderer {
       ctx.lineWidth = 1.5 / viewport.scale;
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    if (this.angleLabel) {
+      // Drawn in screen space so the readout stays upright and legible at any
+      // zoom while the selection underneath it turns.
+      const pivot = this.selectionPivot();
+      if (pivot) {
+        const p = this.previewPoint(pivot);
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const sx = p.x * viewport.scale + viewport.x;
+        const sy = p.y * viewport.scale + viewport.y;
+        ctx.font = "600 12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const w = ctx.measureText(this.angleLabel).width + 14;
+        ctx.beginPath();
+        ctx.roundRect(sx - w / 2, sy - 12, w, 24, 6);
+        ctx.fillStyle = theme.handleFill;
+        ctx.fill();
+        ctx.strokeStyle = theme.handleStroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = theme.accent;
+        ctx.fillText(this.angleLabel, sx, sy);
+        ctx.restore();
+        this.applyWorldTransform(ctx);
+      }
     }
 
     if (this.eraserCursor) {
