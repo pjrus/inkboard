@@ -38,17 +38,3 @@ export function layoutPages(
   }
   return out;
 }
-
-/** Total extent of a laid-out document (useful for framing the viewport). */
-export function layoutExtent(placements: PagePlacement[]): { width: number; height: number } {
-  if (placements.length === 0) return { width: 0, height: 0 };
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  const minX = placements[0].x;
-  const minY = placements[0].y;
-  for (const p of placements) {
-    maxX = Math.max(maxX, p.x + p.width);
-    maxY = Math.max(maxY, p.y + p.height);
-  }
-  return { width: maxX - minX, height: maxY - minY };
-}

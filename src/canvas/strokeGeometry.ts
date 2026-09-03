@@ -27,17 +27,6 @@ export function strokeOutline(points: StrokePoint[], tool: PenTool, width: numbe
   return getStroke(input, strokeOptions(tool, width, hasPressure));
 }
 
-/** Whether a point list carries real pressure data (mouse reports 0.5/0). */
-export function hasRealPressure(points: StrokePoint[]): boolean {
-  let seen: number | undefined;
-  for (const p of points) {
-    if (p.pressure === undefined) return false;
-    if (seen === undefined) seen = p.pressure;
-    else if (Math.abs(seen - p.pressure) > 1e-3) return true;
-  }
-  return false;
-}
-
 export function computeBounds(points: StrokePoint[], width: number): Bounds {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const p of points) {

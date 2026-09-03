@@ -22,12 +22,12 @@ import {
   type TextObject,
 } from "../document/schema";
 import { strokeOutline } from "../canvas/strokeGeometry";
-import { objectCenter, rotatePoint } from "../canvas/transform";
+import { objectCenter, rotatePoint, transformedBounds } from "../canvas/transform";
 import { getFont } from "../text/fonts";
 import { loadFontBytes } from "../text/fontLoader";
 import { layoutText } from "../text/textLayout";
-import { assetRepository } from "../storage/assetRepository";
-import { objectBounds, overlaps } from "./exportBounds";
+import { getAsset } from "../storage/assetRepository";
+import { overlaps } from "./exportBounds";
 import { contentX, contentY, contentRect, svgAnchor, toPdf, type PageGeometry } from "./exportCoordinates";
 
 /**
@@ -65,7 +65,7 @@ export class ExportResources {
     if (this.images.has(assetId)) return this.images.get(assetId)!;
     let image: PDFImage | null = null;
     try {
-      const rec = await assetRepository.get(assetId);
+      const rec = await getAsset(assetId);
       if (rec) {
         const bytes = new Uint8Array(await rec.blob.arrayBuffer());
         image = rec.mimeType === "image/png" ? await this.pdf.embedPng(bytes) : await this.pdf.embedJpg(bytes);
@@ -82,7 +82,7 @@ export class ExportResources {
 export function objectsOnPage(objects: CanvasObject[], geometry: PageGeometry): CanvasObject[] {
   const order = { "pdf-page": 0, stroke: 1, text: 2 } as const;
   return objects
-    .filter((o) => overlaps(objectBounds(o), geometry.source))
+    .filter((o) => overlaps(transformedBounds(o), geometry.source))
     .sort((a, b) => order[a.type] - order[b.type] || a.createdAt - b.createdAt);
 }
 

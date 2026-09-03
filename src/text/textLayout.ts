@@ -27,8 +27,6 @@ export interface TextLayoutResult {
   lineHeight: number;
   /** Total height of the box: one line height per line. */
   height: number;
-  /** Widest laid-out line; useful for "shrink to fit" affordances. */
-  maxLineWidth: number;
 }
 
 export interface LayoutOptions {
@@ -103,10 +101,8 @@ export function layoutText(text: string, opts: LayoutOptions, measure: Measure):
   const lineHeight = lineHeightFor(fontSize);
   const base = firstBaseline(fontFamily, fontSize);
   const raw = wrapLines(text, width, measure);
-  let maxLineWidth = 0;
   const lines: LineBox[] = raw.map((t, i) => {
     const w = t === "" ? 0 : measure(t);
-    if (w > maxLineWidth) maxLineWidth = w;
     return {
       text: t,
       width: w,
@@ -114,5 +110,5 @@ export function layoutText(text: string, opts: LayoutOptions, measure: Measure):
       baseline: base + i * lineHeight,
     };
   });
-  return { lines, lineHeight, height: Math.max(1, lines.length) * lineHeight, maxLineWidth };
+  return { lines, lineHeight, height: Math.max(1, lines.length) * lineHeight };
 }

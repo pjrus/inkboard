@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { nanoid } from "nanoid";
+import { newId } from "./ids";
 import { nextWidthStep } from "./strokeCommands";
 import { nextFontSizeStep } from "../text/textCommands";
 import { computeBoundsFlat } from "../canvas/strokeGeometry";
@@ -17,10 +17,8 @@ import type {
  * CanvasDocument wraps a Y.Doc and exposes a typed API for canvas objects.
  *
  * Structure inside the Y.Doc:
- *   metadata     Y.Map<any>                       board-level shared metadata
  *   objects      Y.Map<Y.Map<any>>                id -> object fields
  *   pdfDocuments Y.Map<Y.Map<any>>                id -> PDFDocumentMetadata
- *   settings     Y.Map<any>                       shared settings (unused yet)
  *
  * Each canvas object is its own Y.Map so concurrent edits to different
  * fields (e.g. one peer moves a page while another rotates it) merge cleanly.
@@ -47,8 +45,6 @@ export class CanvasDocument {
   readonly ydoc: Y.Doc;
   readonly objects: Y.Map<Y.Map<unknown>>;
   readonly pdfDocuments: Y.Map<Y.Map<unknown>>;
-  readonly metadata: Y.Map<unknown>;
-  readonly settings: Y.Map<unknown>;
   readonly undoManager: Y.UndoManager;
 
   private listeners = new Set<ObjectListener>();
@@ -58,8 +54,6 @@ export class CanvasDocument {
     this.ydoc = ydoc ?? new Y.Doc();
     this.objects = this.ydoc.getMap("objects");
     this.pdfDocuments = this.ydoc.getMap("pdfDocuments");
-    this.metadata = this.ydoc.getMap("metadata");
-    this.settings = this.ydoc.getMap("settings");
 
     this.undoManager = new Y.UndoManager([this.objects, this.pdfDocuments], {
       trackedOrigins: new Set([LOCAL_ORIGIN]),
@@ -129,7 +123,7 @@ export class CanvasDocument {
   addStroke(stroke: Omit<StrokeObject, "id" | "type" | "createdAt"> & { id?: string }): StrokeObject {
     const obj: StrokeObject = {
       ...stroke,
-      id: stroke.id ?? nanoid(12),
+      id: stroke.id ?? newId(),
       type: "stroke",
       createdAt: Date.now(),
     };
@@ -146,7 +140,7 @@ export class CanvasDocument {
     grouped = false,
   ): TextObject {
     const now = Date.now();
-    const obj: TextObject = { ...input, id: input.id ?? nanoid(12), type: "text", createdAt: now, updatedAt: now };
+    const obj: TextObject = { ...input, id: input.id ?? newId(), type: "text", createdAt: now, updatedAt: now };
     const fn = () => {
       const m = toYMap({ ...obj, text: undefined });
       const ytext = new Y.Text();
@@ -237,14 +231,6 @@ export class CanvasDocument {
     });
   }
 
-  updateObject(id: string, patch: Record<string, unknown>, undoable = true): void {
-    const m = this.objects.get(id);
-    if (!m) return;
-    this.transact(() => {
-      for (const [k, v] of Object.entries(patch)) m.set(k, v);
-    }, undoable);
-  }
-
   /** Apply the same field patch to many objects in one undo step. */
   updateObjects(ids: string[], patch: Record<string, unknown>): void {
     if (ids.length === 0) return;
@@ -280,11 +266,6 @@ export class CanvasDocument {
         m.set("bounds", computeBoundsFlat(m.get("points") as number[], width));
       }
     });
-  }
-
-  /** Recolour a selection. Strokes and text boxes both carry a `color`. */
-  setStrokeColor(ids: string[], color: string): void {
-    this.updateObjects(ids, { color });
   }
 
   /**
@@ -344,19 +325,6 @@ export class CanvasDocument {
     });
   }
 
-  /** Absolute rotation for objects that carry one; strokes are left alone. */
-  setObjectRotation(ids: string[], rotation: number): void {
-    if (ids.length === 0) return;
-    this.transact(() => {
-      for (const id of ids) {
-        const m = this.objects.get(id);
-        if (!m || m.get("type") === "stroke") continue;
-        m.set("rotation", rotation);
-        if (m.get("type") === "text") m.set("updatedAt", Date.now());
-      }
-    });
-  }
-
   private applyTranslation(id: string, dx: number, dy: number): void {
     const m = this.objects.get(id);
     if (!m) return;
@@ -412,12 +380,6 @@ export class CanvasDocument {
 
   canRedo(): boolean {
     return this.undoManager.canRedo();
-  }
-
-  // ---- sync helpers --------------------------------------------------
-
-  encodeState(): Uint8Array {
-    return Y.encodeStateAsUpdate(this.ydoc);
   }
 
   applyUpdate(update: Uint8Array, origin: unknown = "remote"): void {

@@ -120,11 +120,6 @@ export function unionBounds(list: Bounds[]): Bounds | null {
   return isFinite(minX) ? { minX, minY, maxX, maxY } : null;
 }
 
-/** Combined bounds of a group; also the pivot for rotating that group. */
-export function groupBounds(objects: CanvasObject[]): Bounds | null {
-  return unionBounds(objects.map(transformedBounds));
-}
-
 /**
  * Is a world point inside an object's rectangle?
  *

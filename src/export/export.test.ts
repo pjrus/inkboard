@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Bounds, CanvasObject, PDFPageObject, StrokeObject, TextObject } from "../document/schema";
-import { contentBounds, objectBounds, overlaps, unionBounds } from "./exportBounds";
+import { contentBounds, overlaps } from "./exportBounds";
+import { transformedBounds, unionBounds } from "../canvas/transform";
 import { contentRect, contentToPdfY, contentX, contentY, svgAnchor, toPdf, type PageGeometry } from "./exportCoordinates";
 import { A4_PORTRAIT, planA4Pages, planFitPages, planPDFPages, planPages } from "./exportPlan";
 import { objectsOnPage, pdfColor } from "./ExportRenderer";
@@ -48,7 +49,7 @@ const pdfPage = (n: number, y: number): PDFPageObject => ({
 describe("export bounds", () => {
   it("takes the union of every object type", () => {
     const objects: CanvasObject[] = [stroke({ minX: 0, minY: 0, maxX: 10, maxY: 10 }), pdfPage(1, 100)];
-    expect(unionBounds(objects.map(objectBounds))).toEqual({ minX: 0, minY: 0, maxX: 612, maxY: 892 });
+    expect(unionBounds(objects.map(transformedBounds))).toEqual({ minX: 0, minY: 0, maxX: 612, maxY: 892 });
     expect(unionBounds([])).toBeNull();
   });
 
@@ -60,7 +61,7 @@ describe("export bounds", () => {
 
   it("frames a rotated object by the space it now occupies", () => {
     const turned: PDFPageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
-    const b = objectBounds(turned);
+    const b = transformedBounds(turned);
     // A 612x792 page turned a quarter turn is 792 wide and 612 tall.
     expect(b.maxX - b.minX).toBeCloseTo(792, 6);
     expect(b.maxY - b.minY).toBeCloseTo(612, 6);
