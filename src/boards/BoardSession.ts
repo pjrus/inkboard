@@ -1,14 +1,12 @@
 import { CanvasDocument } from "../document/crdt";
 import { DocumentPersistence } from "../document/persistence";
-import { LocalProvider } from "../collaboration/LocalProvider";
-import type { SyncProvider } from "../collaboration/SyncProvider";
 import type { BoardRecord } from "../storage/db";
 import type { Viewport } from "../document/schema";
 import { boardRepository } from "./BoardRepository";
 
 /**
- * Everything needed to work on one open board: the CRDT document, its
- * persistence pipeline and the (currently local-only) sync provider.
+ * Everything needed to work on one open board: the CRDT document and its
+ * persistence pipeline. The document lives in this browser and nowhere else.
  */
 export class BoardSession {
   private viewportTimer: ReturnType<typeof setTimeout> | null = null;
@@ -18,7 +16,6 @@ export class BoardSession {
     readonly board: BoardRecord,
     readonly doc: CanvasDocument,
     readonly persistence: DocumentPersistence,
-    readonly provider: SyncProvider,
   ) {}
 
   static async open(boardId: string): Promise<BoardSession> {
@@ -28,9 +25,7 @@ export class BoardSession {
     const persistence = new DocumentPersistence(boardId, doc);
     await persistence.load();
     persistence.start();
-    const provider = new LocalProvider();
-    await provider.connect(boardId, doc);
-    return new BoardSession(board, doc, persistence, provider);
+    return new BoardSession(board, doc, persistence);
   }
 
   /** Debounced: the viewport changes on every pan frame. */
@@ -47,7 +42,6 @@ export class BoardSession {
     this.closed = true;
     if (this.viewportTimer) clearTimeout(this.viewportTimer);
     if (finalViewport) await boardRepository.saveViewport(this.board.id, finalViewport);
-    this.provider.disconnect();
     await this.persistence.destroy();
     this.doc.destroy();
   }

@@ -1,5 +1,6 @@
 import type { Bounds, CanvasObject, PDFPageObject } from "../document/schema";
-import { boundsHeight, boundsWidth, contentBounds, EXPORT_PADDING, objectBounds, overlaps } from "./exportBounds";
+import { boundsHeight, boundsWidth, contentBounds, EXPORT_PADDING, overlaps } from "./exportBounds";
+import { transformedBounds } from "../canvas/transform";
 import type { PageGeometry } from "./exportCoordinates";
 
 /**
@@ -95,7 +96,7 @@ export function planPDFPages(objects: CanvasObject[], padding = EXPORT_PADDING):
   // A rotated page gets an output page the size of the space it now occupies,
   // so turning a page 90 degrees exports it landscape rather than clipped.
   const pages: PageGeometry[] = pdfPages.map((p, i) => {
-    const b = objectBounds(p);
+    const b = transformedBounds(p);
     return {
       source: b,
       pageWidth: boundsWidth(b),
@@ -108,7 +109,7 @@ export function planPDFPages(objects: CanvasObject[], padding = EXPORT_PADDING):
   });
 
   const pageRects = pages.map((g) => g.source);
-  const strays = objects.filter((o) => o.type !== "pdf-page" && !pageRects.some((r) => overlaps(objectBounds(o), r)));
+  const strays = objects.filter((o) => o.type !== "pdf-page" && !pageRects.some((r) => overlaps(transformedBounds(o), r)));
   if (strays.length) {
     for (const extra of planFitPages(strays, padding)) {
       pages.push({ ...extra, label: `Canvas notes (page ${pages.length + 1})` });

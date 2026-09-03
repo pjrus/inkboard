@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as Y from "yjs";
 import { CanvasDocument } from "../document/crdt";
 import { DEFAULT_LASSO_FILTER, type CanvasObject, type LassoFilter, type PDFPageObject, type StrokeObject, type TextObject } from "../document/schema";
 import {
@@ -219,7 +220,7 @@ describe("moving and rotating a mixed selection", () => {
     const expected = ids.map((id) => transformedBounds(doc.get(id)!));
 
     const reopened = new CanvasDocument();
-    reopened.applyUpdate(doc.encodeState());
+    reopened.applyUpdate(Y.encodeStateAsUpdate(doc.ydoc));
     ids.forEach((id, i) => {
       const b = transformedBounds(reopened.get(id)!);
       near(b.minX, expected[i].minX, 1e-3);
