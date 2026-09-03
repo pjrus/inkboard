@@ -1,4 +1,4 @@
-import { nanoid } from "nanoid";
+import { newId } from "../document/ids";
 import { getDB, type BoardRecord, type ToolPreferences } from "../storage/db";
 import { DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LASSO_FILTER, type Viewport } from "../document/schema";
 
@@ -27,7 +27,7 @@ export const boardRepository = {
 
   async create(name = "Untitled board"): Promise<BoardRecord> {
     const now = Date.now();
-    const board: BoardRecord = { id: nanoid(10), name, createdAt: now, updatedAt: now };
+    const board: BoardRecord = { id: newId(10), name, createdAt: now, updatedAt: now };
     await getDB().boards.add(board);
     return board;
   },

@@ -82,7 +82,7 @@ describe("stroke property commands", () => {
     const id = a.addStroke(stroke(2)).id;
     b.applyUpdate(Y.encodeStateAsUpdate(a.ydoc));
     a.setStrokeWidth([id], 8);
-    a.setStrokeColor([id], "#f00");
+    a.updateObjects([id], { color: "#f00" });
     b.applyUpdate(Y.encodeStateAsUpdate(a.ydoc));
     const remote = b.get(id) as StrokeObject;
     expect(remote.width).toBe(8);

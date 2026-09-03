@@ -160,7 +160,7 @@ export class CanvasInteractionController {
 
   /** Colour applies to the whole selection: strokes and text both have one. */
   setSelectionColor(color: string) {
-    this.doc.setStrokeColor(this.getSelectedIds(), color);
+    this.doc.updateObjects(this.getSelectedIds(), { color });
   }
 
   setSelectionFont(fontFamily: FontFamilyId) {
