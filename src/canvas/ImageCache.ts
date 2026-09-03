@@ -1,4 +1,4 @@
-import { assetRepository } from "../storage/assetRepository";
+import { getAsset } from "../storage/assetRepository";
 
 /**
  * LRU cache of decoded page images. Pages are decoded lazily as they come
@@ -44,7 +44,7 @@ export class ImageCache {
   private async load(assetId: string) {
     this.loading.add(assetId);
     try {
-      const rec = await assetRepository.get(assetId);
+      const rec = await getAsset(assetId);
       if (!rec) {
         this.missing.add(assetId);
         return;
