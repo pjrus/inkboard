@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { getDB, type BoardRecord, type ToolPreferences } from "../storage/db";
-import { DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, type Viewport } from "../document/schema";
+import { DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LASSO_FILTER, type Viewport } from "../document/schema";
 
 export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   tool: "pen",
@@ -12,6 +12,8 @@ export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   textFont: DEFAULT_FONT_FAMILY,
   textFontSize: DEFAULT_FONT_SIZE,
   textAlign: "left",
+  canvasMode: "edit",
+  lassoFilter: DEFAULT_LASSO_FILTER,
 };
 
 export const boardRepository = {

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { FontFamilyId, TextAlign, Tool, Viewport } from "../document/schema";
+import type { CanvasMode, FontFamilyId, LassoFilter, TextAlign, Tool, Viewport } from "../document/schema";
 
 /**
  * IndexedDB layout (via Dexie).
@@ -57,6 +57,10 @@ export interface ToolPreferences {
   textFont: FontFamilyId;
   textFontSize: number;
   textAlign: TextAlign;
+  /** Edit or View. A local interface preference; never shared with peers. */
+  canvasMode: CanvasMode;
+  /** Which object types the lasso may pick up. Also local-only. */
+  lassoFilter: LassoFilter;
 }
 
 export class InkboardDB extends Dexie {

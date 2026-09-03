@@ -101,13 +101,14 @@ export function BoardView({ boardId, onBack }: Props) {
       const store = useToolStore.getState();
       const h = handlesRef.current;
       if (store.editingTextId) return;
-      if (mod && e.key.toLowerCase() === "z") {
+      const viewing = store.canvasMode === "view";
+      if (mod && e.key.toLowerCase() === "z" && !viewing) {
         e.preventDefault();
         if (e.shiftKey) session.doc.redo();
         else session.doc.undo();
         return;
       }
-      if (mod && e.key.toLowerCase() === "y") {
+      if (mod && e.key.toLowerCase() === "y" && !viewing) {
         e.preventDefault();
         session.doc.redo();
         return;
@@ -128,6 +129,14 @@ export function BoardView({ boardId, onBack }: Props) {
         return;
       }
       if (mod) return;
+      // V toggles the mode, and works in either direction.
+      if (e.key.toLowerCase() === "v") {
+        store.setCanvasMode(store.canvasMode === "view" ? "edit" : "view");
+        return;
+      }
+      // View mode: navigation shortcuts (zoom, above) still work; nothing
+      // that would create, change or delete board content does.
+      if (store.canvasMode === "view") return;
       const sel = store.selection;
       const cmds = store.selectionCommands;
       if (sel && cmds && sel.strokeIds.length > 0 && (e.key === "[" || e.key === "]")) {
@@ -146,7 +155,6 @@ export function BoardView({ boardId, onBack }: Props) {
           store.setTool("eraser");
           break;
         case "h":
-        case "v":
           store.setTool("pan");
           break;
         case "l":

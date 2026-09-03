@@ -195,27 +195,66 @@ export const LASSO_BOX_FRACTION = 0.5;
 const BOX_SAMPLES = 5;
 
 /**
- * Lasso test for rectangular objects (text boxes).
+ * Lasso test for quadrilateral objects: text boxes, images and PDF pages.
  *
- * A box is selected when its centre is inside the polygon, or when a
- * substantial part of it overlaps: sampling a grid keeps the rule intuitive
- * for boxes much larger or much smaller than the lasso.
+ * `corners` are the object's four world-space corners in order, already
+ * carrying any rotation, so a rotated page is tested as the parallelogram it
+ * actually occupies rather than the rectangle it started as.
+ *
+ * Selected when the centre is inside the polygon, or when a substantial part
+ * of the quad overlaps it: sampling a grid keeps the rule intuitive for
+ * objects much larger or much smaller than the lasso.
  */
-export function lassoSelectsBox(box: Bounds, poly: XY[], polyBounds?: Bounds): boolean {
-  if (poly.length < 3) return false;
+export function lassoSelectsQuad(corners: XY[], poly: XY[], polyBounds?: Bounds): boolean {
+  if (poly.length < 3 || corners.length < 4) return false;
   const pb = polyBounds ?? polygonBounds(poly);
-  if (box.maxX < pb.minX || box.minX > pb.maxX || box.maxY < pb.minY || box.minY > pb.maxY) return false;
-  const centre = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
+  const qb = polygonBounds(corners);
+  if (qb.maxX < pb.minX || qb.minX > pb.maxX || qb.maxY < pb.minY || qb.minY > pb.maxY) return false;
+  const [a, b, c, d] = corners;
+  const centre = { x: (a.x + b.x + c.x + d.x) / 4, y: (a.y + b.y + c.y + d.y) / 4 };
   if (pointInPolygon(centre, poly)) return true;
   let inside = 0;
   for (let i = 0; i < BOX_SAMPLES; i++) {
+    const u = i / (BOX_SAMPLES - 1);
     for (let j = 0; j < BOX_SAMPLES; j++) {
-      const p = {
-        x: box.minX + ((box.maxX - box.minX) * i) / (BOX_SAMPLES - 1),
-        y: box.minY + ((box.maxY - box.minY) * j) / (BOX_SAMPLES - 1),
-      };
-      if (pointInPolygon(p, poly)) inside++;
+      const v = j / (BOX_SAMPLES - 1);
+      // Bilinear interpolation across the quad: corners are top-left,
+      // top-right, bottom-right, bottom-left.
+      const top = { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
+      const bottom = { x: d.x + (c.x - d.x) * u, y: d.y + (c.y - d.y) * u };
+      if (pointInPolygon({ x: top.x + (bottom.x - top.x) * v, y: top.y + (bottom.y - top.y) * v }, poly)) inside++;
     }
   }
   return inside / (BOX_SAMPLES * BOX_SAMPLES) >= LASSO_BOX_FRACTION;
+}
+
+/** Lasso test for an unrotated rectangle. */
+export function lassoSelectsBox(box: Bounds, poly: XY[], polyBounds?: Bounds): boolean {
+  return lassoSelectsQuad(
+    [
+      { x: box.minX, y: box.minY },
+      { x: box.maxX, y: box.minY },
+      { x: box.maxX, y: box.maxY },
+      { x: box.minX, y: box.maxY },
+    ],
+    poly,
+    polyBounds,
+  );
+}
+
+/** Fraction of the lasso's own outline that must fall inside an object. */
+export const LASSO_CONTAINMENT_FRACTION = 0.8;
+
+/**
+ * Is the lasso itself drawn (essentially) inside this quad?
+ *
+ * The mirror of lassoSelectsQuad, for objects far bigger than the lasso: a
+ * PDF page or an imported image at working zoom cannot be enclosed, so the
+ * only gesture available is a loop drawn on top of it.
+ */
+export function lassoInsideQuad(poly: XY[], corners: XY[]): boolean {
+  if (poly.length < 3 || corners.length < 4) return false;
+  let inside = 0;
+  for (const p of poly) if (pointInPolygon(p, corners)) inside++;
+  return inside / poly.length >= LASSO_CONTAINMENT_FRACTION;
 }

@@ -58,6 +58,21 @@ describe("export bounds", () => {
     expect(contentBounds([], 5)).toBeNull();
   });
 
+  it("frames a rotated object by the space it now occupies", () => {
+    const turned: PDFPageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
+    const b = objectBounds(turned);
+    // A 612x792 page turned a quarter turn is 792 wide and 612 tall.
+    expect(b.maxX - b.minX).toBeCloseTo(792, 6);
+    expect(b.maxY - b.minY).toBeCloseTo(612, 6);
+  });
+
+  it("gives a rotated imported page an output page of the rotated size", () => {
+    const turned: PDFPageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
+    const [geometry] = planPDFPages([turned]);
+    expect(geometry.pageWidth).toBeCloseTo(792, 6);
+    expect(geometry.pageHeight).toBeCloseTo(612, 6);
+  });
+
   it("detects overlap without counting edge-only contact", () => {
     const a = { minX: 0, minY: 0, maxX: 10, maxY: 10 };
     expect(overlaps(a, { minX: 5, minY: 5, maxX: 20, maxY: 20 })).toBe(true);

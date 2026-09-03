@@ -31,6 +31,7 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
   const staticRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const tool = useToolStore((s) => s.tool);
+  const canvasMode = useToolStore((s) => s.canvasMode);
   const editingTextId = useToolStore((s) => s.editingTextId);
   const handlesRef = useRef<CanvasHandles | null>(null);
   const { theme } = useTheme();
@@ -43,6 +44,8 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
     const store = useToolStore;
     const controller = new CanvasInteractionController(container, renderer, doc, {
       getTool: () => store.getState().tool,
+      getMode: () => store.getState().canvasMode,
+      getLassoFilter: () => store.getState().lassoFilter,
       getColor: () => store.getState().color,
       getWidth: () => store.getState().width,
       getTextStyle: () => {
@@ -67,6 +70,7 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
       setFontSize: (n) => controller.setSelectionFontSize(n),
       adjustFontSize: (d) => controller.adjustSelectionFontSize(d),
       setAlign: (a) => controller.setSelectionAlign(a),
+      rotate: (angle) => controller.rotateSelection(angle),
       editText: () => controller.editSelectedText(),
       remove: () => controller.deleteSelection(),
       clear: () => controller.clearObjectSelection(),
@@ -82,6 +86,7 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
     window.addEventListener("resize", resize);
 
     handlesRef.current = { renderer, controller };
+    (window as unknown as Record<string, unknown>).__debug = { renderer, controller, doc };
     onReady(handlesRef.current);
     store.getState().setZoom(initialViewport.scale);
 
@@ -113,6 +118,17 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
     // Selections belong to the tools that can act on them.
     if (tool !== "lasso" && tool !== "text") controller?.clearObjectSelection();
   }, [tool]);
+
+  /**
+   * Entering View mode commits any open text edit and puts every handle away.
+   * The viewport is untouched, so the board stays exactly where the user was
+   * looking, and remote updates keep arriving and rendering as normal.
+   */
+  useEffect(() => {
+    const controller = handlesRef.current?.controller;
+    if (canvasMode === "view") controller?.cancelInteractions();
+    controller?.updateCursor();
+  }, [canvasMode]);
 
   const handles = handlesRef.current;
   return (
