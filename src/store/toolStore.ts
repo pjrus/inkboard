@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { FontFamilyId, TextAlign, Tool } from "../document/schema";
+import type { CanvasMode, FontFamilyId, LassoFilter, TextAlign, Tool } from "../document/schema";
+import { DEFAULT_LASSO_FILTER } from "../document/schema";
 import type { SaveStatus } from "../document/persistence";
 import { boardRepository } from "../boards/BoardRepository";
 import { defaultInk } from "../theme/canvasTheme";
@@ -49,6 +50,8 @@ export interface CanvasSelection {
   ids: string[];
   strokeIds: string[];
   textIds: string[];
+  /** Imported images and PDF page images. */
+  imageIds: string[];
   /** Widths of the selected strokes only. */
   widths: number[];
   /** Colours of every selected object (strokes and text both have one). */
@@ -67,6 +70,8 @@ export interface SelectionCommands {
   setFontSize: (size: number) => void;
   adjustFontSize: (direction: 1 | -1) => void;
   setAlign: (align: TextAlign) => void;
+  /** Rotate the whole selection about its shared centre, in radians. */
+  rotate: (angleDelta: number) => void;
   /** Enter inline editing on the single selected text box. */
   editText: () => void;
   remove: () => void;
@@ -83,6 +88,12 @@ interface ToolState {
   setEditingTextId: (id: string | null) => void;
 
   tool: Tool;
+  /**
+   * Edit or View. Kept separate from `tool` on purpose: View is an
+   * application mode that outranks whichever tool happens to be selected.
+   */
+  canvasMode: CanvasMode;
+  lassoFilter: LassoFilter;
   color: string;
   colorExplicit: boolean;
   width: number;
@@ -104,6 +115,8 @@ interface ToolState {
   canRedo: boolean;
 
   setTool: (tool: Tool) => void;
+  setCanvasMode: (mode: CanvasMode) => void;
+  toggleLassoFilter: (key: keyof LassoFilter) => void;
   setColor: (color: string) => void;
   setWidth: (width: number) => void;
   setTextColor: (color: string) => void;
@@ -135,6 +148,8 @@ function persistPrefs(get: () => ToolState) {
       textFont: s.textFont,
       textFontSize: s.textFontSize,
       textAlign: s.textAlign,
+      canvasMode: s.canvasMode,
+      lassoFilter: s.lassoFilter,
     });
   }, 200);
 }
@@ -148,6 +163,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setEditingTextId: (editingTextId) => set({ editingTextId }),
 
   tool: "pen",
+  canvasMode: "edit",
+  lassoFilter: DEFAULT_LASSO_FILTER,
   color: "#1b1b1f",
   colorExplicit: false,
   width: 3,
@@ -168,6 +185,24 @@ export const useToolStore = create<ToolState>((set, get) => ({
 
   setTool: (tool) => {
     set({ tool, selectedObjectId: tool === "pan" ? get().selectedObjectId : null });
+    persistPrefs(get);
+  },
+  setCanvasMode: (canvasMode) => {
+    if (get().canvasMode === canvasMode) return;
+    // Entering View mode drops the selection and any open editor; the canvas
+    // itself does that (see CanvasViewport), and the viewport is left alone.
+    set({ canvasMode, selection: canvasMode === "view" ? null : get().selection });
+    persistPrefs(get);
+  },
+  /**
+   * Toggling every type off would make the lasso useless, so the last
+   * remaining type stays on rather than silently selecting nothing.
+   */
+  toggleLassoFilter: (key) => {
+    const current = get().lassoFilter;
+    const next = { ...current, [key]: !current[key] };
+    if (!next.ink && !next.text && !next.images) return;
+    set({ lassoFilter: next });
     persistPrefs(get);
   },
   setColor: (color) => {
@@ -234,6 +269,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
       textFont: prefs.textFont,
       textFontSize: prefs.textFontSize,
       textAlign: prefs.textAlign,
+      canvasMode: prefs.canvasMode,
+      lassoFilter: prefs.lassoFilter,
     });
   },
 }));

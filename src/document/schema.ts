@@ -8,6 +8,26 @@
 
 export type Tool = "pan" | "pen" | "pencil" | "eraser" | "lasso" | "text";
 
+/**
+ * Whether the board can be edited at all.
+ *
+ * This is deliberately *not* a tool: View mode outranks the tool, so a pen
+ * that is still selected simply cannot draw until Edit mode comes back. It is
+ * a local user preference and never enters the CRDT.
+ */
+export type CanvasMode = "edit" | "view";
+
+/** Which object types the lasso is allowed to pick up. Local, never synced. */
+export interface LassoFilter {
+  /** Pen and pencil strokes. */
+  ink: boolean;
+  text: boolean;
+  /** Imported images and PDF page images. */
+  images: boolean;
+}
+
+export const DEFAULT_LASSO_FILTER: LassoFilter = { ink: true, text: true, images: true };
+
 export const MIN_STROKE_WIDTH = 0.5;
 export const MAX_STROKE_WIDTH = 40;
 
@@ -47,6 +67,7 @@ export interface PDFPageObject {
   y: number;
   width: number;
   height: number;
+  /** Radians, clockwise on screen, about the page's centre. */
   rotation: number;
   createdAt: number;
 }
@@ -93,6 +114,8 @@ export interface TextObject {
   fontSize: number;
   color: string;
   textAlign?: TextAlign;
+  /** Radians, clockwise on screen, about the box's centre. */
+  rotation?: number;
   createdAt: number;
   updatedAt: number;
   createdBy?: string;
@@ -101,11 +124,12 @@ export interface TextObject {
 export type CanvasObject = StrokeObject | PDFPageObject | TextObject;
 
 /**
- * What the lasso and the contextual toolbar can act on. PDF pages are
- * deliberately excluded: pages are managed with the hand tool, and a lasso
- * over an annotated page should pick up the annotations, not the page.
+ * What the lasso and the contextual toolbar can act on: everything on the
+ * board. Which of those types a given lasso actually picks up is decided by
+ * the user's LassoFilter, not by the type system, so a new object type only
+ * has to teach canvas/transform.ts about its geometry to become selectable.
  */
-export type SelectableCanvasObject = StrokeObject | TextObject;
+export type SelectableCanvasObject = CanvasObject;
 
 export type PDFLayout = "vertical" | "horizontal";
 

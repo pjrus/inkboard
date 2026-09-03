@@ -207,6 +207,31 @@ describe("PDF export", () => {
     expect(result.bytes.byteLength).toBeLessThan(400_000);
   });
 
+  it("exports rotated objects at the orientation the canvas shows", async () => {
+    const objects = await buildBoard();
+    const doc = new CanvasDocument();
+    // Rebuild the board in a document so the real rotate command is used.
+    for (const o of objects) {
+      if (o.type === "stroke") doc.addStroke(o);
+      else if (o.type === "text") doc.addText(o);
+    }
+    const pageObj = objects.find((o) => o.type === "pdf-page")!;
+    doc.addPDFDocument({ id: "doc", fileName: "lecture.pdf", pageCount: 1, layout: "vertical", createdAt: 1 }, [
+      pageObj as never,
+    ]);
+    const ids = doc.getAll().map((o) => o.id);
+    doc.rotateObjects(ids, Math.PI / 2, { x: 306, y: 396 });
+
+    const result = await exportToPDF({ objects: doc.getAll(), boardName: "Rotated", layout: "pdf-pages" });
+    const pages = await readBack(result.bytes);
+    // A quarter-turned page exports landscape: its transform is respected
+    // rather than ignored and clipped back to portrait.
+    expect(pages[0].size[0]).toBeCloseTo(792, 0);
+    expect(pages[0].size[1]).toBeCloseTo(612, 0);
+    // Rotated text is still real, searchable text, wrapped as it was.
+    expect(pages.map((p) => p.text).join(" ")).toContain("Annotation over the imported page");
+  });
+
   it("refuses to export an empty board with a readable message", async () => {
     await expect(exportToPDF({ objects: [], boardName: "Empty", layout: "fit" })).rejects.toThrow(/nothing on this board/i);
   });

@@ -1,18 +1,18 @@
 import type { Bounds, CanvasObject } from "../document/schema";
-import { textBounds } from "../text/textMeasure";
+import { transformedBounds } from "../canvas/transform";
 
 /** Breathing room around exported content, in world units. */
 export const EXPORT_PADDING = 40;
 
 /**
- * World-space extent of any persistent object. Text boxes get their bounds
- * from the same layout module the canvas draws with, so an exported page
- * frames text exactly as the screen did.
+ * World-space extent of any persistent object, rotation included.
+ *
+ * This is the same `transformedBounds` the canvas culls and selects with, so
+ * an exported page frames a rotated object by the space it actually occupies
+ * rather than the rectangle it started in.
  */
 export function objectBounds(o: CanvasObject): Bounds {
-  if (o.type === "stroke") return o.bounds;
-  if (o.type === "text") return textBounds(o);
-  return { minX: o.x, minY: o.y, maxX: o.x + o.width, maxY: o.y + o.height };
+  return transformedBounds(o);
 }
 
 export function unionBounds(list: Bounds[]): Bounds | null {

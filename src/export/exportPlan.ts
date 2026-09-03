@@ -92,15 +92,20 @@ export function planPDFPages(objects: CanvasObject[], padding = EXPORT_PADDING):
   if (pdfPages.length === 0) return planFitPages(objects, padding);
   pdfPages.sort((a, b) => a.createdAt - b.createdAt || a.pageNumber - b.pageNumber);
 
-  const pages: PageGeometry[] = pdfPages.map((p, i) => ({
-    source: { minX: p.x, minY: p.y, maxX: p.x + p.width, maxY: p.y + p.height },
-    pageWidth: p.width,
-    pageHeight: p.height,
-    scale: 1,
-    marginX: 0,
-    marginY: 0,
-    label: `Page ${i + 1} of ${pdfPages.length}`,
-  }));
+  // A rotated page gets an output page the size of the space it now occupies,
+  // so turning a page 90 degrees exports it landscape rather than clipped.
+  const pages: PageGeometry[] = pdfPages.map((p, i) => {
+    const b = objectBounds(p);
+    return {
+      source: b,
+      pageWidth: boundsWidth(b),
+      pageHeight: boundsHeight(b),
+      scale: 1,
+      marginX: 0,
+      marginY: 0,
+      label: `Page ${i + 1} of ${pdfPages.length}`,
+    };
+  });
 
   const pageRects = pages.map((g) => g.source);
   const strays = objects.filter((o) => o.type !== "pdf-page" && !pageRects.some((r) => overlaps(objectBounds(o), r)));

@@ -1,13 +1,30 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import type { CanvasDocument } from "../document/crdt";
-import { TEXT_LINE_HEIGHT, type Viewport } from "../document/schema";
+import { TEXT_LINE_HEIGHT, type TextObject, type Viewport } from "../document/schema";
 import { fontStack } from "../text/fonts";
 import { textHeight } from "../text/textMeasure";
 import type { CanvasRenderer } from "./CanvasRenderer";
+import { objectCenter, rotatePoint } from "./transform";
 
 /** How long after opening a stray blur is treated as the browser, not the user. */
 const FOCUS_GRACE_MS = 250;
+
+/**
+ * CSS transform placing the editor over its world-space box.
+ *
+ * A rotated box keeps its rotation while it is being edited: the textarea is
+ * turned by the same angle, so wrapping, font and size are preserved and the
+ * caret lands where the glyphs are. Rotation is never reset by editing.
+ */
+function hostTransform(o: TextObject, vp: Viewport): string {
+  const angle = o.rotation ?? 0;
+  // The element's own origin is its top-left, so the *rotated* position of
+  // that corner is where it has to sit before the box is turned.
+  const corner = angle === 0 ? { x: o.x, y: o.y } : rotatePoint({ x: o.x, y: o.y }, objectCenter(o), angle);
+  const t = `translate(${corner.x * vp.scale + vp.x}px, ${corner.y * vp.scale + vp.y}px) scale(${vp.scale})`;
+  return angle === 0 ? t : `${t} rotate(${angle}rad)`;
+}
 
 interface Props {
   doc: CanvasDocument;
@@ -40,7 +57,7 @@ export function TextEditorOverlay({ doc, renderer, objectId, onFinish }: Props) 
       const host = hostRef.current;
       const o = doc.get(objectId);
       if (!host || o?.type !== "text") return;
-      host.style.transform = `translate(${o.x * vp.scale + vp.x}px, ${o.y * vp.scale + vp.y}px) scale(${vp.scale})`;
+      host.style.transform = hostTransform(o, vp);
     };
     apply(renderer.getViewport());
     return renderer.onViewportChanged(apply);
@@ -91,9 +108,7 @@ export function TextEditorOverlay({ doc, renderer, objectId, onFinish }: Props) 
     <div
       ref={hostRef}
       className="text-editor-host"
-      style={{
-        transform: `translate(${object.x * vp.scale + vp.x}px, ${object.y * vp.scale + vp.y}px) scale(${vp.scale})`,
-      }}
+      style={{ transform: hostTransform(object, vp) }}
     >
       <textarea
         ref={areaRef}
