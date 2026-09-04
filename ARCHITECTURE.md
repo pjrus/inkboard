@@ -33,4 +33,3 @@ src/
 
 The document is already a CRDT, so collaboration would only need a WebRTC/WebSocket layer exchanging Yjs
 updates plus the assets they reference. No such layer exists yet.
-

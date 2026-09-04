@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import fontkit from "@pdf-lib/fontkit";
 import { describe, expect, it } from "vitest";
-import { canvasFont, DEFAULT_FONT, FONTS, fontStack, getFont } from "../../text/fonts";
+import {
+  canvasFont,
+  DEFAULT_FONT,
+  FONTS,
+  fontStack,
+  getFont,
+} from "../../text/fonts";
 
 /**
  * The registry bakes in each family's vertical metrics so the canvas and the
