@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lassoSelectsBox } from "./strokeGeometry";
+import { lassoSelectsBox } from "../../canvas/strokeGeometry";
 
 const square = [
   { x: 0, y: 0 },

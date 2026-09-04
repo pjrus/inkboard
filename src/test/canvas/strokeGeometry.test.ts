@@ -5,7 +5,7 @@ import {
   strokeHitTest,
   strokeOutline,
   strokeSegmentHitTest,
-} from "./strokeGeometry";
+} from "../../canvas/strokeGeometry";
 
 describe("stroke geometry", () => {
   const line = [

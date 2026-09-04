@@ -9,7 +9,7 @@ import {
   worldToScreen,
   zoomAt,
   zoomBy,
-} from "./coordinates";
+} from "../../canvas/coordinates";
 
 describe("coordinate transforms", () => {
   const vp = { x: 100, y: -50, scale: 2 };

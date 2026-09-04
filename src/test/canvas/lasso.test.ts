@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { screenToWorld } from "./coordinates";
+import { screenToWorld } from "../../canvas/coordinates";
 import {
   lassoSelectsStroke,
   pointInPolygon,
   polygonBounds,
-} from "./strokeGeometry";
+} from "../../canvas/strokeGeometry";
 
 const square = [
   { x: 0, y: 0 },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { CanvasDocument } from "./crdt";
+import { CanvasDocument } from "../../document/crdt";
 
 const strokeInput = (x: number) => ({
   tool: "pen" as const,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutPages } from "./PDFLayoutEngine";
+import { layoutPages } from "../../pdf/PDFLayoutEngine";
 
 const sizes = [
   { width: 612, height: 792 },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { CanvasDocument } from "../document/crdt";
+import { CanvasDocument } from "../../document/crdt";
 import {
   DEFAULT_LASSO_FILTER,
   type CanvasObject,
@@ -8,7 +8,7 @@ import {
   type PDFPageObject,
   type StrokeObject,
   type TextObject,
-} from "../document/schema";
+} from "../../document/schema";
 import {
   lassoHits,
   matchesLassoFilter,
@@ -19,7 +19,7 @@ import {
   snapAngle,
   toDegrees,
   transformedBounds,
-} from "./transform";
+} from "../../canvas/transform";
 
 const HALF_TURN = Math.PI;
 const QUARTER = Math.PI / 2;

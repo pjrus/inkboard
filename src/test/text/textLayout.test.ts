@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { TEXT_LINE_HEIGHT } from "../document/schema";
+import { TEXT_LINE_HEIGHT } from "../../document/schema";
 import {
   firstBaseline,
   layoutText,
   lineHeightFor,
   wrapLines,
-} from "./textLayout";
-import { getFont } from "./fonts";
+} from "../../text/textLayout";
+import { getFont } from "../../text/fonts";
 
 /** A predictable measurer: every character is half the font size wide. */
 const measure = (size: number) => (t: string) => t.length * size * 0.5;
