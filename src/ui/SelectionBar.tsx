@@ -28,7 +28,9 @@ export function SelectionBar() {
   const strokes = selection.strokeIds.length;
   const texts = selection.textIds.length;
   const images = selection.imageIds.length;
-  const kinds = [strokes && "ink", texts && "text", images && "images"].filter(Boolean).length;
+  const kinds = [strokes && "ink", texts && "text", images && "images"].filter(
+    Boolean,
+  ).length;
   const what =
     kinds > 1
       ? `${n} items`
@@ -43,37 +45,70 @@ export function SelectionBar() {
       <span className="selection-title">{what} selected</span>
       {strokes > 0 && (
         <div className="stepper" role="group" aria-label="Thickness">
-          <button type="button" aria-label="Thinner ([)" title="Thinner ([)" onClick={() => commands.adjustWidth(-1)}>
+          <button
+            type="button"
+            aria-label="Thinner ([)"
+            title="Thinner ([)"
+            onClick={() => commands.adjustWidth(-1)}
+          >
             &minus;
           </button>
           <span className="stepper-value" aria-live="polite">
             {mixed ? "Mixed" : formatWidth(value ?? 0)}
           </span>
-          <button type="button" aria-label="Thicker (])" title="Thicker (])" onClick={() => commands.adjustWidth(1)}>
+          <button
+            type="button"
+            aria-label="Thicker (])"
+            title="Thicker (])"
+            onClick={() => commands.adjustWidth(1)}
+          >
             +
           </button>
         </div>
       )}
       <div className="stepper" role="group" aria-label="Rotate">
-        <button type="button" aria-label="Rotate 90° left" title="Rotate 90° left" onClick={() => commands.rotate(-QUARTER_TURN)}>
+        <button
+          type="button"
+          aria-label="Rotate 90° left"
+          title="Rotate 90° left"
+          onClick={() => commands.rotate(-QUARTER_TURN)}
+        >
           &#8630;
         </button>
         <span className="stepper-value stepper-icon" aria-hidden="true">
           <RotateIcon />
         </span>
-        <button type="button" aria-label="Rotate 90° right" title="Rotate 90° right" onClick={() => commands.rotate(QUARTER_TURN)}>
+        <button
+          type="button"
+          aria-label="Rotate 90° right"
+          title="Rotate 90° right"
+          onClick={() => commands.rotate(QUARTER_TURN)}
+        >
           &#8631;
         </button>
       </div>
       {texts === 1 && strokes === 0 && images === 0 && (
-        <button type="button" className="btn btn-sm" onClick={() => commands.editText()}>
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => commands.editText()}
+        >
           Edit text
         </button>
       )}
-      <button type="button" className="btn btn-sm btn-danger" onClick={() => commands.remove()}>
+      <button
+        type="button"
+        className="btn btn-sm btn-danger"
+        onClick={() => commands.remove()}
+      >
         Delete
       </button>
-      <button type="button" className="btn btn-sm btn-ghost" aria-label="Deselect (Esc)" onClick={() => commands.clear()}>
+      <button
+        type="button"
+        className="btn btn-sm btn-ghost"
+        aria-label="Deselect (Esc)"
+        onClick={() => commands.clear()}
+      >
         &#10005;
       </button>
     </div>

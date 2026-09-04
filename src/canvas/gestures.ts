@@ -38,7 +38,9 @@ export function beginPinch(a: Point, b: Point, viewport: Viewport): PinchStart {
 export function updatePinch(start: PinchStart, a: Point, b: Point): Viewport {
   const currentDistance = Math.max(distance(a, b), 1);
   const currentCenter = midpoint(a, b);
-  const scale = clampScale(start.startViewport.scale * (currentDistance / start.startDistance));
+  const scale = clampScale(
+    start.startViewport.scale * (currentDistance / start.startDistance),
+  );
   const anchorWorld = screenToWorld(start.startCenter, start.startViewport);
   return {
     scale,

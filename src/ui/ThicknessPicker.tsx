@@ -13,13 +13,15 @@ export function ThicknessPicker() {
   const [open, setOpen] = useState(false);
   // Thickness only means something for handwriting: a text-only selection
   // falls back to configuring the pen.
-  const selection = rawSelection && rawSelection.strokeIds.length > 0 ? rawSelection : null;
+  const selection =
+    rawSelection && rawSelection.strokeIds.length > 0 ? rawSelection : null;
   const wSummary = selection ? summarise(selection.widths) : null;
   const cSummary = selection ? summarise(selection.colors) : null;
   const mixed = wSummary?.mixed ?? false;
   const width = wSummary ? (wSummary.value ?? penWidth) : penWidth;
   const color = cSummary ? (cSummary.value ?? "#1b1b1f") : penColor;
-  const setWidth = (w: number) => (selection && commands ? commands.setWidth(w) : setPenWidth(w));
+  const setWidth = (w: number) =>
+    selection && commands ? commands.setWidth(w) : setPenWidth(w);
   const current = THICKNESS_PRESETS.find((p) => p.value === width);
   const label = selection ? "Selection thickness" : "Thickness";
   return (
@@ -36,11 +38,22 @@ export function ThicknessPicker() {
         {mixed ? (
           <span className="thickness-mixed">Mixed</span>
         ) : (
-          <span className="thickness-dot" style={{ width: Math.min(18, 4 + width * 1.2), height: Math.min(18, 4 + width * 1.2), background: color }} />
+          <span
+            className="thickness-dot"
+            style={{
+              width: Math.min(18, 4 + width * 1.2),
+              height: Math.min(18, 4 + width * 1.2),
+              background: color,
+            }}
+          />
         )}
         <ChevronIcon />
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} label="Choose thickness">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        label="Choose thickness"
+      >
         {mixed && <div className="popover-hint">Mixed thicknesses</div>}
         <div className="thickness-list" role="radiogroup" aria-label={label}>
           {THICKNESS_PRESETS.map((p) => {
@@ -58,7 +71,12 @@ export function ThicknessPicker() {
                 }}
               >
                 <span className="thickness-preview">
-                  <span style={{ height: Math.max(1, p.value * 1.3), background: color }} />
+                  <span
+                    style={{
+                      height: Math.max(1, p.value * 1.3),
+                      background: color,
+                    }}
+                  />
                 </span>
                 <span className="thickness-name">{p.name}</span>
               </button>

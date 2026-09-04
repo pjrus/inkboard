@@ -44,7 +44,10 @@ export class DocumentPersistence {
 
   /** Load all persisted updates into the document. */
   async load(): Promise<{ updateCount: number }> {
-    const rows = await getDB().updates.where("boardId").equals(this.boardId).toArray();
+    const rows = await getDB()
+      .updates.where("boardId")
+      .equals(this.boardId)
+      .toArray();
     rows.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
     let applied = 0;
     for (const row of rows) {
@@ -96,11 +99,18 @@ export class DocumentPersistence {
       try {
         const db = getDB();
         await db.transaction("rw", db.updates, db.boards, async () => {
-          await db.updates.add({ boardId: this.boardId, update: merged, createdAt: Date.now() });
+          await db.updates.add({
+            boardId: this.boardId,
+            update: merged,
+            createdAt: Date.now(),
+          });
           await db.boards.update(this.boardId, { updatedAt: Date.now() });
         });
         if (this.queue.length === 0) this.setStatus("saved");
-        const count = await db.updates.where("boardId").equals(this.boardId).count();
+        const count = await db.updates
+          .where("boardId")
+          .equals(this.boardId)
+          .count();
         if (count > COMPACT_THRESHOLD) await this.compact();
       } catch (err) {
         console.error("Failed to persist CRDT update", err);
@@ -119,12 +129,19 @@ export class DocumentPersistence {
   async compact(): Promise<void> {
     const db = getDB();
     await db.transaction("rw", db.updates, async () => {
-      const rows = await db.updates.where("boardId").equals(this.boardId).toArray();
+      const rows = await db.updates
+        .where("boardId")
+        .equals(this.boardId)
+        .toArray();
       if (rows.length < 2) return;
       rows.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
       const merged = Y.mergeUpdates(rows.map((r) => r.update));
       await db.updates.bulkDelete(rows.map((r) => r.id!));
-      await db.updates.add({ boardId: this.boardId, update: merged, createdAt: Date.now() });
+      await db.updates.add({
+        boardId: this.boardId,
+        update: merged,
+        createdAt: Date.now(),
+      });
     });
   }
 

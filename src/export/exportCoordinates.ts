@@ -60,7 +60,12 @@ export function svgAnchor(g: PageGeometry): Point2 {
 }
 
 /** The page's drawable content rectangle, in PDF space. */
-export function contentRect(g: PageGeometry): { x: number; y: number; width: number; height: number } {
+export function contentRect(g: PageGeometry): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} {
   const width = (g.source.maxX - g.source.minX) * g.scale;
   const height = (g.source.maxY - g.source.minY) * g.scale;
   return { x: g.marginX, y: g.pageHeight - g.marginY - height, width, height };

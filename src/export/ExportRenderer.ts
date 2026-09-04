@@ -22,13 +22,24 @@ import {
   type TextObject,
 } from "../document/schema";
 import { strokeOutline } from "../canvas/strokeGeometry";
-import { objectCenter, rotatePoint, transformedBounds } from "../canvas/transform";
+import {
+  objectCenter,
+  rotatePoint,
+  transformedBounds,
+} from "../canvas/transform";
 import { getFont } from "../text/fonts";
 import { loadFontBytes } from "../text/fontLoader";
 import { layoutText } from "../text/textLayout";
 import { getAsset } from "../storage/assetRepository";
 import { overlaps } from "./exportBounds";
-import { contentX, contentY, contentRect, svgAnchor, toPdf, type PageGeometry } from "./exportCoordinates";
+import {
+  contentX,
+  contentY,
+  contentRect,
+  svgAnchor,
+  toPdf,
+  type PageGeometry,
+} from "./exportCoordinates";
 
 /**
  * Draws persistent canvas objects onto a PDF page.
@@ -55,7 +66,9 @@ export class ExportResources {
     // Subsetting keeps a four-font export in the tens of kilobytes; the bytes
     // are the same self-hosted files the canvas renders with, so the exported
     // PDF looks right on a machine that has none of these fonts installed.
-    const font = await this.pdf.embedFont(await loadFontBytes(key), { subset: true });
+    const font = await this.pdf.embedFont(await loadFontBytes(key), {
+      subset: true,
+    });
     this.fonts.set(key, font);
     return font;
   }
@@ -68,7 +81,10 @@ export class ExportResources {
       const rec = await getAsset(assetId);
       if (rec) {
         const bytes = new Uint8Array(await rec.blob.arrayBuffer());
-        image = rec.mimeType === "image/png" ? await this.pdf.embedPng(bytes) : await this.pdf.embedJpg(bytes);
+        image =
+          rec.mimeType === "image/png"
+            ? await this.pdf.embedPng(bytes)
+            : await this.pdf.embedJpg(bytes);
       }
     } catch (err) {
       console.error("Could not embed page image", assetId, err);
@@ -79,7 +95,10 @@ export class ExportResources {
 }
 
 /** Objects that touch this page's world rectangle, in draw order. */
-export function objectsOnPage(objects: CanvasObject[], geometry: PageGeometry): CanvasObject[] {
+export function objectsOnPage(
+  objects: CanvasObject[],
+  geometry: PageGeometry,
+): CanvasObject[] {
   const order = { "pdf-page": 0, stroke: 1, text: 2 } as const;
   return objects
     .filter((o) => overlaps(transformedBounds(o), geometry.source))
@@ -106,7 +125,8 @@ export async function renderPage(
   );
 
   for (const object of objectsOnPage(objects, geometry)) {
-    if (object.type === "pdf-page") await drawPDFPage(page, object, geometry, resources);
+    if (object.type === "pdf-page")
+      await drawPDFPage(page, object, geometry, resources);
     else if (object.type === "stroke") drawStroke(page, object, geometry);
     else await drawText(page, object, geometry, resources);
   }
@@ -124,14 +144,23 @@ function pdfRotation(radians: number) {
   return degrees((-radians * 180) / Math.PI);
 }
 
-async function drawPDFPage(page: PDFPage, obj: PDFPageObject, g: PageGeometry, resources: ExportResources) {
+async function drawPDFPage(
+  page: PDFPage,
+  obj: PDFPageObject,
+  g: PageGeometry,
+  resources: ExportResources,
+) {
   const image = await resources.image(obj.assetId);
   if (!image) return;
   const angle = obj.rotation ?? 0;
   // drawImage anchors at the image's bottom-left corner and rotates about it,
   // so the corner is rotated into place first and the angle applied there.
   // The stored bitmap is never re-rendered: rotation is purely a transform.
-  const corner = rotatePoint({ x: obj.x, y: obj.y + obj.height }, objectCenter(obj), angle);
+  const corner = rotatePoint(
+    { x: obj.x, y: obj.y + obj.height },
+    objectCenter(obj),
+    angle,
+  );
   const bottomLeft = toPdf(g, corner.x, corner.y);
   page.drawImage(image, {
     x: bottomLeft.x,
@@ -144,7 +173,12 @@ async function drawPDFPage(page: PDFPage, obj: PDFPageObject, g: PageGeometry, r
 
 function drawStroke(page: PDFPage, stroke: StrokeObject, g: PageGeometry) {
   const points = unpackPoints(stroke.points);
-  const outline = strokeOutline(points, stroke.tool, stroke.width, stroke.tool === "pen" && hasVaryingPressure(points));
+  const outline = strokeOutline(
+    points,
+    stroke.tool,
+    stroke.width,
+    stroke.tool === "pen" && hasVaryingPressure(points),
+  );
   if (outline.length < 3) return;
   const anchor = svgAnchor(g);
   page.drawSvgPath(outlineToSvgPath(outline, g), {
@@ -158,7 +192,12 @@ function drawStroke(page: PDFPage, stroke: StrokeObject, g: PageGeometry) {
   });
 }
 
-async function drawText(page: PDFPage, text: TextObject, g: PageGeometry, resources: ExportResources) {
+async function drawText(
+  page: PDFPage,
+  text: TextObject,
+  g: PageGeometry,
+  resources: ExportResources,
+) {
   if (text.text === "") return;
   const font = await resources.font(text.fontFamily);
   const size = text.fontSize * g.scale;
@@ -166,7 +205,16 @@ async function drawText(page: PDFPage, text: TextObject, g: PageGeometry, resour
   // Wrapping uses the embedded font's own metrics, running the same algorithm
   // the canvas uses, so exported lines break where the screen broke them.
   const measure = (t: string) => safeWidth(font, t, size);
-  const layout = layoutText(text.text, { width, fontSize: size, fontFamily: text.fontFamily, align: text.textAlign }, measure);
+  const layout = layoutText(
+    text.text,
+    {
+      width,
+      fontSize: size,
+      fontFamily: text.fontFamily,
+      align: text.textAlign,
+    },
+    measure,
+  );
   const left = contentX(g, text.x);
   const top = contentY(g, text.y);
   const color = pdfColor(text.color);
@@ -178,7 +226,11 @@ async function drawText(page: PDFPage, text: TextObject, g: PageGeometry, resour
   const pivot = { x: contentX(g, centre.x), y: contentY(g, centre.y) };
   for (const line of layout.lines) {
     if (line.text === "") continue;
-    const anchor = rotatePoint({ x: left + line.x, y: top + line.baseline }, pivot, angle);
+    const anchor = rotatePoint(
+      { x: left + line.x, y: top + line.baseline },
+      pivot,
+      angle,
+    );
     page.drawText(safeText(font, line.text), {
       x: anchor.x,
       y: g.pageHeight - anchor.y,
@@ -193,7 +245,8 @@ async function drawText(page: PDFPage, text: TextObject, g: PageGeometry, resour
 function hasVaryingPressure(pts: StrokePoint[]): boolean {
   if (pts.length < 2) return false;
   const first = pts[0].pressure ?? 0.5;
-  for (const p of pts) if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
+  for (const p of pts)
+    if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
   return false;
 }
 
@@ -208,7 +261,9 @@ function outlineToSvgPath(outline: number[][], g: PageGeometry): string {
   for (let i = 1; i < outline.length; i++) {
     const [x1, y1] = outline[i];
     const [x2, y2] = outline[(i + 1) % outline.length];
-    parts.push(`Q ${px(x1)} ${py(y1)} ${px((x1 + x2) / 2)} ${py((y1 + y2) / 2)}`);
+    parts.push(
+      `Q ${px(x1)} ${py(y1)} ${px((x1 + x2) / 2)} ${py((y1 + y2) / 2)}`,
+    );
   }
   parts.push("Z");
   return parts.join(" ");
@@ -236,7 +291,9 @@ function safeWidth(font: PDFFont, text: string, size: number): number {
 /** #rgb / #rrggbb / rgb() to a pdf-lib colour. Unknown formats render black. */
 export function pdfColor(css: string) {
   const c = css.trim();
-  let r = 0, gr = 0, b = 0;
+  let r = 0,
+    gr = 0,
+    b = 0;
   if (/^#[0-9a-f]{3}$/i.test(c)) {
     r = parseInt(c[1] + c[1], 16);
     gr = parseInt(c[2] + c[2], 16);

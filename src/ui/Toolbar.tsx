@@ -9,7 +9,17 @@ import { TextAlignmentControls } from "./TextAlignmentControls";
 import { ThicknessPicker } from "./ThicknessPicker";
 import { LassoFilterControls } from "./LassoFilterControls";
 import { ModeSwitch } from "./ModeSwitch";
-import { EraserIcon, HandIcon, LassoIcon, PdfIcon, PenIcon, PencilIcon, RedoIcon, TextIcon, UndoIcon } from "./icons";
+import {
+  EraserIcon,
+  HandIcon,
+  LassoIcon,
+  PdfIcon,
+  PenIcon,
+  PencilIcon,
+  RedoIcon,
+  TextIcon,
+  UndoIcon,
+} from "./icons";
 
 interface Props {
   onInsertPDF: (file: File) => void;
@@ -18,7 +28,12 @@ interface Props {
   onExportPDF: () => void;
 }
 
-const TOOLS: { tool: Tool; label: string; key: string; icon: () => JSX.Element }[] = [
+const TOOLS: {
+  tool: Tool;
+  label: string;
+  key: string;
+  icon: () => JSX.Element;
+}[] = [
   { tool: "pan", label: "Hand", key: "H", icon: HandIcon },
   { tool: "pen", label: "Pen", key: "P", icon: PenIcon },
   { tool: "pencil", label: "Pencil", key: "N", icon: PencilIcon },
@@ -64,8 +79,12 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
   // for a text-only selection: a font picker over a selection that includes
   // handwriting would be offering something it cannot change.
   const hasSelection = selection !== null;
-  const showStrokeControls = hasSelection ? selection.strokeIds.length > 0 : tool !== "text";
-  const showTextControls = hasSelection ? selection.textIds.length > 0 && selection.strokeIds.length === 0 : tool === "text";
+  const showStrokeControls = hasSelection
+    ? selection.strokeIds.length > 0
+    : tool !== "text";
+  const showTextControls = hasSelection
+    ? selection.textIds.length > 0 && selection.strokeIds.length === 0
+    : tool === "text";
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Drawing tools">
@@ -94,7 +113,10 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
         </>
       )}
       <span className="tb-sep" />
-      <div className={"tb-group" + (hasSelection ? " tb-group-selection" : "")} title={hasSelection ? "Editing the selection" : undefined}>
+      <div
+        className={"tb-group" + (hasSelection ? " tb-group-selection" : "")}
+        title={hasSelection ? "Editing the selection" : undefined}
+      >
         {hasSelection && <span className="tb-badge">Selection</span>}
         <ColourPicker />
         {showStrokeControls && <ThicknessPicker />}
@@ -104,16 +126,35 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
       </div>
       <span className="tb-sep" />
       <div className="tb-group">
-        <button type="button" className="tb-btn" aria-label="Undo (Cmd+Z)" title="Undo (Cmd+Z)" disabled={!canUndo} onClick={onUndo}>
+        <button
+          type="button"
+          className="tb-btn"
+          aria-label="Undo (Cmd+Z)"
+          title="Undo (Cmd+Z)"
+          disabled={!canUndo}
+          onClick={onUndo}
+        >
           <UndoIcon />
         </button>
-        <button type="button" className="tb-btn" aria-label="Redo (Cmd+Shift+Z)" title="Redo (Cmd+Shift+Z)" disabled={!canRedo} onClick={onRedo}>
+        <button
+          type="button"
+          className="tb-btn"
+          aria-label="Redo (Cmd+Shift+Z)"
+          title="Redo (Cmd+Shift+Z)"
+          disabled={!canRedo}
+          onClick={onRedo}
+        >
           <RedoIcon />
         </button>
       </div>
       <span className="tb-sep" />
       <div className="tb-group">
-        <button type="button" className="tb-btn tb-btn-text" title="Insert PDF" onClick={() => fileRef.current?.click()}>
+        <button
+          type="button"
+          className="tb-btn tb-btn-text"
+          title="Insert PDF"
+          onClick={() => fileRef.current?.click()}
+        >
           <PdfIcon />
           <span>Insert PDF</span>
         </button>

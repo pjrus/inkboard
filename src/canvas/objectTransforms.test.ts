@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { CanvasDocument } from "../document/crdt";
-import { DEFAULT_LASSO_FILTER, type CanvasObject, type LassoFilter, type PDFPageObject, type StrokeObject, type TextObject } from "../document/schema";
+import {
+  DEFAULT_LASSO_FILTER,
+  type CanvasObject,
+  type LassoFilter,
+  type PDFPageObject,
+  type StrokeObject,
+  type TextObject,
+} from "../document/schema";
 import {
   lassoHits,
   matchesLassoFilter,
@@ -17,7 +24,8 @@ import {
 const HALF_TURN = Math.PI;
 const QUARTER = Math.PI / 2;
 
-const near = (a: number, b: number, tol = 1e-6) => expect(Math.abs(a - b)).toBeLessThan(tol);
+const near = (a: number, b: number, tol = 1e-6) =>
+  expect(Math.abs(a - b)).toBeLessThan(tol);
 
 const page = (x: number, y: number, rotation = 0): PDFPageObject => ({
   id: `p${x}-${y}`,
@@ -59,7 +67,12 @@ const stroke = (x0: number, x1: number, y: number, id = "s"): StrokeObject => {
     color: "#000",
     width: 2,
     points,
-    bounds: { minX: Math.min(x0, x1) - 2, minY: y - 2, maxX: Math.max(x0, x1) + 2, maxY: y + 2 },
+    bounds: {
+      minX: Math.min(x0, x1) - 2,
+      minY: y - 2,
+      maxX: Math.max(x0, x1) + 2,
+      maxY: y + 2,
+    },
     createdAt: 3,
   };
 };
@@ -74,7 +87,12 @@ const lasso = (minX: number, minY: number, maxX: number, maxY: number) => [
 describe("object transforms", () => {
   it("puts a rotated object's bounds where the object actually is", () => {
     const upright = page(0, 0);
-    expect(transformedBounds(upright)).toEqual({ minX: 0, minY: 0, maxX: 100, maxY: 200 });
+    expect(transformedBounds(upright)).toEqual({
+      minX: 0,
+      minY: 0,
+      maxX: 100,
+      maxY: 200,
+    });
     // A quarter turn swaps the extents about the unchanged centre (50, 100).
     const turned = transformedBounds(page(0, 0, QUARTER));
     near(turned.minX, -50);
@@ -108,7 +126,11 @@ describe("object transforms", () => {
 });
 
 describe("lasso filter", () => {
-  const objects: CanvasObject[] = [stroke(10, 90, 50), text(10, 10), page(0, 0)];
+  const objects: CanvasObject[] = [
+    stroke(10, 90, 50),
+    text(10, 10),
+    page(0, 0),
+  ];
   const all = lasso(-200, -200, 300, 400);
   const only = (f: Partial<LassoFilter>) =>
     lassoHits(objects, all, { ...DEFAULT_LASSO_FILTER, ...f })
@@ -133,7 +155,11 @@ describe("lasso filter", () => {
 
   it("classifies each object type exactly once", () => {
     const inkOnly: LassoFilter = { ink: true, text: false, images: false };
-    expect(objects.map((o) => matchesLassoFilter(o, inkOnly))).toEqual([true, false, false]);
+    expect(objects.map((o) => matchesLassoFilter(o, inkOnly))).toEqual([
+      true,
+      false,
+      false,
+    ]);
   });
 
   it("selects a rotated object by where it is now, not where it was", () => {
@@ -141,7 +167,9 @@ describe("lasso filter", () => {
     const overOldBox = lasso(10, 160, 90, 195); // inside the pre-rotation rect only
     const overNewBox = lasso(-60, 60, 160, 140); // over the rotated page
     expect(lassoHits([turned], overOldBox, DEFAULT_LASSO_FILTER)).toEqual([]);
-    expect(lassoHits([turned], overNewBox, DEFAULT_LASSO_FILTER)).toHaveLength(1);
+    expect(lassoHits([turned], overNewBox, DEFAULT_LASSO_FILTER)).toHaveLength(
+      1,
+    );
   });
 });
 
@@ -150,8 +178,25 @@ describe("moving and rotating a mixed selection", () => {
     const doc = new CanvasDocument();
     const a = doc.addStroke(stroke(0, 20, 0, "a"));
     const b = doc.addStroke(stroke(100, 120, 0, "b"));
-    const t = doc.addText({ x: 0, y: 100, width: 100, text: "hi", fontFamily: "open-sans", fontSize: 20, color: "#000" });
-    doc.addPDFDocument({ id: "doc", fileName: "f.pdf", pageCount: 1, layout: "vertical", createdAt: 1 }, [page(0, 300)]);
+    const t = doc.addText({
+      x: 0,
+      y: 100,
+      width: 100,
+      text: "hi",
+      fontFamily: "open-sans",
+      fontSize: 20,
+      color: "#000",
+    });
+    doc.addPDFDocument(
+      {
+        id: "doc",
+        fileName: "f.pdf",
+        pageCount: 1,
+        layout: "vertical",
+        createdAt: 1,
+      },
+      [page(0, 300)],
+    );
     const p = doc.getAll().find((o) => o.type === "pdf-page")!;
     return { doc, ids: [a.id, b.id, t.id, p.id] };
   }
@@ -170,7 +215,9 @@ describe("moving and rotating a mixed selection", () => {
     });
     doc.undo();
     // A single undo brings the whole mixed selection back together.
-    ids.forEach((id, i) => near(transformedBounds(doc.get(id)!).minX, before[i].minX));
+    ids.forEach((id, i) =>
+      near(transformedBounds(doc.get(id)!).minX, before[i].minX),
+    );
   });
 
   it("rotates a group about a shared centre, so the arrangement turns too", () => {
@@ -186,7 +233,15 @@ describe("moving and rotating a mixed selection", () => {
 
   it("gives a rotated object a new position and a new rotation", () => {
     const doc = new CanvasDocument();
-    const t = doc.addText({ x: 0, y: 0, width: 100, text: "hi", fontFamily: "open-sans", fontSize: 20, color: "#000" });
+    const t = doc.addText({
+      x: 0,
+      y: 0,
+      width: 100,
+      text: "hi",
+      fontFamily: "open-sans",
+      fontSize: 20,
+      color: "#000",
+    });
     const centre = objectCenter(doc.get(t.id)!);
     doc.rotateObjects([t.id], QUARTER, { x: 500, y: 0 });
     const after = doc.get(t.id) as TextObject;
@@ -204,7 +259,9 @@ describe("moving and rotating a mixed selection", () => {
     doc.rotateObjects(ids, Math.PI / 6, pivot);
     const rotated = ids.map((id) => transformedBounds(doc.get(id)!));
     doc.undo();
-    ids.forEach((id, i) => expect(transformedBounds(doc.get(id)!)).not.toEqual(rotated[i]));
+    ids.forEach((id, i) =>
+      expect(transformedBounds(doc.get(id)!)).not.toEqual(rotated[i]),
+    );
     doc.redo();
     ids.forEach((id, i) => {
       const now = transformedBounds(doc.get(id)!);
@@ -243,7 +300,11 @@ describe("moving and rotating a mixed selection", () => {
 });
 
 describe("lasso hit testing across object types", () => {
-  const bigPage = (): PDFPageObject => ({ ...page(0, 0), width: 4000, height: 4000 });
+  const bigPage = (): PDFPageObject => ({
+    ...page(0, 0),
+    width: 4000,
+    height: 4000,
+  });
 
   it("selects an image the lasso is drawn inside, which is the only gesture a huge page allows", () => {
     const loop = lasso(1000, 1000, 1200, 1200);
@@ -253,37 +314,68 @@ describe("lasso hit testing across object types", () => {
   it("leaves the page alone when the lasso is really around handwriting on top of it", () => {
     const ink = stroke(1000, 1100, 1100);
     const loop = lasso(980, 1080, 1120, 1120);
-    expect(lassoHits([bigPage(), ink], loop, DEFAULT_LASSO_FILTER).map((o) => o.id)).toEqual([ink.id]);
+    expect(
+      lassoHits([bigPage(), ink], loop, DEFAULT_LASSO_FILTER).map((o) => o.id),
+    ).toEqual([ink.id]);
   });
 
   it("still honours the filter on the containment fallback", () => {
     const loop = lasso(1000, 1000, 1200, 1200);
-    expect(lassoHits([bigPage()], loop, { ink: true, text: true, images: false })).toEqual([]);
+    expect(
+      lassoHits([bigPage()], loop, { ink: true, text: true, images: false }),
+    ).toEqual([]);
   });
 
   it("takes the smallest object when several contain the lasso", () => {
-    const small: PDFPageObject = { ...page(900, 900), id: "small", width: 600, height: 600 };
+    const small: PDFPageObject = {
+      ...page(900, 900),
+      id: "small",
+      width: 600,
+      height: 600,
+    };
     const loop = lasso(1000, 1000, 1100, 1100);
-    expect(lassoHits([bigPage(), small], loop, DEFAULT_LASSO_FILTER).map((o) => o.id)).toEqual(["small"]);
+    expect(
+      lassoHits([bigPage(), small], loop, DEFAULT_LASSO_FILTER).map(
+        (o) => o.id,
+      ),
+    ).toEqual(["small"]);
   });
 
   it("picks up overlapping objects of mixed types in one sweep", () => {
-    const objects: CanvasObject[] = [stroke(10, 90, 40), text(10, 10), page(0, 0)];
-    const hits = lassoHits(objects, lasso(-50, -50, 200, 300), DEFAULT_LASSO_FILTER);
-    expect(hits.map((o) => o.type).sort()).toEqual(["pdf-page", "stroke", "text"]);
+    const objects: CanvasObject[] = [
+      stroke(10, 90, 40),
+      text(10, 10),
+      page(0, 0),
+    ];
+    const hits = lassoHits(
+      objects,
+      lasso(-50, -50, 200, 300),
+      DEFAULT_LASSO_FILTER,
+    );
+    expect(hits.map((o) => o.type).sort()).toEqual([
+      "pdf-page",
+      "stroke",
+      "text",
+    ]);
   });
 
   it("selects a partially intersected object without needing it enclosed", () => {
     const t = text(0, 0); // 100 wide, starts at the origin
     // Lasso covering the left half of the box: past the halfway rule.
-    expect(lassoHits([t], lasso(-50, -50, 60, 100), DEFAULT_LASSO_FILTER)).toHaveLength(1);
+    expect(
+      lassoHits([t], lasso(-50, -50, 60, 100), DEFAULT_LASSO_FILTER),
+    ).toHaveLength(1);
     // Only a sliver of the right edge: not a selection.
-    expect(lassoHits([t], lasso(95, -50, 200, 100), DEFAULT_LASSO_FILTER)).toEqual([]);
+    expect(
+      lassoHits([t], lasso(95, -50, 200, 100), DEFAULT_LASSO_FILTER),
+    ).toEqual([]);
   });
 
   it("ignores an object that merely grazes the lasso boundary", () => {
     const t = text(100, 0);
-    expect(lassoHits([t], lasso(0, 0, 101, 100), DEFAULT_LASSO_FILTER)).toEqual([]);
+    expect(lassoHits([t], lasso(0, 0, 101, 100), DEFAULT_LASSO_FILTER)).toEqual(
+      [],
+    );
   });
 
   it("finds a rotated text box the lasso only partly covers", () => {
@@ -291,6 +383,17 @@ describe("lasso hit testing across object types", () => {
     const upright = transformedBounds(text(0, 0));
     const rotated = transformedBounds(turned);
     expect(rotated).not.toEqual(upright);
-    expect(lassoHits([turned], lasso(rotated.minX - 5, rotated.minY - 5, rotated.maxX + 5, rotated.maxY + 5), DEFAULT_LASSO_FILTER)).toHaveLength(1);
+    expect(
+      lassoHits(
+        [turned],
+        lasso(
+          rotated.minX - 5,
+          rotated.minY - 5,
+          rotated.maxX + 5,
+          rotated.maxY + 5,
+        ),
+        DEFAULT_LASSO_FILTER,
+      ),
+    ).toHaveLength(1);
   });
 });

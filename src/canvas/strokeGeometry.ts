@@ -6,7 +6,11 @@ import type { Bounds, PenTool, StrokePoint } from "../document/schema";
  * hit testing. All in world units. Pure functions so they can be unit-tested.
  */
 
-export function strokeOptions(tool: PenTool, width: number, hasPressure: boolean) {
+export function strokeOptions(
+  tool: PenTool,
+  width: number,
+  hasPressure: boolean,
+) {
   const base = {
     size: width,
     smoothing: 0.5,
@@ -22,13 +26,21 @@ export function strokeOptions(tool: PenTool, width: number, hasPressure: boolean
 }
 
 /** Outline polygon (world units) for a stroke. */
-export function strokeOutline(points: StrokePoint[], tool: PenTool, width: number, hasPressure: boolean): number[][] {
+export function strokeOutline(
+  points: StrokePoint[],
+  tool: PenTool,
+  width: number,
+  hasPressure: boolean,
+): number[][] {
   const input = points.map((p) => [p.x, p.y, p.pressure ?? 0.5]);
   return getStroke(input, strokeOptions(tool, width, hasPressure));
 }
 
 export function computeBounds(points: StrokePoint[], width: number): Bounds {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const p of points) {
     if (p.x < minX) minX = p.x;
     if (p.y < minY) minY = p.y;
@@ -37,7 +49,12 @@ export function computeBounds(points: StrokePoint[], width: number): Bounds {
   }
   if (!isFinite(minX)) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
   const pad = width;
-  return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+  return {
+    minX: minX - pad,
+    minY: minY - pad,
+    maxX: maxX + pad,
+    maxY: maxY + pad,
+  };
 }
 
 /**
@@ -45,7 +62,10 @@ export function computeBounds(points: StrokePoint[], width: number): Bounds {
  * kept deliberately small (a fraction of stroke width) so handwriting quality
  * is preserved while long slow strokes lose redundant samples.
  */
-export function simplifyPoints(points: StrokePoint[], epsilon: number): StrokePoint[] {
+export function simplifyPoints(
+  points: StrokePoint[],
+  epsilon: number,
+): StrokePoint[] {
   if (points.length < 3 || epsilon <= 0) return points;
   const keep = new Uint8Array(points.length);
   keep[0] = 1;
@@ -72,7 +92,11 @@ export function simplifyPoints(points: StrokePoint[], epsilon: number): StrokePo
   return out;
 }
 
-export function pointSegmentDistance(p: StrokePoint, a: StrokePoint, b: StrokePoint): number {
+export function pointSegmentDistance(
+  p: StrokePoint,
+  a: StrokePoint,
+  b: StrokePoint,
+): number {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const len2 = dx * dx + dy * dy;
@@ -87,11 +111,20 @@ export function pointSegmentDistance(p: StrokePoint, a: StrokePoint, b: StrokePo
 }
 
 /** True if the circle (centre, radius) touches the stroke polyline. */
-export function strokeHitTest(points: StrokePoint[], width: number, centre: StrokePoint, radius: number): boolean {
+export function strokeHitTest(
+  points: StrokePoint[],
+  width: number,
+  centre: StrokePoint,
+  radius: number,
+): boolean {
   const threshold = radius + width / 2;
-  if (points.length === 1) return Math.hypot(points[0].x - centre.x, points[0].y - centre.y) <= threshold;
+  if (points.length === 1)
+    return (
+      Math.hypot(points[0].x - centre.x, points[0].y - centre.y) <= threshold
+    );
   for (let i = 0; i + 1 < points.length; i++) {
-    if (pointSegmentDistance(centre, points[i], points[i + 1]) <= threshold) return true;
+    if (pointSegmentDistance(centre, points[i], points[i + 1]) <= threshold)
+      return true;
   }
   return false;
 }
@@ -105,7 +138,10 @@ export function strokeSegmentHitTest(
   radius: number,
 ): boolean {
   // Sample the eraser path so quick eraser swipes still catch thin strokes.
-  const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / Math.max(radius, 1)));
+  const steps = Math.max(
+    1,
+    Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / Math.max(radius, 1)),
+  );
   for (let s = 0; s <= steps; s++) {
     const t = s / steps;
     const c = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
@@ -117,7 +153,8 @@ export function strokeSegmentHitTest(
 /** Bounds from a flat [x,y,p,...] point array. */
 export function computeBoundsFlat(flat: number[], width: number): Bounds {
   const pts: StrokePoint[] = [];
-  for (let i = 0; i + 2 < flat.length; i += 3) pts.push({ x: flat[i], y: flat[i + 1] });
+  for (let i = 0; i + 2 < flat.length; i += 3)
+    pts.push({ x: flat[i], y: flat[i + 1] });
   return computeBounds(pts, width);
 }
 
@@ -132,13 +169,20 @@ export function pointInPolygon(p: XY, poly: XY[]): boolean {
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i];
     const b = poly[j];
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    if (
+      a.y > p.y !== b.y > p.y &&
+      p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x
+    )
+      inside = !inside;
   }
   return inside;
 }
 
 export function polygonBounds(poly: XY[]): Bounds {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const p of poly) {
     if (p.x < minX) minX = p.x;
     if (p.y < minY) minY = p.y;
@@ -166,15 +210,28 @@ export const LASSO_INSIDE_FRACTION = 0.4;
  * as inside if its centre is inside or within half the stroke width of the
  * polygon edge, so thick handwriting near the boundary still selects.
  */
-export function lassoSelectsStroke(points: StrokePoint[], width: number, poly: XY[], polyBounds?: Bounds): boolean {
+export function lassoSelectsStroke(
+  points: StrokePoint[],
+  width: number,
+  poly: XY[],
+  polyBounds?: Bounds,
+): boolean {
   if (poly.length < 3 || points.length === 0) return false;
   const pb = polyBounds ?? polygonBounds(poly);
   const half = width / 2;
   let inside = 0;
   for (const p of points) {
-    const nearBox = p.x >= pb.minX - half && p.x <= pb.maxX + half && p.y >= pb.minY - half && p.y <= pb.maxY + half;
+    const nearBox =
+      p.x >= pb.minX - half &&
+      p.x <= pb.maxX + half &&
+      p.y >= pb.minY - half &&
+      p.y <= pb.maxY + half;
     if (!nearBox) continue;
-    if (pointInPolygon(p, poly) || (half > 0 && distanceToPolygonEdge(p, poly) <= half)) inside++;
+    if (
+      pointInPolygon(p, poly) ||
+      (half > 0 && distanceToPolygonEdge(p, poly) <= half)
+    )
+      inside++;
   }
   return inside / points.length >= LASSO_INSIDE_FRACTION;
 }
@@ -194,13 +251,26 @@ const BOX_SAMPLES = 5;
  * of the quad overlaps it: sampling a grid keeps the rule intuitive for
  * objects much larger or much smaller than the lasso.
  */
-export function lassoSelectsQuad(corners: XY[], poly: XY[], polyBounds?: Bounds): boolean {
+export function lassoSelectsQuad(
+  corners: XY[],
+  poly: XY[],
+  polyBounds?: Bounds,
+): boolean {
   if (poly.length < 3 || corners.length < 4) return false;
   const pb = polyBounds ?? polygonBounds(poly);
   const qb = polygonBounds(corners);
-  if (qb.maxX < pb.minX || qb.minX > pb.maxX || qb.maxY < pb.minY || qb.minY > pb.maxY) return false;
+  if (
+    qb.maxX < pb.minX ||
+    qb.minX > pb.maxX ||
+    qb.maxY < pb.minY ||
+    qb.minY > pb.maxY
+  )
+    return false;
   const [a, b, c, d] = corners;
-  const centre = { x: (a.x + b.x + c.x + d.x) / 4, y: (a.y + b.y + c.y + d.y) / 4 };
+  const centre = {
+    x: (a.x + b.x + c.x + d.x) / 4,
+    y: (a.y + b.y + c.y + d.y) / 4,
+  };
   if (pointInPolygon(centre, poly)) return true;
   let inside = 0;
   for (let i = 0; i < BOX_SAMPLES; i++) {
@@ -211,14 +281,27 @@ export function lassoSelectsQuad(corners: XY[], poly: XY[], polyBounds?: Bounds)
       // top-right, bottom-right, bottom-left.
       const top = { x: a.x + (b.x - a.x) * u, y: a.y + (b.y - a.y) * u };
       const bottom = { x: d.x + (c.x - d.x) * u, y: d.y + (c.y - d.y) * u };
-      if (pointInPolygon({ x: top.x + (bottom.x - top.x) * v, y: top.y + (bottom.y - top.y) * v }, poly)) inside++;
+      if (
+        pointInPolygon(
+          {
+            x: top.x + (bottom.x - top.x) * v,
+            y: top.y + (bottom.y - top.y) * v,
+          },
+          poly,
+        )
+      )
+        inside++;
     }
   }
   return inside / (BOX_SAMPLES * BOX_SAMPLES) >= LASSO_BOX_FRACTION;
 }
 
 /** Lasso test for an unrotated rectangle. */
-export function lassoSelectsBox(box: Bounds, poly: XY[], polyBounds?: Bounds): boolean {
+export function lassoSelectsBox(
+  box: Bounds,
+  poly: XY[],
+  polyBounds?: Bounds,
+): boolean {
   return lassoSelectsQuad(
     [
       { x: box.minX, y: box.minY },

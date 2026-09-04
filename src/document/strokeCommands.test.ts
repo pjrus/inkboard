@@ -65,7 +65,11 @@ describe("stroke property commands", () => {
 
   it("moves strokes as a group and undoes in one step", () => {
     const d = new CanvasDocument();
-    const ids = [d.addStroke(stroke(2)).id, d.addStroke(stroke(2)).id, d.addStroke(stroke(2)).id];
+    const ids = [
+      d.addStroke(stroke(2)).id,
+      d.addStroke(stroke(2)).id,
+      d.addStroke(stroke(2)).id,
+    ];
     d.translateObjects(ids, 100, -50);
     for (const id of ids) {
       const s = d.get(id) as StrokeObject;

@@ -6,7 +6,10 @@ import { getAsset } from "../storage/assetRepository";
  * so a 300-page import never has 300 bitmaps resident at once.
  */
 export class ImageCache {
-  private entries = new Map<string, { bitmap: ImageBitmap; lastUsed: number }>();
+  private entries = new Map<
+    string,
+    { bitmap: ImageBitmap; lastUsed: number }
+  >();
   private loading = new Set<string>();
   private missing = new Set<string>();
   private tick = 0;
@@ -23,7 +26,8 @@ export class ImageCache {
       e.lastUsed = ++this.tick;
       return e.bitmap;
     }
-    if (!this.loading.has(assetId) && !this.missing.has(assetId)) void this.load(assetId);
+    if (!this.loading.has(assetId) && !this.missing.has(assetId))
+      void this.load(assetId);
     return undefined;
   }
 
@@ -63,7 +67,9 @@ export class ImageCache {
 
   private evict() {
     if (this.entries.size <= this.capacity) return;
-    const sorted = Array.from(this.entries.entries()).sort((a, b) => a[1].lastUsed - b[1].lastUsed);
+    const sorted = Array.from(this.entries.entries()).sort(
+      (a, b) => a[1].lastUsed - b[1].lastUsed,
+    );
     const excess = this.entries.size - this.capacity;
     for (let i = 0; i < excess; i++) {
       const [id, e] = sorted[i];

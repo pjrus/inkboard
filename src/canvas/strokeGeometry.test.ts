@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { computeBounds, simplifyPoints, strokeHitTest, strokeOutline, strokeSegmentHitTest } from "./strokeGeometry";
+import {
+  computeBounds,
+  simplifyPoints,
+  strokeHitTest,
+  strokeOutline,
+  strokeSegmentHitTest,
+} from "./strokeGeometry";
 
 describe("stroke geometry", () => {
   const line = [
@@ -14,8 +20,12 @@ describe("stroke geometry", () => {
   });
 
   it("sweeps a segment so fast eraser movement still hits", () => {
-    expect(strokeSegmentHitTest(line, 2, { x: 50, y: -40 }, { x: 50, y: 40 }, 3)).toBe(true);
-    expect(strokeSegmentHitTest(line, 2, { x: 50, y: 20 }, { x: 50, y: 40 }, 3)).toBe(false);
+    expect(
+      strokeSegmentHitTest(line, 2, { x: 50, y: -40 }, { x: 50, y: 40 }, 3),
+    ).toBe(true);
+    expect(
+      strokeSegmentHitTest(line, 2, { x: 50, y: 20 }, { x: 50, y: 40 }, 3),
+    ).toBe(false);
   });
 
   it("simplifies collinear points but keeps corners", () => {
@@ -28,7 +38,12 @@ describe("stroke geometry", () => {
   });
 
   it("computes padded bounds", () => {
-    expect(computeBounds(line, 4)).toEqual({ minX: -4, minY: -4, maxX: 104, maxY: 4 });
+    expect(computeBounds(line, 4)).toEqual({
+      minX: -4,
+      minY: -4,
+      maxX: 104,
+      maxY: 4,
+    });
   });
 
   it("produces a closed outline polygon", () => {

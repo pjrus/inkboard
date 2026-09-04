@@ -1,6 +1,11 @@
 import { newId } from "../document/ids";
 import { getDB, type BoardRecord, type ToolPreferences } from "../storage/db";
-import { DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE, DEFAULT_LASSO_FILTER, type Viewport } from "../document/schema";
+import {
+  DEFAULT_FONT_FAMILY,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_LASSO_FILTER,
+  type Viewport,
+} from "../document/schema";
 
 export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   tool: "pen",
@@ -27,7 +32,12 @@ export const boardRepository = {
 
   async create(name = "Untitled board"): Promise<BoardRecord> {
     const now = Date.now();
-    const board: BoardRecord = { id: newId(10), name, createdAt: now, updatedAt: now };
+    const board: BoardRecord = {
+      id: newId(10),
+      name,
+      createdAt: now,
+      updatedAt: now,
+    };
     await getDB().boards.add(board);
     return board;
   },
@@ -53,7 +63,10 @@ export const boardRepository = {
 
   async getToolPreferences(): Promise<ToolPreferences> {
     const row = await getDB().preferences.get("tool");
-    return { ...DEFAULT_TOOL_PREFS, ...((row?.value as Partial<ToolPreferences>) ?? {}) };
+    return {
+      ...DEFAULT_TOOL_PREFS,
+      ...((row?.value as Partial<ToolPreferences>) ?? {}),
+    };
   },
 
   async saveToolPreferences(prefs: ToolPreferences): Promise<void> {

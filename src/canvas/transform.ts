@@ -1,6 +1,19 @@
-import { unpackPoints, type Bounds, type CanvasObject, type LassoFilter, type PDFPageObject, type StrokeObject, type TextObject } from "../document/schema";
+import {
+  unpackPoints,
+  type Bounds,
+  type CanvasObject,
+  type LassoFilter,
+  type PDFPageObject,
+  type StrokeObject,
+  type TextObject,
+} from "../document/schema";
 import { textBounds } from "../text/textMeasure";
-import { lassoInsideQuad, lassoSelectsQuad, lassoSelectsStroke, polygonBounds } from "./strokeGeometry";
+import {
+  lassoInsideQuad,
+  lassoSelectsQuad,
+  lassoSelectsStroke,
+  polygonBounds,
+} from "./strokeGeometry";
 
 /**
  * The one place object transforms are reasoned about.
@@ -42,7 +55,7 @@ export function isImageLikeObject(o: CanvasObject): o is PDFPageObject {
 
 /** An object's own rotation in radians (strokes bake theirs into their points). */
 export function rotationOf(o: CanvasObject): number {
-  return o.type === "stroke" ? 0 : o.rotation ?? 0;
+  return o.type === "stroke" ? 0 : (o.rotation ?? 0);
 }
 
 export function rotatePoint(p: XY, pivot: XY, angle: number): XY {
@@ -98,19 +111,27 @@ export function transformedBounds(o: CanvasObject): Bounds {
 }
 
 export function pointsBounds(points: XY[]): Bounds {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const p of points) {
     if (p.x < minX) minX = p.x;
     if (p.y < minY) minY = p.y;
     if (p.x > maxX) maxX = p.x;
     if (p.y > maxY) maxY = p.y;
   }
-  return isFinite(minX) ? { minX, minY, maxX, maxY } : { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  return isFinite(minX)
+    ? { minX, minY, maxX, maxY }
+    : { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 }
 
 export function unionBounds(list: Bounds[]): Bounds | null {
   if (list.length === 0) return null;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const b of list) {
     if (b.minX < minX) minX = b.minX;
     if (b.minY < minY) minY = b.minY;
@@ -130,7 +151,12 @@ export function rectContains(o: CanvasObject, p: XY, pad = 0): boolean {
   const r = localRect(o);
   const angle = rotationOf(o);
   const local = angle === 0 ? p : rotatePoint(p, boundsCenter(r), -angle);
-  return local.x >= r.minX - pad && local.x <= r.maxX + pad && local.y >= r.minY - pad && local.y <= r.maxY + pad;
+  return (
+    local.x >= r.minX - pad &&
+    local.x <= r.maxX + pad &&
+    local.y >= r.minY - pad &&
+    local.y <= r.maxY + pad
+  );
 }
 
 /** Round an angle to the nearest 15 degrees (used while a modifier is held). */
@@ -145,7 +171,10 @@ export function toDegrees(angle: number): number {
 }
 
 /** Whether the lasso is currently allowed to pick this object up. */
-export function matchesLassoFilter(o: CanvasObject, filter: LassoFilter): boolean {
+export function matchesLassoFilter(
+  o: CanvasObject,
+  filter: LassoFilter,
+): boolean {
   if (isInkObject(o)) return filter.ink;
   if (isTextObject(o)) return filter.text;
   if (isImageLikeObject(o)) return filter.images;
@@ -163,7 +192,11 @@ export function matchesLassoFilter(o: CanvasObject, filter: LassoFilter): boolea
  * against their four world-space corners, so a rotated object is tested as the
  * shape it actually occupies.
  */
-export function lassoHits(candidates: CanvasObject[], poly: XY[], filter: LassoFilter): CanvasObject[] {
+export function lassoHits(
+  candidates: CanvasObject[],
+  poly: XY[],
+  filter: LassoFilter,
+): CanvasObject[] {
   if (poly.length < 3) return [];
   const pb = polygonBounds(poly);
   const out: CanvasObject[] = [];

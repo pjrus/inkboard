@@ -35,7 +35,11 @@ describe("pinch gesture", () => {
     let last = vp;
     for (let i = 0; i < 500; i++) {
       const spread = 100 + Math.sin(i / 10) * 50;
-      last = updatePinch(start, { x: 150 - spread / 2, y: 100 }, { x: 150 + spread / 2, y: 100 });
+      last = updatePinch(
+        start,
+        { x: 150 - spread / 2, y: 100 },
+        { x: 150 + spread / 2, y: 100 },
+      );
     }
     // Final spread == 100 * (1 + sin(49.9)/2)
     const finalSpread = 100 + Math.sin(499 / 10) * 50;

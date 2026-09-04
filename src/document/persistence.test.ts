@@ -33,7 +33,12 @@ describe("board persistence", () => {
     const p2 = new DocumentPersistence(board.id, doc2);
     const { updateCount } = await p2.load();
     expect(updateCount).toBeGreaterThan(0);
-    expect(doc2.getAll().map((o) => o.id).sort()).toEqual(ids.sort());
+    expect(
+      doc2
+        .getAll()
+        .map((o) => o.id)
+        .sort(),
+    ).toEqual(ids.sort());
     expect(doc2.get(ids[0])).toEqual(doc1.get(ids[0]));
   });
 
@@ -74,7 +79,8 @@ describe("board persistence", () => {
       color: "#d93025",
       textAlign: "center",
     });
-    for (const ch of "Typed on the canvas") doc1.editText(t.id, (y) => y.insert(y.length, ch));
+    for (const ch of "Typed on the canvas")
+      doc1.editText(t.id, (y) => y.insert(y.length, ch));
     await p1.destroy();
 
     const doc2 = new CanvasDocument();
@@ -99,9 +105,24 @@ describe("board persistence", () => {
 
   it("persists and restores the viewport and tool preferences", async () => {
     const board = await boardRepository.create("VP");
-    await boardRepository.saveViewport(board.id, { x: 12, y: -30, scale: 1.75 });
-    expect((await boardRepository.get(board.id))?.viewport).toEqual({ x: 12, y: -30, scale: 1.75 });
-    const prefs = { ...DEFAULT_TOOL_PREFS, tool: "pencil" as const, color: "#ff0000", colorExplicit: true, width: 7, textFontSize: 24 };
+    await boardRepository.saveViewport(board.id, {
+      x: 12,
+      y: -30,
+      scale: 1.75,
+    });
+    expect((await boardRepository.get(board.id))?.viewport).toEqual({
+      x: 12,
+      y: -30,
+      scale: 1.75,
+    });
+    const prefs = {
+      ...DEFAULT_TOOL_PREFS,
+      tool: "pencil" as const,
+      color: "#ff0000",
+      colorExplicit: true,
+      width: 7,
+      textFontSize: 24,
+    };
     await boardRepository.saveToolPreferences(prefs);
     expect(await boardRepository.getToolPreferences()).toEqual(prefs);
   });
@@ -116,6 +137,8 @@ describe("board persistence", () => {
     await boardRepository.delete(board.id);
     expect(await boardRepository.get(board.id)).toBeUndefined();
     const doc2 = new CanvasDocument();
-    expect((await new DocumentPersistence(board.id, doc2).load()).updateCount).toBe(0);
+    expect(
+      (await new DocumentPersistence(board.id, doc2).load()).updateCount,
+    ).toBe(0);
   });
 });

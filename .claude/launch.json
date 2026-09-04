@@ -2,6 +2,11 @@
   "version": "0.0.1",
   "autoPort": true,
   "configurations": [
-    { "name": "inkboard", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5173 }
+    {
+      "name": "inkboard",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    }
   ]
 }

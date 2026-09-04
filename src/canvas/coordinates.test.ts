@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { centerOn, clampScale, MAX_SCALE, MIN_SCALE, screenToWorld, visibleWorldBounds, worldToScreen, zoomAt, zoomBy } from "./coordinates";
+import {
+  centerOn,
+  clampScale,
+  MAX_SCALE,
+  MIN_SCALE,
+  screenToWorld,
+  visibleWorldBounds,
+  worldToScreen,
+  zoomAt,
+  zoomBy,
+} from "./coordinates";
 
 describe("coordinate transforms", () => {
   const vp = { x: 100, y: -50, scale: 2 };

@@ -1,7 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import type { CanvasDocument } from "../document/crdt";
-import { TEXT_LINE_HEIGHT, type TextObject, type Viewport } from "../document/schema";
+import {
+  TEXT_LINE_HEIGHT,
+  type TextObject,
+  type Viewport,
+} from "../document/schema";
 import { fontStack } from "../text/fonts";
 import { textHeight } from "../text/textMeasure";
 import type { CanvasRenderer } from "./CanvasRenderer";
@@ -21,7 +25,10 @@ function hostTransform(o: TextObject, vp: Viewport): string {
   const angle = o.rotation ?? 0;
   // The element's own origin is its top-left, so the *rotated* position of
   // that corner is where it has to sit before the box is turned.
-  const corner = angle === 0 ? { x: o.x, y: o.y } : rotatePoint({ x: o.x, y: o.y }, objectCenter(o), angle);
+  const corner =
+    angle === 0
+      ? { x: o.x, y: o.y }
+      : rotatePoint({ x: o.x, y: o.y }, objectCenter(o), angle);
   const t = `translate(${corner.x * vp.scale + vp.x}px, ${corner.y * vp.scale + vp.y}px) scale(${vp.scale})`;
   return angle === 0 ? t : `${t} rotate(${angle}rad)`;
 }
@@ -44,7 +51,12 @@ interface Props {
  * textarea wraps exactly where the canvas wraps and stays glued to its box
  * through pans, zooms and pinches.
  */
-export function TextEditorOverlay({ doc, renderer, objectId, onFinish }: Props) {
+export function TextEditorOverlay({
+  doc,
+  renderer,
+  objectId,
+  onFinish,
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const object = doc.get(objectId);
@@ -85,7 +97,10 @@ export function TextEditorOverlay({ doc, renderer, objectId, onFinish }: Props) 
       const start = relativePosition(ytext, area.selectionStart);
       const end = relativePosition(ytext, area.selectionEnd);
       area.value = next;
-      area.setSelectionRange(absolutePosition(doc, ytext, start, next.length), absolutePosition(doc, ytext, end, next.length));
+      area.setSelectionRange(
+        absolutePosition(doc, ytext, start, next.length),
+        absolutePosition(doc, ytext, end, next.length),
+      );
       force((n) => n + 1);
     };
     ytext.observe(observer);
@@ -130,7 +145,12 @@ export function TextEditorOverlay({ doc, renderer, objectId, onFinish }: Props) 
         onInput={(e) => {
           const ytext = doc.getTextHandle(objectId);
           if (!ytext) return;
-          spliceText(doc, objectId, ytext, (e.target as HTMLTextAreaElement).value);
+          spliceText(
+            doc,
+            objectId,
+            ytext,
+            (e.target as HTMLTextAreaElement).value,
+          );
           force((n) => n + 1);
         }}
         onKeyDown={(e) => {
@@ -165,7 +185,12 @@ export function TextEditorOverlay({ doc, renderer, objectId, onFinish }: Props) 
  * destroy a concurrent editor's insertions; a prefix/suffix diff produces the
  * insert/delete pair a collaborative text type expects.
  */
-function spliceText(doc: CanvasDocument, objectId: string, ytext: Y.Text, next: string) {
+function spliceText(
+  doc: CanvasDocument,
+  objectId: string,
+  ytext: Y.Text,
+  next: string,
+) {
   const prev = ytext.toString();
   if (prev === next) return;
   let start = 0;
@@ -173,7 +198,11 @@ function spliceText(doc: CanvasDocument, objectId: string, ytext: Y.Text, next: 
   while (start < max && prev[start] === next[start]) start++;
   let endPrev = prev.length;
   let endNext = next.length;
-  while (endPrev > start && endNext > start && prev[endPrev - 1] === next[endNext - 1]) {
+  while (
+    endPrev > start &&
+    endNext > start &&
+    prev[endPrev - 1] === next[endNext - 1]
+  ) {
     endPrev--;
     endNext--;
   }
@@ -184,10 +213,18 @@ function spliceText(doc: CanvasDocument, objectId: string, ytext: Y.Text, next: 
 }
 
 function relativePosition(ytext: Y.Text, index: number): Y.RelativePosition {
-  return Y.createRelativePositionFromTypeIndex(ytext, Math.min(index, ytext.length));
+  return Y.createRelativePositionFromTypeIndex(
+    ytext,
+    Math.min(index, ytext.length),
+  );
 }
 
-function absolutePosition(doc: CanvasDocument, ytext: Y.Text, rel: Y.RelativePosition, fallback: number): number {
+function absolutePosition(
+  doc: CanvasDocument,
+  ytext: Y.Text,
+  rel: Y.RelativePosition,
+  fallback: number,
+): number {
   const abs = Y.createAbsolutePositionFromRelativePosition(rel, doc.ydoc);
   return abs && abs.type === ytext ? abs.index : fallback;
 }

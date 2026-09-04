@@ -2,7 +2,11 @@ import { useTheme } from "../theme/ThemeProvider";
 import type { ThemePreference } from "../theme/themePreferences";
 import { MoonIcon, SunIcon, SystemIcon } from "./icons";
 
-const OPTIONS: { value: ThemePreference; label: string; icon: () => JSX.Element }[] = [
+const OPTIONS: {
+  value: ThemePreference;
+  label: string;
+  icon: () => JSX.Element;
+}[] = [
   { value: "light", label: "Light", icon: SunIcon },
   { value: "dark", label: "Dark", icon: MoonIcon },
   { value: "system", label: "System", icon: SystemIcon },
@@ -19,7 +23,11 @@ export function ThemeSelector() {
       <div className="menu-label" id="appearance-label">
         Appearance
       </div>
-      <div className="segmented segmented-wide" role="radiogroup" aria-labelledby="appearance-label">
+      <div
+        className="segmented segmented-wide"
+        role="radiogroup"
+        aria-labelledby="appearance-label"
+      >
         {OPTIONS.map((o) => (
           <button
             key={o.value}

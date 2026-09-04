@@ -20,12 +20,23 @@ interface Props {
  * Deliberately small: what to export and how to lay it out. Everything else
  * (page size, scaling, ordering) follows from those two answers.
  */
-export function ExportDialog({ objects, selectedObjects, busy, error, onCancel, onExport }: Props) {
+export function ExportDialog({
+  objects,
+  selectedObjects,
+  busy,
+  error,
+  onCancel,
+  onExport,
+}: Props) {
   const canExportSelection = selectedObjects.length > 0;
-  const [scope, setScope] = useState<"all" | "selection">(canExportSelection ? "selection" : "all");
+  const [scope, setScope] = useState<"all" | "selection">(
+    canExportSelection ? "selection" : "all",
+  );
   const subject = scope === "selection" ? selectedObjects : objects;
   const pdfPagesAvailable = hasImportedPages(subject);
-  const [layout, setLayout] = useState<ExportLayout>(pdfPagesAvailable ? "pdf-pages" : "fit");
+  const [layout, setLayout] = useState<ExportLayout>(
+    pdfPagesAvailable ? "pdf-pages" : "fit",
+  );
 
   useEffect(() => {
     if (!pdfPagesAvailable && layout === "pdf-pages") setLayout("fit");
@@ -36,14 +47,27 @@ export function ExportDialog({ objects, selectedObjects, busy, error, onCancel, 
 
   return (
     <div className="modal-backdrop" onClick={busy ? undefined : onCancel}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="export-title" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 id="export-title">Export PDF</h2>
-        <p className="modal-meta">Generated on this device. Nothing is uploaded.</p>
+        <p className="modal-meta">
+          Generated on this device. Nothing is uploaded.
+        </p>
 
         <fieldset className="layout-choice" disabled={busy !== null}>
           <legend>Content</legend>
           <label>
-            <input type="radio" name="scope" checked={scope === "all"} onChange={() => setScope("all")} />
+            <input
+              type="radio"
+              name="scope"
+              checked={scope === "all"}
+              onChange={() => setScope("all")}
+            />
             <span>Entire canvas</span>
             <span className="layout-hint">{objects.length} objects</span>
           </label>
@@ -56,19 +80,33 @@ export function ExportDialog({ objects, selectedObjects, busy, error, onCancel, 
               onChange={() => setScope("selection")}
             />
             <span>Selection</span>
-            <span className="layout-hint">{canExportSelection ? `${selectedObjects.length} selected` : "nothing selected"}</span>
+            <span className="layout-hint">
+              {canExportSelection
+                ? `${selectedObjects.length} selected`
+                : "nothing selected"}
+            </span>
           </label>
         </fieldset>
 
         <fieldset className="layout-choice" disabled={busy !== null}>
           <legend>Pages</legend>
           <label>
-            <input type="radio" name="layout" checked={layout === "fit"} onChange={() => setLayout("fit")} />
+            <input
+              type="radio"
+              name="layout"
+              checked={layout === "fit"}
+              onChange={() => setLayout("fit")}
+            />
             <span>Fit content</span>
             <span className="layout-hint">one page, canvas size</span>
           </label>
           <label>
-            <input type="radio" name="layout" checked={layout === "a4"} onChange={() => setLayout("a4")} />
+            <input
+              type="radio"
+              name="layout"
+              checked={layout === "a4"}
+              onChange={() => setLayout("a4")}
+            />
             <span>A4 pages</span>
             <span className="layout-hint">scaled to width, paginated</span>
           </label>
@@ -81,7 +119,9 @@ export function ExportDialog({ objects, selectedObjects, busy, error, onCancel, 
               onChange={() => setLayout("pdf-pages")}
             />
             <span>Match PDF pages</span>
-            <span className="layout-hint">{pdfPagesAvailable ? "one page per import" : "no imported PDF"}</span>
+            <span className="layout-hint">
+              {pdfPagesAvailable ? "one page per import" : "no imported PDF"}
+            </span>
           </label>
         </fieldset>
 
@@ -95,7 +135,12 @@ export function ExportDialog({ objects, selectedObjects, busy, error, onCancel, 
               Preparing PDF... {busy.label} ({busy.done} / {busy.total})
             </div>
             <div className="progress" aria-hidden="true">
-              <div className="progress-bar" style={{ width: `${busy.total ? (busy.done / busy.total) * 100 : 0}%` }} />
+              <div
+                className="progress-bar"
+                style={{
+                  width: `${busy.total ? (busy.done / busy.total) * 100 : 0}%`,
+                }}
+              />
             </div>
           </div>
         ) : (
@@ -107,10 +152,20 @@ export function ExportDialog({ objects, selectedObjects, busy, error, onCancel, 
         )}
 
         <div className="modal-actions">
-          <button type="button" className="btn" disabled={busy !== null} onClick={onCancel}>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy !== null}
+            onClick={onCancel}
+          >
             Cancel
           </button>
-          <button type="button" className="btn btn-primary" disabled={disabled} onClick={() => onExport({ scope, layout })}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={disabled}
+            onClick={() => onExport({ scope, layout })}
+          >
             {busy ? "Exporting..." : "Export PDF"}
           </button>
         </div>

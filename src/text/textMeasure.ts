@@ -29,7 +29,10 @@ const invalidationListeners = new Set<() => void>();
 
 function context(): CanvasRenderingContext2D | null {
   if (ctx === undefined) {
-    ctx = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+    ctx =
+      typeof document !== "undefined"
+        ? document.createElement("canvas").getContext("2d")
+        : null;
   }
   return ctx;
 }
@@ -53,7 +56,10 @@ export function measurer(fontFamily: string, fontSize: number): Measure {
   return (text: string) => measureAt(fontFamily, text) * scale;
 }
 
-type LayoutInput = Pick<TextObject, "text" | "fontFamily" | "fontSize" | "width" | "textAlign">;
+type LayoutInput = Pick<
+  TextObject,
+  "text" | "fontFamily" | "fontSize" | "width" | "textAlign"
+>;
 
 function layoutKey(o: LayoutInput): string {
   return `${o.fontFamily} ${o.fontSize} ${o.width} ${o.textAlign ?? "left"} ${o.text}`;
@@ -65,7 +71,12 @@ export function measureText(o: LayoutInput): TextLayoutResult {
   if (hit) return hit;
   const result = layoutText(
     o.text,
-    { width: o.width, fontSize: o.fontSize, fontFamily: o.fontFamily, align: o.textAlign },
+    {
+      width: o.width,
+      fontSize: o.fontSize,
+      fontFamily: o.fontFamily,
+      align: o.textAlign,
+    },
     measurer(o.fontFamily, o.fontSize),
   );
   if (layouts.size > MAX_LAYOUTS) layouts.clear();
@@ -81,7 +92,12 @@ export function textHeight(o: LayoutInput): number {
 /** World-space bounds of a text box, optionally offset by a live drag. */
 export function textBounds(o: TextObject, dx = 0, dy = 0): Bounds {
   const h = textHeight(o);
-  return { minX: o.x + dx, minY: o.y + dy, maxX: o.x + dx + o.width, maxY: o.y + dy + h };
+  return {
+    minX: o.x + dx,
+    minY: o.y + dy,
+    maxX: o.x + dx + o.width,
+    maxY: o.y + dy + h,
+  };
 }
 
 /** Drop every cached measurement, e.g. once the real fonts have loaded. */

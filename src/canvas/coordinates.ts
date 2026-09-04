@@ -65,16 +65,30 @@ export function visibleWorldBounds(
   overscanPx = 0,
 ): Bounds {
   const tl = screenToWorld({ x: -overscanPx, y: -overscanPx }, vp);
-  const br = screenToWorld({ x: screenWidth + overscanPx, y: screenHeight + overscanPx }, vp);
+  const br = screenToWorld(
+    { x: screenWidth + overscanPx, y: screenHeight + overscanPx },
+    vp,
+  );
   return { minX: tl.x, minY: tl.y, maxX: br.x, maxY: br.y };
 }
 
 export function boundsIntersect(a: Bounds, b: Bounds): boolean {
-  return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
+  return (
+    a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY
+  );
 }
 
 /** Viewport that centres the given world point on screen at the given scale. */
-export function centerOn(worldPoint: Point, scale: number, screenWidth: number, screenHeight: number): Viewport {
+export function centerOn(
+  worldPoint: Point,
+  scale: number,
+  screenWidth: number,
+  screenHeight: number,
+): Viewport {
   const s = clampScale(scale);
-  return { scale: s, x: screenWidth / 2 - worldPoint.x * s, y: screenHeight / 2 - worldPoint.y * s };
+  return {
+    scale: s,
+    x: screenWidth / 2 - worldPoint.x * s,
+    y: screenHeight / 2 - worldPoint.y * s,
+  };
 }

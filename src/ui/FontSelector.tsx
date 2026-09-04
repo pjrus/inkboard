@@ -23,7 +23,9 @@ export function FontSelector() {
   const editingSelection = !!selection && selection.textIds.length > 0;
   const summary = editingSelection ? summarise(selection.fonts) : null;
   const mixed = summary?.mixed ?? false;
-  const font = summary ? ((summary.value as FontFamilyId | null) ?? toolFont) : toolFont;
+  const font = summary
+    ? ((summary.value as FontFamilyId | null) ?? toolFont)
+    : toolFont;
   const apply = (f: FontFamilyId) => {
     if (editingSelection && commands) commands.setFont(f);
     else setToolFont(f);
@@ -41,13 +43,20 @@ export function FontSelector() {
         title={label}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="font-name" style={mixed ? undefined : { fontFamily: fontStack(font) }}>
+        <span
+          className="font-name"
+          style={mixed ? undefined : { fontFamily: fontStack(font) }}
+        >
           {mixed ? "Mixed" : getFont(font).label}
         </span>
         <ChevronIcon />
       </button>
       <Popover open={open} onClose={() => setOpen(false)} label="Choose font">
-        {mixed && <div className="popover-hint">Mixed fonts &mdash; pick one to apply to all</div>}
+        {mixed && (
+          <div className="popover-hint">
+            Mixed fonts &mdash; pick one to apply to all
+          </div>
+        )}
         <div className="font-list" role="radiogroup" aria-label={label}>
           {FONTS.map((f) => {
             const selected = !mixed && f.id === font;

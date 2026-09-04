@@ -10,7 +10,8 @@ import { canvasFont, DEFAULT_FONT, FONTS, fontStack, getFont } from "./fonts";
  * that shifts metrics fails here rather than silently misplacing text.
  */
 const FILE: Record<string, string> = {
-  "open-sans": "node_modules/@fontsource/open-sans/files/open-sans-latin-400-normal.woff",
+  "open-sans":
+    "node_modules/@fontsource/open-sans/files/open-sans-latin-400-normal.woff",
   inter: "node_modules/@fontsource/inter/files/inter-latin-400-normal.woff",
   roboto: "node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff",
   lato: "node_modules/@fontsource/lato/files/lato-latin-400-normal.woff",
@@ -18,7 +19,12 @@ const FILE: Record<string, string> = {
 
 describe("bundled fonts", () => {
   it("offers a small curated set with Open Sans as the default", () => {
-    expect(FONTS.map((f) => f.id)).toEqual(["open-sans", "inter", "roboto", "lato"]);
+    expect(FONTS.map((f) => f.id)).toEqual([
+      "open-sans",
+      "inter",
+      "roboto",
+      "lato",
+    ]);
     expect(DEFAULT_FONT.id).toBe("open-sans");
   });
 
@@ -49,8 +55,12 @@ describe("bundled fonts", () => {
     for (const f of FONTS) {
       const pdf = await PDFDocument.create();
       pdf.registerFontkit(fontkit);
-      const embedded = await pdf.embedFont(readFileSync(FILE[f.id]), { subset: true });
-      expect(embedded.widthOfTextAtSize("Sphinx of black quartz", 20)).toBeGreaterThan(0);
+      const embedded = await pdf.embedFont(readFileSync(FILE[f.id]), {
+        subset: true,
+      });
+      expect(
+        embedded.widthOfTextAtSize("Sphinx of black quartz", 20),
+      ).toBeGreaterThan(0);
     }
   });
 });

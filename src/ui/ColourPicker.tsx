@@ -29,8 +29,15 @@ export function ColourPicker() {
     else if (target === "text") setTextColor(c);
     else setPenColor(c);
   };
-  const current = PALETTE.find((p) => p.value.toLowerCase() === color.toLowerCase());
-  const label = target === "selection" ? "Selection colour" : target === "text" ? "Text colour" : "Colour";
+  const current = PALETTE.find(
+    (p) => p.value.toLowerCase() === color.toLowerCase(),
+  );
+  const label =
+    target === "selection"
+      ? "Selection colour"
+      : target === "text"
+        ? "Text colour"
+        : "Colour";
 
   return (
     <div className="tb-anchor">
@@ -43,14 +50,18 @@ export function ColourPicker() {
         title={label}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className={"swatch swatch-lg" + (mixed ? " swatch-mixed" : "")} style={mixed ? undefined : { background: color }} />
+        <span
+          className={"swatch swatch-lg" + (mixed ? " swatch-mixed" : "")}
+          style={mixed ? undefined : { background: color }}
+        />
         <ChevronIcon />
       </button>
       <Popover open={open} onClose={() => setOpen(false)} label="Choose colour">
         {mixed && <div className="popover-hint">Mixed colours</div>}
         <div className="swatch-grid" role="radiogroup" aria-label={label}>
           {PALETTE.map((p) => {
-            const selected = !mixed && p.value.toLowerCase() === color.toLowerCase();
+            const selected =
+              !mixed && p.value.toLowerCase() === color.toLowerCase();
             return (
               <button
                 key={p.value}
@@ -72,7 +83,12 @@ export function ColourPicker() {
         </div>
         <label className="custom-colour">
           <span>Custom</span>
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label="Custom colour" />
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            aria-label="Custom colour"
+          />
         </label>
       </Popover>
     </div>

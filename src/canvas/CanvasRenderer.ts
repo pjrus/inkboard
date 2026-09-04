@@ -10,12 +10,29 @@ import {
   type Viewport,
 } from "../document/schema";
 import { canvasFont } from "../text/fonts";
-import { measureText, onTextMeasurementsInvalidated, textBounds } from "../text/textMeasure";
+import {
+  measureText,
+  onTextMeasurementsInvalidated,
+  textBounds,
+} from "../text/textMeasure";
 import { canvasTheme, type CanvasTheme } from "../theme/canvasTheme";
-import { boundsIntersect, DEFAULT_VIEWPORT, visibleWorldBounds } from "./coordinates";
+import {
+  boundsIntersect,
+  DEFAULT_VIEWPORT,
+  visibleWorldBounds,
+} from "./coordinates";
 import { ImageCache } from "./ImageCache";
 import { strokeOutline, type XY } from "./strokeGeometry";
-import { boundsCenter, objectCenter, pointsBounds, rectContains, rotatePoint, rotationOf, transformedBounds, unionBounds } from "./transform";
+import {
+  boundsCenter,
+  objectCenter,
+  pointsBounds,
+  rectContains,
+  rotatePoint,
+  rotationOf,
+  transformedBounds,
+  unionBounds,
+} from "./transform";
 
 const OVERSCAN_PX = 200;
 /** Screen-space size of the width-resize grip on a selected text box. */
@@ -121,7 +138,8 @@ export class CanvasRenderer {
     this.rebuildLists();
     this.disposers.push(
       doc.onChange((changes) => {
-        for (const c of changes) if (c.kind !== "add") this.pathCache.delete(c.id);
+        for (const c of changes)
+          if (c.kind !== "add") this.pathCache.delete(c.id);
         this.rebuildLists();
         this.invalidateStatic();
       }),
@@ -210,9 +228,13 @@ export class CanvasRenderer {
    * the glyphs, so clicking any blank part of a text box selects it, and it
    * follows the box's rotation.
    */
-  hitTestText(p: { x: number; y: number }, padWorld = 0): TextObject | undefined {
+  hitTestText(
+    p: { x: number; y: number },
+    padWorld = 0,
+  ): TextObject | undefined {
     for (let i = this.texts.length - 1; i >= 0; i--) {
-      if (rectContains(this.effectiveText(this.texts[i]), p, padWorld)) return this.texts[i];
+      if (rectContains(this.effectiveText(this.texts[i]), p, padWorld))
+        return this.texts[i];
     }
     return undefined;
   }
@@ -236,7 +258,9 @@ export class CanvasRenderer {
 
   /** The text object as it currently looks, including an uncommitted resize. */
   effectiveText(t: TextObject): TextObject {
-    return this.textResize && this.textResize.id === t.id ? { ...t, width: this.textResize.width } : t;
+    return this.textResize && this.textResize.id === t.id
+      ? { ...t, width: this.textResize.width }
+      : t;
   }
 
   /** Every selected object, in document order. */
@@ -245,7 +269,8 @@ export class CanvasRenderer {
     const out: (StrokeObject | TextObject | PDFPageObject)[] = [];
     for (const p of this.pages) if (this.selectedIds.has(p.id)) out.push(p);
     for (const s of this.strokes) if (this.selectedIds.has(s.id)) out.push(s);
-    for (const t of this.texts) if (this.selectedIds.has(t.id)) out.push(this.effectiveText(t));
+    for (const t of this.texts)
+      if (this.selectedIds.has(t.id)) out.push(this.effectiveText(t));
     return out;
   }
 
@@ -297,7 +322,10 @@ export class CanvasRenderer {
   rotationHandle(): { x: number; y: number; radius: number } | null {
     const b = this.selectionBaseBounds();
     if (!b || this.editingTextId) return null;
-    const p = this.previewPoint({ x: (b.minX + b.maxX) / 2, y: b.minY - ROTATE_HANDLE_OFFSET_PX / this.viewport.scale });
+    const p = this.previewPoint({
+      x: (b.minX + b.maxX) / 2,
+      y: b.minY - ROTATE_HANDLE_OFFSET_PX / this.viewport.scale,
+    });
     return { x: p.x, y: p.y, radius: ROTATE_HANDLE_PX / this.viewport.scale };
   }
 
@@ -321,7 +349,11 @@ export class CanvasRenderer {
     // Just outside the box, so the grip never sits on top of the last glyph.
     const offset = (TEXT_HANDLE_PX * 0.9) / this.viewport.scale;
     // The grip lives in the box's own frame, so it turns with a rotated box.
-    const local = rotatePoint({ x: b.maxX + offset, y: (b.minY + b.maxY) / 2 }, boundsCenter(b), rotationOf(t));
+    const local = rotatePoint(
+      { x: b.maxX + offset, y: (b.minY + b.maxY) / 2 },
+      boundsCenter(b),
+      rotationOf(t),
+    );
     const p = this.previewPoint(local);
     return { x: p.x, y: p.y, radius: TEXT_HANDLE_PX / this.viewport.scale };
   }
@@ -344,7 +376,9 @@ export class CanvasRenderer {
       else if (o.type === "stroke") strokes.push(o);
       else if (o.type === "text") texts.push(o);
     }
-    pages.sort((a, b) => a.createdAt - b.createdAt || a.pageNumber - b.pageNumber);
+    pages.sort(
+      (a, b) => a.createdAt - b.createdAt || a.pageNumber - b.pageNumber,
+    );
     strokes.sort((a, b) => a.createdAt - b.createdAt);
     texts.sort((a, b) => a.createdAt - b.createdAt);
     this.pages = pages;
@@ -363,7 +397,14 @@ export class CanvasRenderer {
 
   private applyWorldTransform(ctx: CanvasRenderingContext2D) {
     const { scale, x, y } = this.viewport;
-    ctx.setTransform(this.dpr * scale, 0, 0, this.dpr * scale, this.dpr * x, this.dpr * y);
+    ctx.setTransform(
+      this.dpr * scale,
+      0,
+      0,
+      this.dpr * scale,
+      this.dpr * x,
+      this.dpr * y,
+    );
   }
 
   private renderStatic() {
@@ -396,8 +437,11 @@ export class CanvasRenderer {
     // Layer 10: PDF pages
     for (const page of this.pages) {
       const selected = hasSelection && this.selectedIds.has(page.id);
-      if (!selected && !boundsIntersect(transformedBounds(page), visible)) continue;
-      inPreview(page.id, () => this.drawPage(ctx, page, pageBounds(page, this.dragPreview)));
+      if (!selected && !boundsIntersect(transformedBounds(page), visible))
+        continue;
+      inPreview(page.id, () =>
+        this.drawPage(ctx, page, pageBounds(page, this.dragPreview)),
+      );
     }
 
     // Layer 20: strokes
@@ -412,7 +456,8 @@ export class CanvasRenderer {
       if (text.id === this.editingTextId) continue; // the DOM editor draws it
       const selected = hasSelection && this.selectedIds.has(text.id);
       const t = this.effectiveText(text);
-      if (!selected && !boundsIntersect(transformedBounds(t), visible)) continue;
+      if (!selected && !boundsIntersect(transformedBounds(t), visible))
+        continue;
       inPreview(text.id, () => this.drawText(ctx, t));
     }
 
@@ -456,7 +501,12 @@ export class CanvasRenderer {
     ctx.setLineDash([6 / viewport.scale, 4 / viewport.scale]);
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 1.5 / viewport.scale;
-    ctx.strokeRect(sb.minX - pad, sb.minY - pad, sb.maxX - sb.minX + pad * 2, sb.maxY - sb.minY + pad * 2);
+    ctx.strokeRect(
+      sb.minX - pad,
+      sb.minY - pad,
+      sb.maxX - sb.minX + pad * 2,
+      sb.maxY - sb.minY + pad * 2,
+    );
     ctx.setLineDash([]);
     // Stem joining the rotation grip to the top of the selection.
     const stemX = (sb.minX + sb.maxX) / 2;
@@ -503,7 +553,12 @@ export class CanvasRenderer {
    * canvas is turned around the object's centre and the object is drawn
    * exactly as it always was.
    */
-  private withRotation(ctx: CanvasRenderingContext2D, angle: number, centre: XY, draw: () => void) {
+  private withRotation(
+    ctx: CanvasRenderingContext2D,
+    angle: number,
+    centre: XY,
+    draw: () => void,
+  ) {
     if (angle === 0) {
       draw();
       return;
@@ -516,11 +571,21 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
-  private drawPage(ctx: CanvasRenderingContext2D, page: PDFPageObject, b: Bounds) {
-    this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () => this.drawPageUpright(ctx, page, b));
+  private drawPage(
+    ctx: CanvasRenderingContext2D,
+    page: PDFPageObject,
+    b: Bounds,
+  ) {
+    this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () =>
+      this.drawPageUpright(ctx, page, b),
+    );
   }
 
-  private drawPageUpright(ctx: CanvasRenderingContext2D, page: PDFPageObject, b: Bounds) {
+  private drawPageUpright(
+    ctx: CanvasRenderingContext2D,
+    page: PDFPageObject,
+    b: Bounds,
+  ) {
     const { scale } = this.viewport;
     const { theme } = this;
     const w = b.maxX - b.minX;
@@ -540,12 +605,20 @@ export class CanvasRenderer {
       // recoloured, in either theme.
       ctx.drawImage(bitmap, b.minX, b.minY, w, h);
     } else {
-      const pending = this.pendingAssets.has(page.assetId) || !this.imageCache.isMissing(page.assetId);
+      const pending =
+        this.pendingAssets.has(page.assetId) ||
+        !this.imageCache.isMissing(page.assetId);
       ctx.fillStyle = theme.pagePlaceholderText;
       ctx.font = `${Math.max(12, 16 / scale)}px system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(pending ? `Rendering page ${page.pageNumber}...` : `Page ${page.pageNumber} image unavailable`, b.minX + w / 2, b.minY + h / 2);
+      ctx.fillText(
+        pending
+          ? `Rendering page ${page.pageNumber}...`
+          : `Page ${page.pageNumber} image unavailable`,
+        b.minX + w / 2,
+        b.minY + h / 2,
+      );
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
     }
@@ -555,11 +628,22 @@ export class CanvasRenderer {
     ctx.strokeRect(b.minX, b.minY, w, h);
   }
 
-  private drawStroke(ctx: CanvasRenderingContext2D, stroke: StrokeObject, selected: boolean) {
+  private drawStroke(
+    ctx: CanvasRenderingContext2D,
+    stroke: StrokeObject,
+    selected: boolean,
+  ) {
     let path = this.pathCache.get(stroke.id);
     if (!path) {
       const pts = unpackPoints(stroke.points);
-      path = outlineToPath(strokeOutline(pts, stroke.tool, stroke.width, stroke.tool === "pen" && hasVaryingPressure(pts)));
+      path = outlineToPath(
+        strokeOutline(
+          pts,
+          stroke.tool,
+          stroke.width,
+          stroke.tool === "pen" && hasVaryingPressure(pts),
+        ),
+      );
       this.pathCache.set(stroke.id, path);
     }
     if (selected) {
@@ -591,7 +675,8 @@ export class CanvasRenderer {
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       for (const line of layout.lines) {
-        if (line.text !== "") ctx.fillText(line.text, text.x + line.x, text.y + line.baseline);
+        if (line.text !== "")
+          ctx.fillText(line.text, text.x + line.x, text.y + line.baseline);
       }
       ctx.restore();
     });
@@ -617,7 +702,8 @@ export class CanvasRenderer {
     if (this.lassoPath && this.lassoPath.length > 1) {
       ctx.beginPath();
       ctx.moveTo(this.lassoPath[0].x, this.lassoPath[0].y);
-      for (let i = 1; i < this.lassoPath.length; i++) ctx.lineTo(this.lassoPath[i].x, this.lassoPath[i].y);
+      for (let i = 1; i < this.lassoPath.length; i++)
+        ctx.lineTo(this.lassoPath[i].x, this.lassoPath[i].y);
       ctx.closePath();
       ctx.fillStyle = theme.selectionFill;
       ctx.fill();
@@ -669,16 +755,25 @@ export class CanvasRenderer {
   }
 }
 
-function pageBounds(page: PDFPageObject, drag: { id: string; dx: number; dy: number } | null): Bounds {
+function pageBounds(
+  page: PDFPageObject,
+  drag: { id: string; dx: number; dy: number } | null,
+): Bounds {
   const dx = drag && drag.id === page.id ? drag.dx : 0;
   const dy = drag && drag.id === page.id ? drag.dy : 0;
-  return { minX: page.x + dx, minY: page.y + dy, maxX: page.x + dx + page.width, maxY: page.y + dy + page.height };
+  return {
+    minX: page.x + dx,
+    minY: page.y + dy,
+    maxX: page.x + dx + page.width,
+    maxY: page.y + dy + page.height,
+  };
 }
 
 function hasVaryingPressure(pts: StrokePoint[]): boolean {
   if (pts.length < 2) return false;
   const first = pts[0].pressure ?? 0.5;
-  for (const p of pts) if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
+  for (const p of pts)
+    if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
   return false;
 }
 
