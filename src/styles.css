@@ -766,7 +766,7 @@ button {
   margin: 0;
   padding: 0;
   border: 0;
-  background: var(--accent-soft);
+  background: transparent;
   outline: 1px solid var(--accent);
   overflow: hidden;
   resize: none;
