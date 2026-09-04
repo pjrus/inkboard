@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   cachedThemePreference,
   loadThemePreference,
@@ -22,7 +30,10 @@ const ThemeContext = createContext<ThemeContextValue>({
   setPreference: () => {},
 });
 
-const META_THEME_COLOR: Record<ResolvedTheme, string> = { light: "#f3f1ec", dark: "#1c1d21" };
+const META_THEME_COLOR: Record<ResolvedTheme, string> = {
+  light: "#f3f1ec",
+  dark: "#1c1d21",
+};
 
 /**
  * Applies the resolved theme as `data-theme` on <html>, which flips the CSS
@@ -31,7 +42,9 @@ const META_THEME_COLOR: Record<ResolvedTheme, string> = { light: "#f3f1ec", dark
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // Paint from the synchronous mirror, then reconcile with IndexedDB below.
-  const [preference, setPreferenceState] = useState<ThemePreference>(cachedThemePreference);
+  const [preference, setPreferenceState] = useState<ThemePreference>(
+    cachedThemePreference,
+  );
   const [system, setSystem] = useState<ResolvedTheme>(() => systemTheme());
 
   useEffect(() => {
@@ -46,13 +59,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => onSystemThemeChange(setSystem), []);
 
-  const theme: ResolvedTheme = preference === "system" ? system : resolveTheme(preference);
+  const theme: ResolvedTheme =
+    preference === "system" ? system : resolveTheme(preference);
 
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", META_THEME_COLOR[theme]);
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", META_THEME_COLOR[theme]);
   }, [theme]);
 
   const setPreference = useCallback((p: ThemePreference) => {
@@ -60,8 +76,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     void saveThemePreference(p);
   }, []);
 
-  const value = useMemo(() => ({ preference, theme, setPreference }), [preference, theme, setPreference]);
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  const value = useMemo(
+    () => ({ preference, theme, setPreference }),
+    [preference, theme, setPreference],
+  );
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 
 export function useTheme(): ThemeContextValue {

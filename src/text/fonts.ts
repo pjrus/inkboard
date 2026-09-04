@@ -27,10 +27,38 @@ export interface FontDefinition {
 const FALLBACK = "system-ui, -apple-system, Segoe UI, sans-serif";
 
 export const FONTS: FontDefinition[] = [
-  { id: "open-sans", label: "Open Sans", cssFamily: "Open Sans", stack: `"Open Sans", ${FALLBACK}`, ascent: 1.0688, descent: -0.293 },
-  { id: "inter", label: "Inter", cssFamily: "Inter", stack: `"Inter", ${FALLBACK}`, ascent: 0.9688, descent: -0.2412 },
-  { id: "roboto", label: "Roboto", cssFamily: "Roboto", stack: `"Roboto", ${FALLBACK}`, ascent: 0.9277, descent: -0.2441 },
-  { id: "lato", label: "Lato", cssFamily: "Lato", stack: `"Lato", ${FALLBACK}`, ascent: 0.987, descent: -0.213 },
+  {
+    id: "open-sans",
+    label: "Open Sans",
+    cssFamily: "Open Sans",
+    stack: `"Open Sans", ${FALLBACK}`,
+    ascent: 1.0688,
+    descent: -0.293,
+  },
+  {
+    id: "inter",
+    label: "Inter",
+    cssFamily: "Inter",
+    stack: `"Inter", ${FALLBACK}`,
+    ascent: 0.9688,
+    descent: -0.2412,
+  },
+  {
+    id: "roboto",
+    label: "Roboto",
+    cssFamily: "Roboto",
+    stack: `"Roboto", ${FALLBACK}`,
+    ascent: 0.9277,
+    descent: -0.2441,
+  },
+  {
+    id: "lato",
+    label: "Lato",
+    cssFamily: "Lato",
+    stack: `"Lato", ${FALLBACK}`,
+    ascent: 0.987,
+    descent: -0.213,
+  },
 ];
 
 const BY_ID = new Map(FONTS.map((f) => [f.id, f]));

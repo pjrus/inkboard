@@ -1,4 +1,13 @@
-const base = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+const base = {
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
 
 export const HandIcon = () => (
   <svg {...base} aria-hidden="true">
@@ -51,7 +60,10 @@ export const ChevronIcon = () => (
 );
 export const LassoIcon = () => (
   <svg {...base} aria-hidden="true">
-    <path d="M12 4c4.4 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3.6-5 8-5z" strokeDasharray="3 2" />
+    <path
+      d="M12 4c4.4 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3.6-5 8-5z"
+      strokeDasharray="3 2"
+    />
     <path d="M7.5 13.5c-.8 1.4-1 3-.3 4.2.8 1.4 2.6 1.9 4 1.1" />
     <path d="M7 19.5c-.6 0-1.4.6-1.4 1.5" />
   </svg>

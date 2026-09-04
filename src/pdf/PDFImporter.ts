@@ -1,12 +1,19 @@
 import * as pdfjsLib from "pdfjs-dist";
 import { newId } from "../document/ids";
 import type { CanvasDocument } from "../document/crdt";
-import type { PDFDocumentMetadata, PDFLayout, PDFPageObject } from "../document/schema";
+import type {
+  PDFDocumentMetadata,
+  PDFLayout,
+  PDFPageObject,
+} from "../document/schema";
 import { putAsset } from "../storage/assetRepository";
 import { layoutPages, type PageSize } from "./PDFLayoutEngine";
 
 // PDF.js does its parsing/rendering work in a worker so the UI stays responsive.
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href;
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).href;
 
 /** Rasterisation limits: sharp when zoomed, but never absurdly large. */
 const RASTER_SCALE = 2;
@@ -20,7 +27,11 @@ export interface InspectedPDF {
 }
 
 export async function inspectPDF(file: File): Promise<InspectedPDF> {
-  if (file.type && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+  if (
+    file.type &&
+    file.type !== "application/pdf" &&
+    !file.name.toLowerCase().endsWith(".pdf")
+  ) {
     throw new Error("That file does not look like a PDF.");
   }
   const data = await file.arrayBuffer();
@@ -67,7 +78,18 @@ export interface ImportResult {
  * memory use.
  */
 export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
-  const { boardId, doc, file, inspected, layout, origin, onProgress, onPageReady, onPagesPlanned, signal } = opts;
+  const {
+    boardId,
+    doc,
+    file,
+    inspected,
+    layout,
+    origin,
+    onProgress,
+    onPageReady,
+    onPagesPlanned,
+    signal,
+  } = opts;
   const pdfDocumentId = newId(10);
   const placements = layoutPages(inspected.sizes, layout, origin);
   const now = Date.now();
@@ -125,7 +147,10 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
     try {
       const page = await inspected.pdf.getPage(pageObj.pageNumber);
       const base = page.getViewport({ scale: 1 });
-      const scale = Math.min(RASTER_SCALE, MAX_RASTER_DIMENSION / Math.max(base.width, base.height));
+      const scale = Math.min(
+        RASTER_SCALE,
+        MAX_RASTER_DIMENSION / Math.max(base.width, base.height),
+      );
       const vp = page.getViewport({ scale });
       canvas.width = Math.ceil(vp.width);
       canvas.height = Math.ceil(vp.height);
@@ -159,8 +184,16 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   return { pdfDocumentId, pages, failedPages };
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+function canvasToBlob(
+  canvas: HTMLCanvasElement,
+  type: string,
+  quality: number,
+): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), type, quality);
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+      type,
+      quality,
+    );
   });
 }

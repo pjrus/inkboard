@@ -22,13 +22,19 @@ const sync = (a: CanvasDocument, b: CanvasDocument) => {
   b.applyUpdate(ua);
 };
 
-const textOf = (d: CanvasDocument, id: string) => (d.get(id) as TextObject).text;
+const textOf = (d: CanvasDocument, id: string) =>
+  (d.get(id) as TextObject).text;
 
 describe("text objects in the CRDT", () => {
   it("stores text as a plain string in snapshots but a Y.Text underneath", () => {
     const d = new CanvasDocument();
     const t = d.addText(textInput({ text: "hello" }));
-    expect(d.get(t.id)).toMatchObject({ type: "text", text: "hello", fontFamily: "open-sans", fontSize: 20 });
+    expect(d.get(t.id)).toMatchObject({
+      type: "text",
+      text: "hello",
+      fontFamily: "open-sans",
+      fontSize: 20,
+    });
     expect(d.getTextHandle(t.id)).toBeInstanceOf(Y.Text);
     expect(d.getTextHandle(t.id)?.toString()).toBe("hello");
   });
@@ -79,10 +85,22 @@ describe("text objects in the CRDT", () => {
   it("undoes and redoes creation, property changes and deletion", () => {
     const d = new CanvasDocument();
     const t = d.addText(textInput({ text: "hi" }));
-    d.setTextProperties([t.id], { fontFamily: "roboto", fontSize: 32, textAlign: "center" });
-    expect(d.get(t.id)).toMatchObject({ fontFamily: "roboto", fontSize: 32, textAlign: "center" });
+    d.setTextProperties([t.id], {
+      fontFamily: "roboto",
+      fontSize: 32,
+      textAlign: "center",
+    });
+    expect(d.get(t.id)).toMatchObject({
+      fontFamily: "roboto",
+      fontSize: 32,
+      textAlign: "center",
+    });
     d.undo();
-    expect(d.get(t.id)).toMatchObject({ fontFamily: "open-sans", fontSize: 20, textAlign: "left" });
+    expect(d.get(t.id)).toMatchObject({
+      fontFamily: "open-sans",
+      fontSize: 20,
+      textAlign: "left",
+    });
     d.redo();
     expect(d.get(t.id)).toMatchObject({ fontFamily: "roboto", fontSize: 32 });
     d.removeObjects([t.id]);
@@ -129,10 +147,14 @@ describe("text objects in the CRDT", () => {
     const text = d.addText(textInput({ x: 100, y: 50, text: "note" }));
     d.translateObjects([stroke.id, text.id], 25, -10);
     expect(d.get(text.id)).toMatchObject({ x: 125, y: 40 });
-    expect((d.get(stroke.id) as { points: number[] }).points.slice(0, 2)).toEqual([25, -10]);
+    expect(
+      (d.get(stroke.id) as { points: number[] }).points.slice(0, 2),
+    ).toEqual([25, -10]);
     d.undo();
     expect(d.get(text.id)).toMatchObject({ x: 100, y: 50 });
-    expect((d.get(stroke.id) as { points: number[] }).points.slice(0, 2)).toEqual([0, 0]);
+    expect(
+      (d.get(stroke.id) as { points: number[] }).points.slice(0, 2),
+    ).toEqual([0, 0]);
   });
 
   it("reports text changes to listeners so the renderer can repaint", () => {

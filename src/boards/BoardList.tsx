@@ -25,7 +25,12 @@ export function BoardList({ onOpen }: Props) {
   };
 
   const remove = async (b: BoardRecord) => {
-    if (!window.confirm(`Delete "${b.name}" and everything on it? This cannot be undone.`)) return;
+    if (
+      !window.confirm(
+        `Delete "${b.name}" and everything on it? This cannot be undone.`,
+      )
+    )
+      return;
     await boardRepository.delete(b.id);
     await refresh();
   };
@@ -51,11 +56,22 @@ export function BoardList({ onOpen }: Props) {
         <ul className="board-items">
           {boards.map((b) => (
             <li key={b.id}>
-              <button type="button" className="board-item" onClick={() => onOpen(b.id)}>
+              <button
+                type="button"
+                className="board-item"
+                onClick={() => onOpen(b.id)}
+              >
                 <span className="board-name">{b.name}</span>
-                <span className="board-date">Edited {formatDate(b.updatedAt)}</span>
+                <span className="board-date">
+                  Edited {formatDate(b.updatedAt)}
+                </span>
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" aria-label={`Delete ${b.name}`} onClick={() => remove(b)}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                aria-label={`Delete ${b.name}`}
+                onClick={() => remove(b)}
+              >
                 Delete
               </button>
             </li>
@@ -63,7 +79,8 @@ export function BoardList({ onOpen }: Props) {
         </ul>
       )}
       <footer className="board-list-footer muted">
-        Everything is stored in this browser. {used !== null && `Local storage used: ${formatBytes(used)}`}
+        Everything is stored in this browser.{" "}
+        {used !== null && `Local storage used: ${formatBytes(used)}`}
       </footer>
     </div>
   );
@@ -72,7 +89,9 @@ export function BoardList({ onOpen }: Props) {
 function formatDate(ts: number) {
   const d = new Date(ts);
   const sameDay = new Date().toDateString() === d.toDateString();
-  return sameDay ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString();
 }
 
 export function formatBytes(n: number) {

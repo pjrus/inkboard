@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import type { CanvasMode, FontFamilyId, LassoFilter, TextAlign, Tool } from "../document/schema";
+import type {
+  CanvasMode,
+  FontFamilyId,
+  LassoFilter,
+  TextAlign,
+  Tool,
+} from "../document/schema";
 import type { SaveStatus } from "../document/persistence";
 import type { ToolPreferences } from "../storage/db";
 import { boardRepository, DEFAULT_TOOL_PREFS } from "../boards/BoardRepository";
@@ -127,7 +133,9 @@ function persistPrefs(get: () => ToolState) {
     const s = get();
     void boardRepository.saveToolPreferences({
       ...DEFAULT_TOOL_PREFS,
-      ...(Object.fromEntries(PREF_KEYS.map((k) => [k, s[k]])) as Partial<ToolPreferences>),
+      ...(Object.fromEntries(
+        PREF_KEYS.map((k) => [k, s[k]]),
+      ) as Partial<ToolPreferences>),
     });
   }, 200);
 }
@@ -152,14 +160,20 @@ export const useToolStore = create<ToolState>((set, get) => ({
   canRedo: false,
 
   setTool: (tool) => {
-    set({ tool, selectedObjectId: tool === "pan" ? get().selectedObjectId : null });
+    set({
+      tool,
+      selectedObjectId: tool === "pan" ? get().selectedObjectId : null,
+    });
     persistPrefs(get);
   },
   setCanvasMode: (canvasMode) => {
     if (get().canvasMode === canvasMode) return;
     // Entering View mode drops the selection and any open editor; the canvas
     // itself does that (see CanvasViewport), and the viewport is left alone.
-    set({ canvasMode, selection: canvasMode === "view" ? null : get().selection });
+    set({
+      canvasMode,
+      selection: canvasMode === "view" ? null : get().selection,
+    });
     persistPrefs(get);
   },
   /**
@@ -222,7 +236,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setImportProgress: (importProgress) => set({ importProgress }),
   setHistory: (canUndo, canRedo) => {
     const s = get();
-    if (s.canUndo !== canUndo || s.canRedo !== canRedo) set({ canUndo, canRedo });
+    if (s.canUndo !== canUndo || s.canRedo !== canRedo)
+      set({ canUndo, canRedo });
   },
   hydrate: async () => {
     const prefs = await boardRepository.getToolPreferences();

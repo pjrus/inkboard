@@ -23,8 +23,18 @@ describe("CanvasDocument (CRDT)", () => {
     a.applyUpdate(ub);
     b.applyUpdate(ua);
 
-    expect(a.getAll().map((o) => o.id).sort()).toEqual([sa.id, sb.id].sort());
-    expect(b.getAll().map((o) => o.id).sort()).toEqual([sa.id, sb.id].sort());
+    expect(
+      a
+        .getAll()
+        .map((o) => o.id)
+        .sort(),
+    ).toEqual([sa.id, sb.id].sort());
+    expect(
+      b
+        .getAll()
+        .map((o) => o.id)
+        .sort(),
+    ).toEqual([sa.id, sb.id].sort());
     expect(a.get(sb.id)).toEqual(b.get(sb.id));
   });
 
@@ -79,7 +89,16 @@ describe("CanvasDocument (CRDT)", () => {
       rotation: 0,
       createdAt: 1,
     }));
-    d.addPDFDocument({ id: "doc", fileName: "a.pdf", pageCount: 3, layout: "vertical", createdAt: 1 }, pages);
+    d.addPDFDocument(
+      {
+        id: "doc",
+        fileName: "a.pdf",
+        pageCount: 3,
+        layout: "vertical",
+        createdAt: 1,
+      },
+      pages,
+    );
     expect(d.pagesOf("doc")).toHaveLength(3);
     d.setPDFLayout("doc", "horizontal", [
       { id: "p1", x: 0, y: 0 },

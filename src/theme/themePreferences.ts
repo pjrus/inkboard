@@ -45,7 +45,9 @@ export function cachedThemePreference(): ThemePreference {
 export async function loadThemePreference(): Promise<ThemePreference> {
   try {
     const row = await getDB().preferences.get(KEY);
-    const preference = isPreference(row?.value) ? row.value : DEFAULT_THEME_PREFERENCE;
+    const preference = isPreference(row?.value)
+      ? row.value
+      : DEFAULT_THEME_PREFERENCE;
     cache(preference);
     return preference;
   } catch {
@@ -54,7 +56,9 @@ export async function loadThemePreference(): Promise<ThemePreference> {
   }
 }
 
-export async function saveThemePreference(preference: ThemePreference): Promise<void> {
+export async function saveThemePreference(
+  preference: ThemePreference,
+): Promise<void> {
   cache(preference);
   await getDB().preferences.put({ key: KEY, value: preference });
 }
@@ -73,7 +77,9 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
 }
 
 /** Watch the OS setting. Only meaningful while the preference is "system". */
-export function onSystemThemeChange(fn: (theme: ResolvedTheme) => void): () => void {
+export function onSystemThemeChange(
+  fn: (theme: ResolvedTheme) => void,
+): () => void {
   const q = systemQuery();
   if (!q) return () => {};
   const handler = (e: MediaQueryListEvent) => fn(e.matches ? "dark" : "light");

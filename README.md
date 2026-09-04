@@ -51,7 +51,7 @@ npm run build      # typecheck + production bundle in dist/
 
 ### Themes
 
-Light, Dark and System. Imported PDF pages and every colour you have already chosen stay exactly as they were; only the defaults for *new* ink and text follow the theme.
+Light, Dark and System. Imported PDF pages and every colour you have already chosen stay exactly as they were; only the defaults for _new_ ink and text follow the theme.
 
 ![Light theme](docs/canvas-light.png)
 

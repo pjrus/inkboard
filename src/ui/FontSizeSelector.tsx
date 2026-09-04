@@ -34,7 +34,12 @@ export function FontSizeSelector() {
   return (
     <div className="tb-anchor font-size-control">
       <div className="stepper" role="group" aria-label={label}>
-        <button type="button" aria-label="Smaller text" title="Smaller text" onClick={() => step(-1)}>
+        <button
+          type="button"
+          aria-label="Smaller text"
+          title="Smaller text"
+          onClick={() => step(-1)}
+        >
           &minus;
         </button>
         <button
@@ -49,11 +54,20 @@ export function FontSizeSelector() {
           {mixed ? "Mixed" : size}
           <ChevronIcon />
         </button>
-        <button type="button" aria-label="Larger text" title="Larger text" onClick={() => step(1)}>
+        <button
+          type="button"
+          aria-label="Larger text"
+          title="Larger text"
+          onClick={() => step(1)}
+        >
           +
         </button>
       </div>
-      <Popover open={open} onClose={() => setOpen(false)} label="Choose font size">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        label="Choose font size"
+      >
         <div className="size-grid" role="radiogroup" aria-label={label}>
           {FONT_SIZE_PRESETS.map((p) => (
             <button

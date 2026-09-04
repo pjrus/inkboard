@@ -14,7 +14,12 @@ export function Popover({ open, onClose, children, label }: Props) {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
       const el = ref.current;
-      if (el && !el.contains(e.target as Node) && !el.parentElement?.contains(e.target as Node)) onClose();
+      if (
+        el &&
+        !el.contains(e.target as Node) &&
+        !el.parentElement?.contains(e.target as Node)
+      )
+        onClose();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();

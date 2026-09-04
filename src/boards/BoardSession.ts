@@ -41,7 +41,8 @@ export class BoardSession {
   async close(finalViewport?: Viewport) {
     this.closed = true;
     if (this.viewportTimer) clearTimeout(this.viewportTimer);
-    if (finalViewport) await boardRepository.saveViewport(this.board.id, finalViewport);
+    if (finalViewport)
+      await boardRepository.saveViewport(this.board.id, finalViewport);
     await this.persistence.destroy();
     this.doc.destroy();
   }

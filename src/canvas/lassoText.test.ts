@@ -8,7 +8,12 @@ const square = [
   { x: 0, y: 100 },
 ];
 
-const box = (minX: number, minY: number, w: number, h: number) => ({ minX, minY, maxX: minX + w, maxY: minY + h });
+const box = (minX: number, minY: number, w: number, h: number) => ({
+  minX,
+  minY,
+  maxX: minX + w,
+  maxY: minY + h,
+});
 
 describe("lasso selection of text boxes", () => {
   it("selects a box fully inside the lasso", () => {
@@ -35,6 +40,11 @@ describe("lasso selection of text boxes", () => {
   });
 
   it("needs three points to make a polygon", () => {
-    expect(lassoSelectsBox(box(20, 20, 10, 10), [{ x: 0, y: 0 }, { x: 10, y: 10 }])).toBe(false);
+    expect(
+      lassoSelectsBox(box(20, 20, 10, 10), [
+        { x: 0, y: 0 },
+        { x: 10, y: 10 },
+      ]),
+    ).toBe(false);
   });
 });

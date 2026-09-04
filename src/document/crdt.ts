@@ -39,7 +39,10 @@ export type ObjectChange =
   | { kind: "update"; id: string; object: CanvasObject }
   | { kind: "remove"; id: string };
 
-export type ObjectListener = (changes: ObjectChange[], transactionOrigin: unknown) => void;
+export type ObjectListener = (
+  changes: ObjectChange[],
+  transactionOrigin: unknown,
+) => void;
 
 export class CanvasDocument {
   readonly ydoc: Y.Doc;
@@ -84,14 +87,17 @@ export class CanvasDocument {
 
   getPDFDocuments(): PDFDocumentMetadata[] {
     const out: PDFDocumentMetadata[] = [];
-    this.pdfDocuments.forEach((m) => out.push(m.toJSON() as PDFDocumentMetadata));
+    this.pdfDocuments.forEach((m) =>
+      out.push(m.toJSON() as PDFDocumentMetadata),
+    );
     return out;
   }
 
   pagesOf(pdfDocumentId: string): PDFPageObject[] {
     const pages: PDFPageObject[] = [];
     for (const o of this.cache.values()) {
-      if (o.type === "pdf-page" && o.pdfDocumentId === pdfDocumentId) pages.push(o);
+      if (o.type === "pdf-page" && o.pdfDocumentId === pdfDocumentId)
+        pages.push(o);
     }
     pages.sort((a, b) => a.pageNumber - b.pageNumber);
     return pages;
@@ -120,7 +126,9 @@ export class CanvasDocument {
     this.ydoc.transact(fn, LOCAL_ORIGIN);
   }
 
-  addStroke(stroke: Omit<StrokeObject, "id" | "type" | "createdAt"> & { id?: string }): StrokeObject {
+  addStroke(
+    stroke: Omit<StrokeObject, "id" | "type" | "createdAt"> & { id?: string },
+  ): StrokeObject {
     const obj: StrokeObject = {
       ...stroke,
       id: stroke.id ?? newId(),
@@ -136,11 +144,19 @@ export class CanvasDocument {
    * collaborative splices rather than whole-string replacements.
    */
   addText(
-    input: Omit<TextObject, "id" | "type" | "createdAt" | "updatedAt"> & { id?: string },
+    input: Omit<TextObject, "id" | "type" | "createdAt" | "updatedAt"> & {
+      id?: string;
+    },
     grouped = false,
   ): TextObject {
     const now = Date.now();
-    const obj: TextObject = { ...input, id: input.id ?? newId(), type: "text", createdAt: now, updatedAt: now };
+    const obj: TextObject = {
+      ...input,
+      id: input.id ?? newId(),
+      type: "text",
+      createdAt: now,
+      updatedAt: now,
+    };
     const fn = () => {
       const m = toYMap({ ...obj, text: undefined });
       const ytext = new Y.Text();
@@ -183,14 +199,23 @@ export class CanvasDocument {
   }
 
   /** Apply text properties (font, size, colour, alignment, width) in one undo step. */
-  setTextProperties(ids: string[], patch: Partial<Pick<TextObject, "fontFamily" | "fontSize" | "color" | "textAlign" | "width">>): void {
+  setTextProperties(
+    ids: string[],
+    patch: Partial<
+      Pick<
+        TextObject,
+        "fontFamily" | "fontSize" | "color" | "textAlign" | "width"
+      >
+    >,
+  ): void {
     if (ids.length === 0) return;
     const now = Date.now();
     this.transact(() => {
       for (const id of ids) {
         const m = this.objects.get(id);
         if (!m || m.get("type") !== "text") continue;
-        for (const [k, v] of Object.entries(patch)) if (v !== undefined) m.set(k, v);
+        for (const [k, v] of Object.entries(patch))
+          if (v !== undefined) m.set(k, v);
         m.set("updatedAt", now);
       }
     });
@@ -203,7 +228,10 @@ export class CanvasDocument {
       for (const id of ids) {
         const m = this.objects.get(id);
         if (!m || m.get("type") !== "text") continue;
-        m.set("fontSize", nextFontSizeStep(m.get("fontSize") as number, direction));
+        m.set(
+          "fontSize",
+          nextFontSizeStep(m.get("fontSize") as number, direction),
+        );
         m.set("updatedAt", now);
       }
     });
@@ -293,7 +321,11 @@ export class CanvasDocument {
    * spinning in place. Strokes have no rotation field: their points are
    * rotated about the pivot directly (see canvas/transform.ts for why).
    */
-  rotateObjects(ids: string[], angleDelta: number, pivot: { x: number; y: number }): void {
+  rotateObjects(
+    ids: string[],
+    angleDelta: number,
+    pivot: { x: number; y: number },
+  ): void {
     if (ids.length === 0 || angleDelta === 0) return;
     const now = Date.now();
     this.transact(() => {
@@ -334,9 +366,19 @@ export class CanvasDocument {
         pts[i] += dx;
         pts[i + 1] += dy;
       }
-      const b = m.get("bounds") as { minX: number; minY: number; maxX: number; maxY: number };
+      const b = m.get("bounds") as {
+        minX: number;
+        minY: number;
+        maxX: number;
+        maxY: number;
+      };
       m.set("points", pts);
-      m.set("bounds", { minX: b.minX + dx, minY: b.minY + dy, maxX: b.maxX + dx, maxY: b.maxY + dy });
+      m.set("bounds", {
+        minX: b.minX + dx,
+        minY: b.minY + dy,
+        maxX: b.maxX + dx,
+        maxY: b.maxY + dy,
+      });
       return;
     }
     m.set("x", (m.get("x") as number) + dx);
@@ -344,7 +386,11 @@ export class CanvasDocument {
     if (m.get("type") === "text") m.set("updatedAt", Date.now());
   }
 
-  setPDFLayout(pdfDocumentId: string, layout: PDFLayout, positions: { id: string; x: number; y: number }[]): void {
+  setPDFLayout(
+    pdfDocumentId: string,
+    layout: PDFLayout,
+    positions: { id: string; x: number; y: number }[],
+  ): void {
     const meta = this.pdfDocuments.get(pdfDocumentId);
     if (!meta) return;
     this.transact(() => {
@@ -396,7 +442,9 @@ export class CanvasDocument {
 
   private rebuildCache() {
     this.cache.clear();
-    this.objects.forEach((m, id) => this.cache.set(id, m.toJSON() as CanvasObject));
+    this.objects.forEach((m, id) =>
+      this.cache.set(id, m.toJSON() as CanvasObject),
+    );
   }
 
   private handleEvents(events: Y.YEvent<any>[], txn: Y.Transaction) {
@@ -413,7 +461,11 @@ export class CanvasDocument {
             if (!m) return;
             const obj = m.toJSON() as CanvasObject;
             this.cache.set(id, obj);
-            changes.push({ kind: change.action === "add" ? "add" : "update", id, object: obj });
+            changes.push({
+              kind: change.action === "add" ? "add" : "update",
+              id,
+              object: obj,
+            });
           }
           touched.add(id);
         });

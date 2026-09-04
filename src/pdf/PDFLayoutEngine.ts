@@ -29,7 +29,12 @@ export function layoutPages(
   let cursorX = origin.x;
   let cursorY = origin.y;
   for (const size of sizes) {
-    out.push({ x: cursorX, y: cursorY, width: size.width, height: size.height });
+    out.push({
+      x: cursorX,
+      y: cursorY,
+      width: size.width,
+      height: size.height,
+    });
     if (layout === "vertical") {
       cursorY += size.height + gap;
     } else {

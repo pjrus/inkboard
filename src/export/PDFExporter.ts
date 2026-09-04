@@ -2,7 +2,11 @@ import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import type { CanvasObject } from "../document/schema";
 import { ExportResources, renderPage } from "./ExportRenderer";
-import { planPages, type ExportLayout, type ExportOrientation } from "./exportPlan";
+import {
+  planPages,
+  type ExportLayout,
+  type ExportOrientation,
+} from "./exportPlan";
 
 /**
  * Client-side PDF export.
@@ -31,10 +35,20 @@ export interface ExportResult {
 
 export class ExportError extends Error {}
 
-export async function exportToPDF(options: ExportOptions): Promise<ExportResult> {
-  const { objects, boardName, layout, orientation = "auto", onProgress, signal } = options;
+export async function exportToPDF(
+  options: ExportOptions,
+): Promise<ExportResult> {
+  const {
+    objects,
+    boardName,
+    layout,
+    orientation = "auto",
+    onProgress,
+    signal,
+  } = options;
   const plan = planPages(objects, layout, orientation);
-  if (plan.length === 0) throw new ExportError("There is nothing on this board to export yet.");
+  if (plan.length === 0)
+    throw new ExportError("There is nothing on this board to export yet.");
 
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -74,7 +88,9 @@ export function pdfFileName(boardName: string): string {
 
 /** Hand the finished bytes to the browser's download machinery. */
 export function downloadPDF(result: ExportResult): void {
-  const blob = new Blob([result.bytes.slice().buffer], { type: "application/pdf" });
+  const blob = new Blob([result.bytes.slice().buffer], {
+    type: "application/pdf",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

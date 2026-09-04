@@ -26,7 +26,12 @@ interface Props {
  * React child is the inline text editor, mounted only while a text box is
  * actually being edited.
  */
-export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady }: Props) {
+export function CanvasViewport({
+  doc,
+  initialViewport,
+  onViewportChange,
+  onReady,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const staticRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -38,30 +43,44 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
 
   useEffect(() => {
     const container = containerRef.current!;
-    const renderer = new CanvasRenderer(staticRef.current!, overlayRef.current!, doc);
+    const renderer = new CanvasRenderer(
+      staticRef.current!,
+      overlayRef.current!,
+      doc,
+    );
     renderer.setViewport(initialViewport);
 
     const store = useToolStore;
-    const controller = new CanvasInteractionController(container, renderer, doc, {
-      getTool: () => store.getState().tool,
-      getMode: () => store.getState().canvasMode,
-      getLassoFilter: () => store.getState().lassoFilter,
-      getColor: () => store.getState().color,
-      getWidth: () => store.getState().width,
-      getTextStyle: () => {
-        const s = store.getState();
-        return { fontFamily: s.textFont, fontSize: s.textFontSize, color: s.textColor, textAlign: s.textAlign };
+    const controller = new CanvasInteractionController(
+      container,
+      renderer,
+      doc,
+      {
+        getTool: () => store.getState().tool,
+        getMode: () => store.getState().canvasMode,
+        getLassoFilter: () => store.getState().lassoFilter,
+        getColor: () => store.getState().color,
+        getWidth: () => store.getState().width,
+        getTextStyle: () => {
+          const s = store.getState();
+          return {
+            fontFamily: s.textFont,
+            fontSize: s.textFontSize,
+            color: s.textColor,
+            textAlign: s.textAlign,
+          };
+        },
+        stylusSeen: () => store.getState().stylusSeen,
+        onStylusSeen: () => store.getState().markStylusSeen(),
+        onViewportChange: (vp) => {
+          store.getState().setZoom(vp.scale);
+          onViewportChange(vp);
+        },
+        onSelectionChange: (id) => store.getState().setSelectedObjectId(id),
+        onObjectSelectionChange: (sel) => store.getState().setSelection(sel),
+        onEditingTextChange: (id) => store.getState().setEditingTextId(id),
       },
-      stylusSeen: () => store.getState().stylusSeen,
-      onStylusSeen: () => store.getState().markStylusSeen(),
-      onViewportChange: (vp) => {
-        store.getState().setZoom(vp.scale);
-        onViewportChange(vp);
-      },
-      onSelectionChange: (id) => store.getState().setSelectedObjectId(id),
-      onObjectSelectionChange: (sel) => store.getState().setSelection(sel),
-      onEditingTextChange: (id) => store.getState().setEditingTextId(id),
-    });
+    );
     store.getState().setSelectionCommands({
       setWidth: (w) => controller.setSelectionWidth(w),
       adjustWidth: (d) => controller.adjustSelectionWidth(d),
@@ -78,7 +97,11 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
 
     const resize = () => {
       const r = container.getBoundingClientRect();
-      renderer.resize(r.width, r.height, Math.min(window.devicePixelRatio || 1, 3));
+      renderer.resize(
+        r.width,
+        r.height,
+        Math.min(window.devicePixelRatio || 1, 3),
+      );
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -86,7 +109,11 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
     window.addEventListener("resize", resize);
 
     handlesRef.current = { renderer, controller };
-    (window as unknown as Record<string, unknown>).__debug = { renderer, controller, doc };
+    (window as unknown as Record<string, unknown>).__debug = {
+      renderer,
+      controller,
+      doc,
+    };
     onReady(handlesRef.current);
     store.getState().setZoom(initialViewport.scale);
 
@@ -132,7 +159,12 @@ export function CanvasViewport({ doc, initialViewport, onViewportChange, onReady
 
   const handles = handlesRef.current;
   return (
-    <div ref={containerRef} className="canvas-host" role="application" aria-label="Drawing canvas">
+    <div
+      ref={containerRef}
+      className="canvas-host"
+      role="application"
+      aria-label="Drawing canvas"
+    >
       <canvas ref={staticRef} className="canvas-layer" />
       <canvas ref={overlayRef} className="canvas-layer" />
       {editingTextId && handles && (

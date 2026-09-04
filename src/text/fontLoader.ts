@@ -50,7 +50,9 @@ export async function loadFonts(): Promise<void> {
   if (ready) return;
   try {
     if (typeof document !== "undefined" && document.fonts) {
-      await Promise.all(FONTS.map((f) => document.fonts.load(`400 16px "${f.cssFamily}"`)));
+      await Promise.all(
+        FONTS.map((f) => document.fonts.load(`400 16px "${f.cssFamily}"`)),
+      );
     }
   } catch (err) {
     // A failed load is not fatal: the CSS fallback stack still renders text.

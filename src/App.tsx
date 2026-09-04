@@ -27,7 +27,10 @@ export function App() {
   return (
     <ThemeProvider>
       {route.view === "board" ? (
-        <BoardView boardId={route.id} onBack={() => (window.location.hash = "#/")} />
+        <BoardView
+          boardId={route.id}
+          onBack={() => (window.location.hash = "#/")}
+        />
       ) : (
         <BoardList onOpen={(id) => (window.location.hash = `#/b/${id}`)} />
       )}

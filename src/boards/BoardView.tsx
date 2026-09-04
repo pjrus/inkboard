@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CanvasViewport, type CanvasHandles } from "../canvas/CanvasViewport";
 import { isTypingTarget } from "../canvas/CanvasInteractionController";
 import { DEFAULT_VIEWPORT, screenToWorld, zoomAt } from "../canvas/coordinates";
-import type { CanvasObject, PDFLayout, PDFPageObject, Viewport } from "../document/schema";
+import type {
+  CanvasObject,
+  PDFLayout,
+  PDFPageObject,
+  Viewport,
+} from "../document/schema";
 import { ExportDialog, type ExportChoice } from "../export/ExportDialog";
 import { importPDF, inspectPDF, type InspectedPDF } from "../pdf/PDFImporter";
 import { useToolStore } from "../store/toolStore";
@@ -30,9 +35,15 @@ export function BoardView({ boardId, onBack }: Props) {
   const [session, setSession] = useState<BoardSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [pendingImport, setPendingImport] = useState<{ file: File; inspected: InspectedPDF } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{
+    file: File;
+    inspected: InspectedPDF;
+  } | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportState, setExportState] = useState<ExportState>({ busy: null, error: null });
+  const [exportState, setExportState] = useState<ExportState>({
+    busy: null,
+    error: null,
+  });
   const handlesRef = useRef<CanvasHandles | null>(null);
   const sessionRef = useRef<BoardSession | null>(null);
   const selectedId = useToolStore((s) => s.selectedObjectId);
@@ -56,7 +67,9 @@ export function BoardView({ boardId, onBack }: Props) {
         setSession(s);
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Could not open this board.");
+        setError(
+          err instanceof Error ? err.message : "Could not open this board.",
+        );
       }
     })();
     return () => {
@@ -64,7 +77,8 @@ export function BoardView({ boardId, onBack }: Props) {
       const current = sessionRef.current;
       sessionRef.current = null;
       setSession(null);
-      if (current) void current.close(handlesRef.current?.renderer.getViewport());
+      if (current)
+        void current.close(handlesRef.current?.renderer.getViewport());
     };
   }, [boardId]);
 
@@ -72,10 +86,17 @@ export function BoardView({ boardId, onBack }: Props) {
   useEffect(() => {
     if (!session) return;
     const store = useToolStore.getState();
-    const offStatus = session.persistence.onStatus((st) => useToolStore.getState().setSaveStatus(st));
-    store.setSaveStatus(session.persistence.status === "idle" ? "saved" : session.persistence.status);
+    const offStatus = session.persistence.onStatus((st) =>
+      useToolStore.getState().setSaveStatus(st),
+    );
+    store.setSaveStatus(
+      session.persistence.status === "idle"
+        ? "saved"
+        : session.persistence.status,
+    );
     const um = session.doc.undoManager;
-    const syncHistory = () => useToolStore.getState().setHistory(um.canUndo(), um.canRedo());
+    const syncHistory = () =>
+      useToolStore.getState().setHistory(um.canUndo(), um.canRedo());
     um.on("stack-item-added", syncHistory);
     um.on("stack-item-popped", syncHistory);
     um.on("stack-cleared", syncHistory);
@@ -139,7 +160,12 @@ export function BoardView({ boardId, onBack }: Props) {
       if (store.canvasMode === "view") return;
       const sel = store.selection;
       const cmds = store.selectionCommands;
-      if (sel && cmds && sel.strokeIds.length > 0 && (e.key === "[" || e.key === "]")) {
+      if (
+        sel &&
+        cmds &&
+        sel.strokeIds.length > 0 &&
+        (e.key === "[" || e.key === "]")
+      ) {
         e.preventDefault();
         cmds.adjustWidth(e.key === "]" ? 1 : -1);
         return;
@@ -164,7 +190,12 @@ export function BoardView({ boardId, onBack }: Props) {
           store.setTool("text");
           break;
         case "enter":
-          if (sel && cmds && sel.textIds.length === 1 && sel.strokeIds.length === 0) {
+          if (
+            sel &&
+            cmds &&
+            sel.textIds.length === 1 &&
+            sel.strokeIds.length === 0
+          ) {
             e.preventDefault();
             cmds.editText();
           }
@@ -195,13 +226,18 @@ export function BoardView({ boardId, onBack }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  const onViewportChange = useCallback((vp: Viewport) => sessionRef.current?.saveViewport(vp), []);
+  const onViewportChange = useCallback(
+    (vp: Viewport) => sessionRef.current?.saveViewport(vp),
+    [],
+  );
 
   const resetZoom = () => {
     const h = handlesRef.current;
     if (!h) return;
     const { width, height } = h.renderer.getSize();
-    h.controller.setViewport(zoomAt(h.renderer.getViewport(), { x: width / 2, y: height / 2 }, 1));
+    h.controller.setViewport(
+      zoomAt(h.renderer.getViewport(), { x: width / 2, y: height / 2 }, 1),
+    );
   };
 
   // ---- PDF import -----------------------------------------------------
@@ -211,7 +247,12 @@ export function BoardView({ boardId, onBack }: Props) {
       setPendingImport({ file, inspected });
     } catch (err) {
       console.error(err);
-      setImportProgress({ fileName: file.name, done: 0, total: 0, error: `Could not read ${file.name}. Is it a valid PDF?` });
+      setImportProgress({
+        fileName: file.name,
+        done: 0,
+        total: 0,
+        error: `Could not read ${file.name}. Is it a valid PDF?`,
+      });
       setTimeout(() => setImportProgress(null), 4000);
     }
   };
@@ -227,7 +268,11 @@ export function BoardView({ boardId, onBack }: Props) {
     // First page just under the toolbar, centred horizontally.
     const anchor = screenToWorld({ x: width / 2, y: 150 }, vp);
     const origin = { x: anchor.x - firstWidth / 2, y: anchor.y };
-    setImportProgress({ fileName: pending.file.name, done: 0, total: pending.inspected.pageCount });
+    setImportProgress({
+      fileName: pending.file.name,
+      done: 0,
+      total: pending.inspected.pageCount,
+    });
     try {
       const result = await importPDF({
         boardId: session.board.id,
@@ -236,19 +281,31 @@ export function BoardView({ boardId, onBack }: Props) {
         inspected: pending.inspected,
         layout,
         origin,
-        onPagesPlanned: (ids) => ids.forEach((id) => h.renderer.pendingAssets.add(id)),
+        onPagesPlanned: (ids) =>
+          ids.forEach((id) => h.renderer.pendingAssets.add(id)),
         onPageReady: (id) => h.renderer.assetReady(id),
-        onProgress: (done, total) => setImportProgress({ fileName: pending.file.name, done, total }),
+        onProgress: (done, total) =>
+          setImportProgress({ fileName: pending.file.name, done, total }),
       });
       if (result.failedPages.length) {
-        setImportProgress({ fileName: pending.file.name, done: 0, total: 0, error: `${result.failedPages.length} page(s) could not be rendered.` });
+        setImportProgress({
+          fileName: pending.file.name,
+          done: 0,
+          total: 0,
+          error: `${result.failedPages.length} page(s) could not be rendered.`,
+        });
         setTimeout(() => setImportProgress(null), 5000);
       } else {
         setTimeout(() => setImportProgress(null), 1500);
       }
     } catch (err) {
       console.error(err);
-      setImportProgress({ fileName: pending.file.name, done: 0, total: 0, error: "Import failed. See console for details." });
+      setImportProgress({
+        fileName: pending.file.name,
+        done: 0,
+        total: 0,
+        error: "Import failed. See console for details.",
+      });
       setTimeout(() => setImportProgress(null), 5000);
     }
   };
@@ -257,25 +314,38 @@ export function BoardView({ boardId, onBack }: Props) {
   const runExport = async (choice: ExportChoice) => {
     if (!session) return;
     const all = session.doc.getAll();
-    const selectedIds = new Set(handlesRef.current?.controller.getSelectedIds() ?? []);
-    const objects = choice.scope === "selection" ? all.filter((o) => selectedIds.has(o.id)) : all;
+    const selectedIds = new Set(
+      handlesRef.current?.controller.getSelectedIds() ?? [],
+    );
+    const objects =
+      choice.scope === "selection"
+        ? all.filter((o) => selectedIds.has(o.id))
+        : all;
     setExportState({ busy: { done: 0, total: 1, label: "" }, error: null });
     try {
       // pdf-lib and its font toolkit are only pulled in when someone actually
       // exports, so opening a board stays as light as it was before.
-      const { exportToPDF, downloadPDF } = await import("../export/PDFExporter");
+      const { exportToPDF, downloadPDF } =
+        await import("../export/PDFExporter");
       const result = await exportToPDF({
         objects,
         boardName: name,
         layout: choice.layout,
-        onProgress: (done, total, label) => setExportState({ busy: { done, total, label }, error: null }),
+        onProgress: (done, total, label) =>
+          setExportState({ busy: { done, total, label }, error: null }),
       });
       downloadPDF(result);
       setExportState({ busy: null, error: null });
       setExportOpen(false);
     } catch (err) {
       console.error(err);
-      setExportState({ busy: null, error: err instanceof Error ? err.message : "Export failed. See console for details." });
+      setExportState({
+        busy: null,
+        error:
+          err instanceof Error
+            ? err.message
+            : "Export failed. See console for details.",
+      });
     }
   };
 
@@ -293,13 +363,18 @@ export function BoardView({ boardId, onBack }: Props) {
     return (
       <div className="board-error">
         <p>{error}</p>
-        <button type="button" className="btn" onClick={onBack}>Back to boards</button>
+        <button type="button" className="btn" onClick={onBack}>
+          Back to boards
+        </button>
       </div>
     );
   }
-  if (!session) return <div className="board-loading muted">Opening board...</div>;
+  if (!session)
+    return <div className="board-loading muted">Opening board...</div>;
 
-  const selectedPage = selectedId ? (session.doc.get(selectedId) as PDFPageObject | undefined) : undefined;
+  const selectedPage = selectedId
+    ? (session.doc.get(selectedId) as PDFPageObject | undefined)
+    : undefined;
   void docVersion; // re-render trigger for selection bar contents
 
   let exportObjects: CanvasObject[] = [];
@@ -319,7 +394,12 @@ export function BoardView({ boardId, onBack }: Props) {
         onReady={(h) => (handlesRef.current = h)}
       />
       <header className="topbar">
-        <button type="button" className="btn btn-ghost" onClick={onBack} aria-label="Back to boards">
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={onBack}
+          aria-label="Back to boards"
+        >
           &larr; Boards
         </button>
         <input
@@ -348,7 +428,11 @@ export function BoardView({ boardId, onBack }: Props) {
         />
         <SelectionBar />
         {selectedPage?.type === "pdf-page" && (
-          <PageSelectionBar doc={session.doc} page={selectedPage} onDeselect={() => handlesRef.current?.controller.setSelection(null)} />
+          <PageSelectionBar
+            doc={session.doc}
+            page={selectedPage}
+            onDeselect={() => handlesRef.current?.controller.setSelection(null)}
+          />
         )}
       </div>
       <ZoomControls

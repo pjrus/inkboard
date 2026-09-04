@@ -26,7 +26,11 @@ export interface LassoFilter {
   images: boolean;
 }
 
-export const DEFAULT_LASSO_FILTER: LassoFilter = { ink: true, text: true, images: true };
+export const DEFAULT_LASSO_FILTER: LassoFilter = {
+  ink: true,
+  text: true,
+  images: true,
+};
 
 export const MIN_STROKE_WIDTH = 0.5;
 export const MAX_STROKE_WIDTH = 40;

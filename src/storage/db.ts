@@ -1,5 +1,12 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { CanvasMode, FontFamilyId, LassoFilter, TextAlign, Tool, Viewport } from "../document/schema";
+import type {
+  CanvasMode,
+  FontFamilyId,
+  LassoFilter,
+  TextAlign,
+  Tool,
+  Viewport,
+} from "../document/schema";
 
 /**
  * IndexedDB layout (via Dexie).

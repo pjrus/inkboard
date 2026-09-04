@@ -57,7 +57,11 @@ export function lineHeightFor(fontSize: number): number {
  * Greedy word wrap. Explicit newlines always break; words longer than the box
  * are split by character so nothing ever overflows horizontally.
  */
-export function wrapLines(text: string, width: number, measure: Measure): string[] {
+export function wrapLines(
+  text: string,
+  width: number,
+  measure: Measure,
+): string[] {
   const out: string[] = [];
   const paragraphs = text.split("\n");
   for (const paragraph of paragraphs) {
@@ -95,7 +99,11 @@ export function wrapLines(text: string, width: number, measure: Measure): string
   return out;
 }
 
-export function layoutText(text: string, opts: LayoutOptions, measure: Measure): TextLayoutResult {
+export function layoutText(
+  text: string,
+  opts: LayoutOptions,
+  measure: Measure,
+): TextLayoutResult {
   const { width, fontSize, fontFamily } = opts;
   const align = opts.align ?? "left";
   const lineHeight = lineHeightFor(fontSize);
@@ -106,7 +114,12 @@ export function layoutText(text: string, opts: LayoutOptions, measure: Measure):
     return {
       text: t,
       width: w,
-      x: align === "center" ? (width - w) / 2 : align === "right" ? width - w : 0,
+      x:
+        align === "center"
+          ? (width - w) / 2
+          : align === "right"
+            ? width - w
+            : 0,
       baseline: base + i * lineHeight,
     };
   });
