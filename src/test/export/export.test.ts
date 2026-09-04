@@ -5,9 +5,9 @@ import type {
   PDFPageObject,
   StrokeObject,
   TextObject,
-} from "../document/schema";
-import { contentBounds, overlaps } from "./exportBounds";
-import { transformedBounds, unionBounds } from "../canvas/transform";
+} from "../../document/schema";
+import { contentBounds, overlaps } from "../../export/exportBounds";
+import { transformedBounds, unionBounds } from "../../canvas/transform";
 import {
   contentRect,
   contentToPdfY,
@@ -16,16 +16,16 @@ import {
   svgAnchor,
   toPdf,
   type PageGeometry,
-} from "./exportCoordinates";
+} from "../../export/exportCoordinates";
 import {
   A4_PORTRAIT,
   planA4Pages,
   planFitPages,
   planPDFPages,
   planPages,
-} from "./exportPlan";
-import { objectsOnPage, pdfColor } from "./ExportRenderer";
-import { pdfFileName } from "./PDFExporter";
+} from "../../export/exportPlan";
+import { objectsOnPage, pdfColor } from "../../export/ExportRenderer";
+import { pdfFileName } from "../../export/PDFExporter";
 
 const stroke = (b: Bounds, createdAt = 1): StrokeObject => ({
   id: `s${b.minX}`,

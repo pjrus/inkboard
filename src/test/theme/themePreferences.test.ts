@@ -1,15 +1,15 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { CanvasDocument } from "../document/crdt";
-import { DEFAULT_TEXT_WIDTH } from "../document/schema";
-import { getDB, InkboardDB, setDB } from "../storage/db";
-import { canvasTheme, defaultInk } from "./canvasTheme";
+import { CanvasDocument } from "../../document/crdt";
+import { DEFAULT_TEXT_WIDTH } from "../../document/schema";
+import { getDB, InkboardDB, setDB } from "../../storage/db";
+import { canvasTheme, defaultInk } from "../../theme/canvasTheme";
 import {
   cachedThemePreference,
   DEFAULT_THEME_PREFERENCE,
   loadThemePreference,
   saveThemePreference,
-} from "./themePreferences";
+} from "../../theme/themePreferences";
 
 let counter = 0;
 beforeEach(() => {

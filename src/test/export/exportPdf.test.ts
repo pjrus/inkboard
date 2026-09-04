@@ -1,11 +1,11 @@
 import "fake-indexeddb/auto";
 import { readFile } from "node:fs/promises";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { CanvasDocument } from "../document/crdt";
-import { DEFAULT_TEXT_WIDTH, type CanvasObject } from "../document/schema";
-import { putAsset } from "../storage/assetRepository";
-import { InkboardDB, setDB } from "../storage/db";
-import { exportToPDF } from "./PDFExporter";
+import { CanvasDocument } from "../../document/crdt";
+import { DEFAULT_TEXT_WIDTH, type CanvasObject } from "../../document/schema";
+import { putAsset } from "../../storage/assetRepository";
+import { InkboardDB, setDB } from "../../storage/db";
+import { exportToPDF } from "../../export/PDFExporter";
 
 /**
  * End-to-end export: build a board like the one in the README's test recipe,

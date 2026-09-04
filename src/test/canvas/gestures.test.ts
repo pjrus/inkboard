@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { screenToWorld, worldToScreen } from "./coordinates";
-import { beginPinch, updatePinch } from "./gestures";
+import { screenToWorld, worldToScreen } from "../../canvas/coordinates";
+import { beginPinch, updatePinch } from "../../canvas/gestures";
 
 describe("pinch gesture", () => {
   const vp = { x: 40, y: 80, scale: 1.5 };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { CanvasDocument } from "./crdt";
-import { DEFAULT_TEXT_WIDTH, type TextObject } from "./schema";
+import { CanvasDocument } from "../../document/crdt";
+import { DEFAULT_TEXT_WIDTH, type TextObject } from "../../document/schema";
 
 const textInput = (overrides: Partial<TextObject> = {}) => ({
   x: 0,
