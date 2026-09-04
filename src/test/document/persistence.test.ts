@@ -1,7 +1,10 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { InkboardDB, setDB } from "../../storage/db";
-import { boardRepository, DEFAULT_TOOL_PREFS } from "../../boards/BoardRepository";
+import {
+  boardRepository,
+  DEFAULT_TOOL_PREFS,
+} from "../../boards/BoardRepository";
 import { CanvasDocument } from "../../document/crdt";
 import { DocumentPersistence } from "../../document/persistence";
 
