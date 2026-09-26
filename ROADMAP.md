@@ -87,9 +87,6 @@ Mostly UI on top of plumbing that already exists.
 
 ## Organising
 
-- [ ] **Search across boards.** Text boxes are `Y.Text`; imported PDF text can
-      be extracted by PDF.js at import time and stored beside the assets. A
-      substring scan is enough to start with.
 - [ ] **Board thumbnails** in `BoardList`, rendered from the fit-to-content
       bounds when leaving a board.
 - [ ] **Folders or tags** for boards, plus sort and filter in `BoardList`.
@@ -173,9 +170,6 @@ Mostly UI on top of plumbing that already exists.
       `ARCHITECTURE.md`); add `y-webrtc` (peer-to-peer) or `y-websocket` (a
       small relay), with Yjs awareness for live cursors. The hard part is
       syncing assets such as PDF page JPEGs, not strokes.
-- [ ] **Audio synced to ink.** Record audio while writing, then tap any stroke
-      to replay from the moment it was drawn (strokes already carry
-      `createdAt`). A lecture-notes favourite.
 - [ ] **Presentation mode.** Step through frames or saved viewports in View
       mode, with the laser pointer.
 - [ ] **Notebook mode.** A paged, fixed-size layout as an alternative to the
