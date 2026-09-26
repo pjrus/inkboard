@@ -39,6 +39,9 @@ export const boardRepository = {
       updatedAt: now,
     };
     await getDB().boards.add(board);
+    // Ask the browser not to evict IndexedDB under disk pressure. Idempotent,
+    // so calling on every create is fine; failure just means best-effort storage.
+    navigator.storage?.persist?.().catch(() => {});
     return board;
   },
 

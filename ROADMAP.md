@@ -12,7 +12,7 @@ reaches for on day one.
 
 Mostly UI on top of plumbing that already exists.
 
-- [ ] **Ask for persistent storage.** Call `navigator.storage.persist()` when
+- [x] **Ask for persistent storage.** Call `navigator.storage.persist()` when
       the first board is created so the browser does not evict IndexedDB under
       disk pressure. For a local-only app this is one line of real protection.
 - [ ] **Copy / paste / duplicate** (Ctrl+C / Ctrl+V / Ctrl+D). The selection
