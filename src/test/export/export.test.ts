@@ -3,7 +3,7 @@ import { transformedBounds, unionBounds } from "../../canvas/transform";
 import type {
   Bounds,
   CanvasObject,
-  PDFPageObject,
+  ImageObject,
   StrokeObject,
   TextObject,
 } from "../../document/schema";
@@ -17,13 +17,7 @@ import {
   svgAnchor,
   toPdf,
 } from "../../export/exportCoordinates";
-import {
-  A4_PORTRAIT,
-  planA4Pages,
-  planFitPages,
-  planPages,
-  planPDFPages,
-} from "../../export/exportPlan";
+import { planPages } from "../../export/exportPlan";
 import { objectsOnPage, pdfColor } from "../../export/ExportRenderer";
 import { pdfFileName } from "../../export/PDFExporter";
 
@@ -52,9 +46,9 @@ const text = (x: number, y: number, createdAt = 2): TextObject => ({
   updatedAt: createdAt,
 });
 
-const pdfPage = (n: number, y: number): PDFPageObject => ({
+const pdfPage = (n: number, y: number): ImageObject => ({
   id: `p${n}`,
-  type: "pdf-page",
+  type: "image",
   assetId: `doc-p${n}`,
   pdfDocumentId: "doc",
   pageNumber: n,
@@ -91,16 +85,16 @@ describe("export bounds", () => {
   });
 
   it("frames a rotated object by the space it now occupies", () => {
-    const turned: PDFPageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
+    const turned: ImageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
     const b = transformedBounds(turned);
     // A 612x792 page turned a quarter turn is 792 wide and 612 tall.
     expect(b.maxX - b.minX).toBeCloseTo(792, 6);
     expect(b.maxY - b.minY).toBeCloseTo(612, 6);
   });
 
-  it("gives a rotated imported page an output page of the rotated size", () => {
-    const turned: PDFPageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
-    const [geometry] = planPDFPages([turned]);
+  it("sizes the page to a rotated image's turned bounds", () => {
+    const turned: ImageObject = { ...pdfPage(1, 0), rotation: Math.PI / 2 };
+    const [geometry] = planPages([turned], 0);
     expect(geometry.pageWidth).toBeCloseTo(792, 6);
     expect(geometry.pageHeight).toBeCloseTo(612, 6);
   });
@@ -155,62 +149,30 @@ describe("export page planning", () => {
   ];
 
   it("fits all content onto one page", () => {
-    const [page] = planFitPages(board, 40);
+    const [page] = planPages(board, 40);
     expect(page.pageWidth).toBeCloseTo(480);
     expect(page.scale).toBe(1);
     expect(page.marginX).toBe(0);
   });
 
-  it("paginates tall content onto A4 pages that tile without gaps", () => {
-    const tall = [stroke({ minX: 0, minY: 0, maxX: 500, maxY: 6000 })];
-    const pages = planA4Pages(tall, 0);
-    expect(pages.length).toBeGreaterThan(1);
-    expect(pages[0].pageWidth).toBeCloseTo(A4_PORTRAIT.width);
-    for (let i = 1; i < pages.length; i++) {
-      expect(pages[i].source.minY).toBeCloseTo(pages[i - 1].source.maxY);
-    }
-    // Content is scaled to the printable width, never cropped horizontally.
-    expect(
-      (pages[0].source.maxX - pages[0].source.minX) * pages[0].scale,
-    ).toBeCloseTo(A4_PORTRAIT.width - 72);
-  });
-
-  it("chooses landscape for wide content", () => {
-    const wide = [stroke({ minX: 0, minY: 0, maxX: 4000, maxY: 500 })];
-    expect(planA4Pages(wide, 0)[0].pageWidth).toBeCloseTo(A4_PORTRAIT.height);
-  });
-
-  it("emits one output page per imported PDF page, at the page's own size", () => {
+  it("puts imported pages and notes on one continuous page, not one per PDF page", () => {
     const objects: CanvasObject[] = [
       pdfPage(1, 0),
       pdfPage(2, 840),
-      stroke({ minX: 10, minY: 10, maxX: 100, maxY: 100 }),
-    ];
-    const pages = planPDFPages(objects);
-    expect(pages).toHaveLength(2);
-    expect(pages[0]).toMatchObject({
-      pageWidth: 612,
-      pageHeight: 792,
-      scale: 1,
-    });
-    expect(pages[0].source).toEqual({ minX: 0, minY: 0, maxX: 612, maxY: 792 });
-    expect(pages[1].source.minY).toBe(840);
-  });
-
-  it("gives content outside every imported page its own page rather than dropping it", () => {
-    const objects: CanvasObject[] = [
-      pdfPage(1, 0),
       stroke({ minX: 2000, minY: 2000, maxX: 2100, maxY: 2100 }),
     ];
-    const pages = planPDFPages(objects);
-    expect(pages).toHaveLength(2);
-    expect(pages[1].source.minX).toBeLessThan(2000);
-    expect(pages[1].label).toMatch(/Canvas notes/);
+    const pages = planPages(objects, 0);
+    expect(pages).toHaveLength(1);
+    expect(pages[0].source).toEqual({
+      minX: 0,
+      minY: 0,
+      maxX: 2100,
+      maxY: 2100,
+    });
   });
 
-  it("falls back to fit when asked to match pages on a board with no import", () => {
-    expect(planPages(board, "pdf-pages")).toHaveLength(1);
-    expect(planPages([], "fit")).toHaveLength(0);
+  it("plans nothing for an empty board", () => {
+    expect(planPages([])).toHaveLength(0);
   });
 });
 
@@ -233,7 +195,7 @@ describe("export rendering helpers", () => {
       stroke({ minX: 5000, minY: 5000, maxX: 5100, maxY: 5100 }, 4),
     ];
     expect(objectsOnPage(objects, geometry).map((o) => o.type)).toEqual([
-      "pdf-page",
+      "image",
       "stroke",
       "text",
     ]);

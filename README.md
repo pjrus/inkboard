@@ -37,15 +37,16 @@ npm run build      # typecheck + production bundle in dist/
 
 - Lasso (L) or click to select handwriting, text and imported pages, with a forgiving 40%-inside rule; shift-lasso adds to the selection
 - Make strokes thinner or thicker (`[` and `]`), recolour, move as a group, or delete
+- Copy, paste and duplicate (Ctrl+C / Ctrl+V / Ctrl+D), within a board or across boards
 - Mixed selections only offer the controls that apply to everything in them
 - Every edit is one undo step and flows through the CRDT; the selection itself stays local
 
 ### PDF
 
-- Import via PDF.js in a worker: each page is rasterised to a JPEG asset in IndexedDB and placed as a static "printout" page
+- Import via PDF.js in a worker: each page is rasterised to a JPEG asset in IndexedDB and placed on the canvas as an ordinary image
 - Vertical or horizontal layout, switchable after import, with progressive rendering and a progress toast
-- Move or delete pages with the hand tool, or remove a whole document
-- Export back to PDF entirely in the browser: one page per imported page, A4 pagination, or a single page fitted to the content. Handwriting exports as vector paths, text as real embedded text with the font bundled in, imported pages as their stored JPEGs. No toolbars or selection outlines ever reach the file
+- Move or delete pages with the hand tool, or remove a whole document. Copies of a page are independent images: relayout and removal never touch them
+- Export back to PDF entirely in the browser as one continuous page sized to the content, with no page breaks. Handwriting exports as vector paths, text as real embedded text with the font bundled in, images as their stored JPEGs. No toolbars or selection outlines ever reach the file
 
 ![Export and appearance menu](docs/menu.png)
 

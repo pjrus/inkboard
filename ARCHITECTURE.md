@@ -10,7 +10,7 @@ src/
                                       pinching/movingObject/lassoing/movingSelection/resizingText),
                    TextEditorOverlay.tsx (the single <textarea> shown while editing),
                    CanvasViewport.tsx (thin React host)
-  document/        schema.ts (CanvasObject = stroke | pdf-page | text),
+  document/        schema.ts (CanvasObject = stroke | image | text; PDF pages are images),
                    crdt.ts (Yjs wrapper: objects, pdfDocuments, Y.Text editing, undo, commands),
                    strokeCommands.ts (shared thickness scale, width stepping),
                    ids.ts (short random ids), persistence.ts (incremental update log + compaction)
@@ -21,11 +21,12 @@ src/
   theme/           ThemeProvider.tsx, themePreferences.ts (local, never in the CRDT),
                    canvasTheme.ts (the canvas half of the palette)
   export/          exportBounds.ts, exportCoordinates.ts (world -> PDF, in one place),
-                   exportPlan.ts (fit / A4 / one page per imported page),
+                   exportPlan.ts (one page sized to the content),
                    ExportRenderer.ts (draws objects onto a page), PDFExporter.ts, ExportDialog.tsx
   pdf/             PDFImporter.ts (PDF.js -> JPEG assets), PDFLayoutEngine.ts (vertical/horizontal placement)
   storage/         db.ts (Dexie: boards, updates, assets, preferences), assetRepository.ts
-  boards/          BoardRepository.ts, BoardSession.ts, BoardList.tsx, BoardView.tsx
+  boards/          BoardRepository.ts, BoardSession.ts, BoardList.tsx, BoardView.tsx,
+                   clipboard.ts (in-app copy/paste; re-homes image assets across boards)
   ui/              Toolbar, ColourPicker, ThicknessPicker, FontSelector, FontSizeSelector,
                    TextAlignmentControls, ThemeSelector, AppMenu, SelectionBar, ...
   store/           toolStore.ts (zustand: tool, pen settings, text settings, selection, zoom, save status)

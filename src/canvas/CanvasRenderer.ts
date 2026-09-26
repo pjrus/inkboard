@@ -1,7 +1,7 @@
 import type { CanvasDocument } from "../document/crdt";
 import {
   type Bounds,
-  type PDFPageObject,
+  type ImageObject,
   type PenTool,
   type StrokeObject,
   type StrokePoint,
@@ -97,7 +97,7 @@ export class CanvasRenderer {
   private viewport: Viewport = DEFAULT_VIEWPORT;
   private theme: CanvasTheme = canvasTheme("light");
 
-  private pages: PDFPageObject[] = [];
+  private pages: ImageObject[] = [];
   private strokes: StrokeObject[] = [];
   private texts: TextObject[] = [];
   private pathCache = new Map<string, Path2D>();
@@ -217,7 +217,7 @@ export class CanvasRenderer {
    * Top-most page under a world point, if any. Rotation is accounted for: the
    * point is taken back into the page's own frame before the rectangle test.
    */
-  hitTestPage(p: { x: number; y: number; }): PDFPageObject | undefined {
+  hitTestPage(p: { x: number; y: number; }): ImageObject | undefined {
     for (let i = this.pages.length - 1; i >= 0; i--) {
       if (rectContains(this.pages[i], p)) return this.pages[i];
     }
@@ -254,7 +254,7 @@ export class CanvasRenderer {
     return this.texts.filter((t) => boundsIntersect(transformedBounds(t), b));
   }
 
-  getPagesInBounds(b: Bounds): PDFPageObject[] {
+  getPagesInBounds(b: Bounds): ImageObject[] {
     return this.pages.filter((p) => boundsIntersect(transformedBounds(p), b));
   }
 
@@ -266,9 +266,9 @@ export class CanvasRenderer {
   }
 
   /** Every selected object, in document order. */
-  getSelectedObjects(): (StrokeObject | TextObject | PDFPageObject)[] {
+  getSelectedObjects(): (StrokeObject | TextObject | ImageObject)[] {
     if (this.selectedIds.size === 0) return [];
-    const out: (StrokeObject | TextObject | PDFPageObject)[] = [];
+    const out: (StrokeObject | TextObject | ImageObject)[] = [];
     for (const p of this.pages) if (this.selectedIds.has(p.id)) out.push(p);
     for (const s of this.strokes) if (this.selectedIds.has(s.id)) out.push(s);
     for (const t of this.texts) {
@@ -371,16 +371,18 @@ export class CanvasRenderer {
   // ---- internals -----------------------------------------------------
 
   private rebuildLists() {
-    const pages: PDFPageObject[] = [];
+    const pages: ImageObject[] = [];
     const strokes: StrokeObject[] = [];
     const texts: TextObject[] = [];
     for (const o of this.doc.getAll()) {
-      if (o.type === "pdf-page") pages.push(o);
+      if (o.type === "image") pages.push(o);
       else if (o.type === "stroke") strokes.push(o);
       else if (o.type === "text") texts.push(o);
     }
+    // Pages from one import share a timestamp; keep them in page order.
     pages.sort(
-      (a, b) => a.createdAt - b.createdAt || a.pageNumber - b.pageNumber,
+      (a, b) =>
+        a.createdAt - b.createdAt || (a.pageNumber ?? 0) - (b.pageNumber ?? 0),
     );
     strokes.sort((a, b) => a.createdAt - b.createdAt);
     texts.sort((a, b) => a.createdAt - b.createdAt);
@@ -579,7 +581,7 @@ export class CanvasRenderer {
 
   private drawPage(
     ctx: CanvasRenderingContext2D,
-    page: PDFPageObject,
+    page: ImageObject,
     b: Bounds,
   ) {
     this.withRotation(
@@ -592,7 +594,7 @@ export class CanvasRenderer {
 
   private drawPageUpright(
     ctx: CanvasRenderingContext2D,
-    page: PDFPageObject,
+    page: ImageObject,
     b: Bounds,
   ) {
     const { scale } = this.viewport;
@@ -621,9 +623,7 @@ export class CanvasRenderer {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(
-        pending
-          ? `Rendering page ${page.pageNumber}...`
-          : `Page ${page.pageNumber} image unavailable`,
+        pending ? "Rendering..." : "Image unavailable",
         b.minX + w / 2,
         b.minY + h / 2,
       );
@@ -766,7 +766,7 @@ export class CanvasRenderer {
 }
 
 function pageBounds(
-  page: PDFPageObject,
+  page: ImageObject,
   drag: { id: string; dx: number; dy: number; } | null,
 ): Bounds {
   const dx = drag && drag.id === page.id ? drag.dx : 0;

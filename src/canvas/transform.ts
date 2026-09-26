@@ -1,8 +1,8 @@
 import {
   type Bounds,
   type CanvasObject,
+  type ImageObject,
   type LassoFilter,
-  type PDFPageObject,
   type StrokeObject,
   type TextObject,
   unpackPoints,
@@ -47,8 +47,8 @@ export function isTextObject(o: CanvasObject): o is TextObject {
 }
 
 /** Images and PDF page images: anything drawn as a rotatable bitmap rectangle. */
-export function isImageLikeObject(o: CanvasObject): o is PDFPageObject {
-  return o.type === "pdf-page";
+export function isImageLikeObject(o: CanvasObject): o is ImageObject {
+  return o.type === "image";
 }
 
 /** An object's own rotation in radians (strokes bake theirs into their points). */

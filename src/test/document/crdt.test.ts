@@ -78,7 +78,7 @@ describe("CanvasDocument (CRDT)", () => {
     const d = new CanvasDocument();
     const pages = [1, 2, 3].map((n) => ({
       id: `p${n}`,
-      type: "pdf-page" as const,
+      type: "image" as const,
       assetId: `doc-p${n}`,
       pdfDocumentId: "doc",
       pageNumber: n,
@@ -115,6 +115,72 @@ describe("CanvasDocument (CRDT)", () => {
     expect(d.getPDFDocument("doc")).toBeUndefined();
   });
 
+  it("detaches copied PDF pages from their import", () => {
+    const d = new CanvasDocument();
+    d.addPDFDocument(
+      {
+        id: "doc",
+        fileName: "a.pdf",
+        pageCount: 1,
+        layout: "vertical",
+        createdAt: 1,
+      },
+      [
+        {
+          id: "p1",
+          type: "image",
+          assetId: "doc-p1",
+          pdfDocumentId: "doc",
+          pageNumber: 1,
+          x: 0,
+          y: 0,
+          width: 612,
+          height: 792,
+          rotation: 0,
+          createdAt: 1,
+        },
+      ],
+    );
+    const [copy] = d.cloneObjects([d.get("p1")!], 700, 0);
+    expect(d.get(copy)).toMatchObject({
+      type: "image",
+      assetId: "doc-p1",
+      x: 700,
+    });
+    expect(d.get(copy)).not.toHaveProperty("pdfDocumentId");
+    expect(d.get(copy)).not.toHaveProperty("pageNumber");
+    expect(d.pagesOf("doc").map((p) => p.id)).toEqual(["p1"]);
+    // Rearranging or removing the PDF never reaches the copy.
+    d.setPDFLayout("doc", "horizontal", [{ id: "p1", x: 5000, y: 0 }]);
+    d.removePDFDocument("doc");
+    expect(d.getAll().map((o) => o.id)).toEqual([copy]);
+    expect(d.get(copy)).toMatchObject({ x: 700 });
+  });
+
+  it("reads pages saved under the old pdf-page type as images", () => {
+    const old = new Y.Doc();
+    const m = new Y.Map<unknown>();
+    for (
+      const [k, v] of Object.entries({
+        id: "p1",
+        type: "pdf-page",
+        assetId: "a",
+        pdfDocumentId: "doc",
+        pageNumber: 1,
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+        rotation: 0,
+        createdAt: 1,
+      })
+    ) m.set(k, v);
+    old.getMap("objects").set("p1", m);
+    const d = new CanvasDocument(old);
+    expect(d.get("p1")?.type).toBe("image");
+    expect(d.pagesOf("doc")).toHaveLength(1);
+  });
+
   it("notifies listeners with typed changes", () => {
     const d = new CanvasDocument();
     const seen: string[] = [];
@@ -122,5 +188,34 @@ describe("CanvasDocument (CRDT)", () => {
     const s = d.addStroke(strokeInput(0));
     d.removeObjects([s.id]);
     expect(seen).toEqual(["add", "remove"]);
+  });
+
+  it("clones objects with fresh ids and an offset, as one undo step", () => {
+    const d = new CanvasDocument();
+    const s = d.addStroke(strokeInput(0));
+    const t = d.addText({
+      x: 5,
+      y: 5,
+      width: 100,
+      text: "hi",
+      fontFamily: "inter",
+      fontSize: 20,
+      color: "#000",
+    });
+    const [sc, tc] = d.cloneObjects([d.get(s.id)!, d.get(t.id)!], 10, 20);
+    expect([sc, tc]).not.toContain(s.id);
+    expect(d.get(sc)).toMatchObject({
+      points: [10, 20, 0.5, 20, 30, 0.5],
+      bounds: { minX: 7, minY: 17, maxX: 23, maxY: 33 },
+    });
+    expect(d.get(tc)).toMatchObject({ x: 15, y: 25, text: "hi" });
+    // The copy's text is its own Y.Text, not shared with the original.
+    d.editText(tc, (y) => y.insert(2, "!"));
+    expect(d.get(t.id)).toMatchObject({ text: "hi" });
+    d.closeUndoGroup();
+    d.undo(); // the edit
+    d.undo(); // the clone
+    expect(d.getAll()).toHaveLength(2);
+    expect(d.get(s.id)).toMatchObject({ bounds: { minX: -3 } });
   });
 });

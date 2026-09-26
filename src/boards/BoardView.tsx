@@ -4,8 +4,8 @@ import { type CanvasHandles, CanvasViewport } from "../canvas/CanvasViewport";
 import { DEFAULT_VIEWPORT, screenToWorld, zoomAt } from "../canvas/coordinates";
 import type {
   CanvasObject,
+  ImageObject,
   PDFLayout,
-  PDFPageObject,
   Viewport,
 } from "../document/schema";
 import { type ExportChoice, ExportDialog } from "../export/ExportDialog";
@@ -20,6 +20,7 @@ import { Toolbar } from "../ui/Toolbar";
 import { ZoomControls } from "../ui/ZoomControls";
 import { boardRepository } from "./BoardRepository";
 import { BoardSession } from "./BoardSession";
+import { copyToClipboard, hasClipboard, pasteClipboard } from "./clipboard";
 
 interface Props {
   boardId: string;
@@ -136,6 +137,30 @@ export function BoardView({ boardId, onBack }: Props) {
         e.preventDefault();
         session.doc.redo();
         return;
+      }
+      // Copy/paste/duplicate only claim the key when they do something, so
+      // e.g. Ctrl+D still bookmarks with nothing selected.
+      if (mod && !e.shiftKey && !e.altKey && h) {
+        const k = e.key.toLowerCase();
+        const boardId = session.board.id;
+        if (k === "c") {
+          const objs = h.controller.getSelectedObjects();
+          if (objs.length) {
+            e.preventDefault();
+            copyToClipboard(boardId, objs);
+            return;
+          }
+        } else if (k === "v" && !viewing && hasClipboard()) {
+          e.preventDefault();
+          void pasteClipboard(boardId, (objs) =>
+            // The board may have closed while image assets were being written.
+            handlesRef.current === h ? h.controller.insertCopies(objs) : [])
+            .catch((err) => console.error("Paste failed", err));
+          return;
+        } else if (k === "d" && !viewing && h.controller.duplicateSelection()) {
+          e.preventDefault();
+          return;
+        }
       }
       if (mod && (e.key === "=" || e.key === "+")) {
         e.preventDefault();
@@ -333,7 +358,6 @@ export function BoardView({ boardId, onBack }: Props) {
       const result = await exportToPDF({
         objects,
         boardName: name,
-        layout: choice.layout,
         onProgress: (done, total, label) =>
           setExportState({ busy: { done, total, label }, error: null }),
       });
@@ -376,7 +400,7 @@ export function BoardView({ boardId, onBack }: Props) {
   }
 
   const selectedPage = selectedId
-    ? (session.doc.get(selectedId) as PDFPageObject | undefined)
+    ? (session.doc.get(selectedId) as ImageObject | undefined)
     : undefined;
   void docVersion; // re-render trigger for selection bar contents
 
@@ -432,7 +456,7 @@ export function BoardView({ boardId, onBack }: Props) {
           }}
         />
         <SelectionBar />
-        {selectedPage?.type === "pdf-page" && (
+        {selectedPage?.type === "image" && (
           <PageSelectionBar
             doc={session.doc}
             page={selectedPage}

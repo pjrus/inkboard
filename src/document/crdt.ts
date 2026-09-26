@@ -5,9 +5,9 @@ import { nextFontSizeStep } from "../text/textCommands";
 import { newId } from "./ids";
 import type {
   CanvasObject,
+  ImageObject,
   PDFDocumentMetadata,
   PDFLayout,
-  PDFPageObject,
   StrokeObject,
   TextObject,
 } from "./schema";
@@ -85,14 +85,14 @@ export class CanvasDocument {
     return m ? (m.toJSON() as PDFDocumentMetadata) : undefined;
   }
 
-  pagesOf(pdfDocumentId: string): PDFPageObject[] {
-    const pages: PDFPageObject[] = [];
+  pagesOf(pdfDocumentId: string): ImageObject[] {
+    const pages: ImageObject[] = [];
     for (const o of this.cache.values()) {
-      if (o.type === "pdf-page" && o.pdfDocumentId === pdfDocumentId) {
+      if (o.type === "image" && o.pdfDocumentId === pdfDocumentId) {
         pages.push(o);
       }
     }
-    pages.sort((a, b) => a.pageNumber - b.pageNumber);
+    pages.sort((a, b) => (a.pageNumber ?? 0) - (b.pageNumber ?? 0));
     return pages;
   }
 
@@ -240,13 +240,46 @@ export class CanvasDocument {
     else this.transact(fn);
   }
 
+  /**
+   * Insert copies of `objects` with fresh ids, shifted by a world-space delta,
+   * as one undo step. Returns the new ids. Backs copy/paste and duplicate.
+   *
+   * Copies are detached: an imported page's copy is a plain image, so the
+   * PDF's layout and remove controls never reach it.
+   */
+  cloneObjects(objects: CanvasObject[], dx: number, dy: number): string[] {
+    const now = Date.now();
+    const ids: string[] = [];
+    this.transact(() => {
+      for (const o of objects) {
+        const id = newId();
+        const m = toYMap({
+          ...o,
+          id,
+          createdAt: now,
+          text: undefined,
+          pdfDocumentId: undefined,
+          pageNumber: undefined,
+        });
+        if (o.type === "text") {
+          m.set("text", new Y.Text(o.text));
+          m.set("updatedAt", now);
+        }
+        this.objects.set(id, m);
+        this.applyTranslation(id, dx, dy);
+        ids.push(id);
+      }
+    });
+    return ids;
+  }
+
   /** Close the current undo capture group (next change starts a new item). */
   closeUndoGroup(): void {
     this.undoManager.stopCapturing();
   }
 
   /** Insert a PDF document's metadata and all its page objects in one undo step. */
-  addPDFDocument(meta: PDFDocumentMetadata, pages: PDFPageObject[]): void {
+  addPDFDocument(meta: PDFDocumentMetadata, pages: ImageObject[]): void {
     this.transact(() => {
       this.pdfDocuments.set(meta.id, toYMap(meta));
       for (const p of pages) this.objects.set(p.id, toYMap(p));
@@ -433,9 +466,7 @@ export class CanvasDocument {
 
   private rebuildCache() {
     this.cache.clear();
-    this.objects.forEach((m, id) =>
-      this.cache.set(id, m.toJSON() as CanvasObject)
-    );
+    this.objects.forEach((m, id) => this.cache.set(id, toObject(m)));
   }
 
   private handleEvents(events: Y.YEvent<any>[], txn: Y.Transaction) {
@@ -450,7 +481,7 @@ export class CanvasDocument {
           } else {
             const m = this.objects.get(id);
             if (!m) return;
-            const obj = m.toJSON() as CanvasObject;
+            const obj = toObject(m);
             this.cache.set(id, obj);
             changes.push({
               kind: change.action === "add" ? "add" : "update",
@@ -467,7 +498,7 @@ export class CanvasDocument {
         if (typeof id === "string" && !touched.has(id)) {
           const m = this.objects.get(id);
           if (m) {
-            const obj = m.toJSON() as CanvasObject;
+            const obj = toObject(m);
             this.cache.set(id, obj);
             changes.push({ kind: "update", id, object: obj });
             touched.add(id);
@@ -481,6 +512,16 @@ export class CanvasDocument {
       }
     }
   }
+}
+
+/**
+ * Plain snapshot of an object's Y.Map. Boards saved before images were their
+ * own type stored imported pages as "pdf-page"; they read back as images.
+ */
+function toObject(m: Y.Map<unknown>): CanvasObject {
+  const o = m.toJSON();
+  if (o.type === "pdf-page") o.type = "image";
+  return o as CanvasObject;
 }
 
 function toYMap(obj: object): Y.Map<unknown> {

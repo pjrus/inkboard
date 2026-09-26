@@ -68,7 +68,7 @@ async function buildBoard(): Promise<CanvasObject[]> {
     [
       {
         id: "p1",
-        type: "pdf-page",
+        type: "image",
         assetId: "doc-p1",
         pdfDocumentId: "doc",
         pageNumber: 1,
@@ -160,39 +160,11 @@ beforeEach(() => {
 });
 
 describe("PDF export", () => {
-  it("renders one output page per imported page, plus a page for loose notes", async () => {
-    const objects = await buildBoard();
-    const progress: string[] = [];
-    const result = await exportToPDF({
-      objects,
-      boardName: "Lecture 5",
-      layout: "pdf-pages",
-      onProgress: (done, total, label) =>
-        progress.push(`${done}/${total} ${label}`),
-    });
-
-    expect(result.fileName).toBe("Lecture 5.pdf");
-    expect(result.pageCount).toBe(2);
-    expect(progress.length).toBeGreaterThan(1);
-
-    const pages = await readBack(result.bytes);
-    expect(pages).toHaveLength(2);
-    // Page one is the imported page's own size, so annotations stay aligned.
-    expect(pages[0].size[0]).toBeCloseTo(612, 0);
-    expect(pages[0].size[1]).toBeCloseTo(792, 0);
-    expect(pages[0].text).toContain("Annotation over the imported page");
-    expect(pages[0].text).toContain("Second family");
-    // The loose note is not silently dropped; it gets its own page.
-    expect(pages[0].text).not.toContain("Loose canvas note");
-    expect(pages[1].text).toContain("Loose canvas note");
-  });
-
   it("wraps exported text the same way the canvas does", async () => {
     const objects = await buildBoard();
     const result = await exportToPDF({
       objects,
       boardName: "Wrap",
-      layout: "pdf-pages",
     });
     const pages = await readBack(result.bytes);
     // The annotation is 300 world units wide at size 20: it cannot be one line.
@@ -205,34 +177,23 @@ describe("PDF export", () => {
     );
   });
 
-  it("fits everything onto a single page sized to the content", async () => {
+  it("puts the whole board, imported page and loose notes, on one page sized to the content", async () => {
     const objects = await buildBoard();
+    const progress: string[] = [];
     const result = await exportToPDF({
       objects,
-      boardName: "Fit",
-      layout: "fit",
+      boardName: "Lecture 5",
+      onProgress: (done, total, label) =>
+        progress.push(`${done}/${total} ${label}`),
     });
+    expect(result.fileName).toBe("Lecture 5.pdf");
     expect(result.pageCount).toBe(1);
+    expect(progress).toEqual(["0/1 Canvas", "1/1 Canvas"]);
     const [page] = await readBack(result.bytes);
     // Wide enough to hold the loose note at x=2000 plus padding.
     expect(page.size[0]).toBeGreaterThan(2200);
     expect(page.text).toContain("Loose canvas note");
     expect(page.text).toContain("Annotation over the imported page");
-  });
-
-  it("paginates onto A4 and keeps every page the same size", async () => {
-    const objects = await buildBoard();
-    const result = await exportToPDF({
-      objects,
-      boardName: "A4",
-      layout: "a4",
-    });
-    const pages = await readBack(result.bytes);
-    expect(pages.length).toBeGreaterThanOrEqual(1);
-    for (const p of pages) {
-      expect(p.size[0]).toBeCloseTo(pages[0].size[0], 1);
-      expect(p.size[1]).toBeCloseTo(pages[0].size[1], 1);
-    }
   });
 
   it("exports only the selection when asked", async () => {
@@ -243,7 +204,6 @@ describe("PDF export", () => {
     const result = await exportToPDF({
       objects: selection,
       boardName: "Selection",
-      layout: "fit",
     });
     const [page] = await readBack(result.bytes);
     expect(page.text).toContain("Loose canvas note");
@@ -255,7 +215,6 @@ describe("PDF export", () => {
     const result = await exportToPDF({
       objects,
       boardName: "Vector",
-      layout: "pdf-pages",
     });
     const pages = await readBack(result.bytes);
     // Enough operators for two filled stroke outlines plus text and an image:
@@ -273,7 +232,7 @@ describe("PDF export", () => {
       if (o.type === "stroke") doc.addStroke(o);
       else if (o.type === "text") doc.addText(o);
     }
-    const pageObj = objects.find((o) => o.type === "pdf-page")!;
+    const pageObj = objects.find((o) => o.type === "image")!;
     doc.addPDFDocument(
       {
         id: "doc",
@@ -290,13 +249,9 @@ describe("PDF export", () => {
     const result = await exportToPDF({
       objects: doc.getAll(),
       boardName: "Rotated",
-      layout: "pdf-pages",
     });
     const pages = await readBack(result.bytes);
-    // A quarter-turned page exports landscape: its transform is respected
-    // rather than ignored and clipped back to portrait.
-    expect(pages[0].size[0]).toBeCloseTo(792, 0);
-    expect(pages[0].size[1]).toBeCloseTo(612, 0);
+    expect(pages).toHaveLength(1);
     // Rotated text is still real, searchable text, wrapped as it was.
     expect(pages.map((p) => p.text).join(" ")).toContain(
       "Annotation over the imported page",
@@ -305,7 +260,7 @@ describe("PDF export", () => {
 
   it("refuses to export an empty board with a readable message", async () => {
     await expect(
-      exportToPDF({ objects: [], boardName: "Empty", layout: "fit" }),
+      exportToPDF({ objects: [], boardName: "Empty" }),
     ).rejects.toThrow(/nothing on this board/i);
   });
 });

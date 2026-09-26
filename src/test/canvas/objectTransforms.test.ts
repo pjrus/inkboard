@@ -15,8 +15,8 @@ import { CanvasDocument } from "../../document/crdt";
 import {
   type CanvasObject,
   DEFAULT_LASSO_FILTER,
+  type ImageObject,
   type LassoFilter,
-  type PDFPageObject,
   type StrokeObject,
   type TextObject,
 } from "../../document/schema";
@@ -27,9 +27,9 @@ const QUARTER = Math.PI / 2;
 const near = (a: number, b: number, tol = 1e-6) =>
   expect(Math.abs(a - b)).toBeLessThan(tol);
 
-const page = (x: number, y: number, rotation = 0): PDFPageObject => ({
+const page = (x: number, y: number, rotation = 0): ImageObject => ({
   id: `p${x}-${y}`,
-  type: "pdf-page",
+  type: "image",
   assetId: "asset",
   pdfDocumentId: "doc",
   pageNumber: 1,
@@ -138,7 +138,7 @@ describe("lasso filter", () => {
       .sort();
 
   it("selects every eligible type when all are enabled", () => {
-    expect(only({})).toEqual(["pdf-page", "stroke", "text"]);
+    expect(only({})).toEqual(["image", "stroke", "text"]);
   });
 
   it("selects only handwriting with ink alone enabled", () => {
@@ -150,7 +150,7 @@ describe("lasso filter", () => {
   });
 
   it("selects only images and PDF pages with images alone enabled", () => {
-    expect(only({ ink: false, text: false })).toEqual(["pdf-page"]);
+    expect(only({ ink: false, text: false })).toEqual(["image"]);
   });
 
   it("classifies each object type exactly once", () => {
@@ -197,7 +197,7 @@ describe("moving and rotating a mixed selection", () => {
       },
       [page(0, 300)],
     );
-    const p = doc.getAll().find((o) => o.type === "pdf-page")!;
+    const p = doc.getAll().find((o) => o.type === "image")!;
     return { doc, ids: [a.id, b.id, t.id, p.id] };
   }
 
@@ -300,7 +300,7 @@ describe("moving and rotating a mixed selection", () => {
 });
 
 describe("lasso hit testing across object types", () => {
-  const bigPage = (): PDFPageObject => ({
+  const bigPage = (): ImageObject => ({
     ...page(0, 0),
     width: 4000,
     height: 4000,
@@ -327,7 +327,7 @@ describe("lasso hit testing across object types", () => {
   });
 
   it("takes the smallest object when several contain the lasso", () => {
-    const small: PDFPageObject = {
+    const small: ImageObject = {
       ...page(900, 900),
       id: "small",
       width: 600,
@@ -353,7 +353,7 @@ describe("lasso hit testing across object types", () => {
       DEFAULT_LASSO_FILTER,
     );
     expect(hits.map((o) => o.type).sort()).toEqual([
-      "pdf-page",
+      "image",
       "stroke",
       "text",
     ]);

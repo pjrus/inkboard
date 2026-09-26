@@ -21,7 +21,7 @@ import {
 import {
   type CanvasObject,
   type FontFamilyId,
-  type PDFPageObject,
+  type ImageObject,
   type StrokeObject,
   type TextObject,
   unpackPoints,
@@ -49,7 +49,7 @@ import {
  *
  * Output stays vector wherever it can - handwriting as filled paths from the
  * same perfect-freehand geometry the screen uses, text as real embedded text -
- * with imported PDF pages placed as the JPEGs they were rasterised to. That
+ * with images (imported PDF pages included) placed as their stored bitmaps. That
  * keeps exports sharp, small and searchable rather than one giant bitmap.
  */
 export class ExportResources {
@@ -72,7 +72,7 @@ export class ExportResources {
     return font;
   }
 
-  /** Embedded page bitmap, or null when its asset is missing. */
+  /** Embedded image bitmap, or null when its asset is missing. */
   async image(assetId: string): Promise<PDFImage | null> {
     if (this.images.has(assetId)) return this.images.get(assetId)!;
     let image: PDFImage | null = null;
@@ -97,7 +97,7 @@ export function objectsOnPage(
   objects: CanvasObject[],
   geometry: PageGeometry,
 ): CanvasObject[] {
-  const order = { "pdf-page": 0, stroke: 1, text: 2 } as const;
+  const order = { image: 0, stroke: 1, text: 2 } as const;
   return objects
     .filter((o) => overlaps(transformedBounds(o), geometry.source))
     .sort((a, b) => order[a.type] - order[b.type] || a.createdAt - b.createdAt);
@@ -123,8 +123,8 @@ export async function renderPage(
   );
 
   for (const object of objectsOnPage(objects, geometry)) {
-    if (object.type === "pdf-page") {
-      await drawPDFPage(page, object, geometry, resources);
+    if (object.type === "image") {
+      await drawImage(page, object, geometry, resources);
     } else if (object.type === "stroke") drawStroke(page, object, geometry);
     else await drawText(page, object, geometry, resources);
   }
@@ -142,9 +142,9 @@ function pdfRotation(radians: number) {
   return degrees((-radians * 180) / Math.PI);
 }
 
-async function drawPDFPage(
+async function drawImage(
   page: PDFPage,
-  obj: PDFPageObject,
+  obj: ImageObject,
   g: PageGeometry,
   resources: ExportResources,
 ) {

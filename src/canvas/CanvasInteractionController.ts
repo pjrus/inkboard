@@ -133,6 +133,9 @@ const TEXT_HIT_PAD_PX = 4;
 const DOUBLE_TAP_MS = 400;
 const DOUBLE_TAP_SLOP_PX = 16;
 
+/** How far a paste or duplicate lands from its source, in screen pixels. */
+const PASTE_OFFSET_PX = 20;
+
 export class CanvasInteractionController {
   private state: State = { type: "idle" };
   private touches = new Map<number, Point>();
@@ -271,6 +274,36 @@ export class CanvasInteractionController {
     if (this.editingTextId) this.endTextEdit(false);
     this.doc.removeObjects(ids);
     this.publishSelection();
+  }
+
+  /** Snapshots of the selected objects, for the clipboard. */
+  getSelectedObjects(): CanvasObject[] {
+    const out: CanvasObject[] = [];
+    for (const id of this.selectedIds) {
+      const o = this.selectable(id);
+      if (o) out.push(o);
+    }
+    return out;
+  }
+
+  /** Copy + paste in one step, within this board. False if nothing selected. */
+  duplicateSelection(): boolean {
+    const objs = this.getSelectedObjects();
+    if (objs.length === 0) return false;
+    return this.insertCopies(objs).length > 0;
+  }
+
+  /**
+   * Insert detached, offset clones and select them. Returns their snapshots,
+   * or nothing in View mode. Images must already point at this board's assets.
+   */
+  insertCopies(objs: CanvasObject[]): CanvasObject[] {
+    if (!this.editable || objs.length === 0) return [];
+    const d = screenLengthToWorld(PASTE_OFFSET_PX, this.viewport);
+    const ids = this.doc.cloneObjects(objs, d, d);
+    this.selectedIds = new Set(ids);
+    this.publishSelection();
+    return ids.map((id) => this.doc.get(id)!);
   }
 
   private publishSelection() {

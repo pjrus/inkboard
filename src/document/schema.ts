@@ -61,12 +61,25 @@ export interface StrokeObject {
   createdBy?: string;
 }
 
-export interface PDFPageObject {
+/**
+ * A bitmap on the board. Imported PDF pages are images: once rasterised they
+ * are ordinary canvas content, and nothing but the import's own layout and
+ * remove controls cares where they came from.
+ *
+ * The pixels live in the `assets` table under `assetId`, owned by this board.
+ * Several images on one board may share an asset (a duplicate does); an image
+ * never points at an asset owned by another board.
+ */
+export interface ImageObject {
   id: string;
-  type: "pdf-page";
+  type: "image";
   assetId: string;
-  pdfDocumentId: string;
-  pageNumber: number;
+  /**
+   * Set only on pages still attached to the PDF import that created them, so
+   * the import's layout and remove controls can find them. Copies drop both.
+   */
+  pdfDocumentId?: string;
+  pageNumber?: number;
   x: number;
   y: number;
   width: number;
@@ -125,7 +138,7 @@ export interface TextObject {
   createdBy?: string;
 }
 
-export type CanvasObject = StrokeObject | PDFPageObject | TextObject;
+export type CanvasObject = StrokeObject | ImageObject | TextObject;
 
 export type PDFLayout = "vertical" | "horizontal";
 

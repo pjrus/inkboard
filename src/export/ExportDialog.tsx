@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CanvasObject } from "../document/schema";
-import { type ExportLayout, hasImportedPages, planPages } from "./exportPlan";
 
 export interface ExportChoice {
   scope: "all" | "selection";
-  layout: ExportLayout;
 }
 
 interface Props {
@@ -17,8 +15,8 @@ interface Props {
 }
 
 /**
- * Deliberately small: what to export and how to lay it out. Everything else
- * (page size, scaling, ordering) follows from those two answers.
+ * Deliberately small: the only question is what to export. It always comes
+ * out as one page the size of the content.
  */
 export function ExportDialog({
   objects,
@@ -33,16 +31,6 @@ export function ExportDialog({
     canExportSelection ? "selection" : "all",
   );
   const subject = scope === "selection" ? selectedObjects : objects;
-  const pdfPagesAvailable = hasImportedPages(subject);
-  const [layout, setLayout] = useState<ExportLayout>(
-    pdfPagesAvailable ? "pdf-pages" : "fit",
-  );
-
-  useEffect(() => {
-    if (!pdfPagesAvailable && layout === "pdf-pages") setLayout("fit");
-  }, [pdfPagesAvailable, layout]);
-
-  const pageCount = planPages(subject, layout).length;
   const disabled = busy !== null || subject.length === 0;
 
   return (
@@ -88,43 +76,6 @@ export function ExportDialog({
           </label>
         </fieldset>
 
-        <fieldset className="layout-choice" disabled={busy !== null}>
-          <legend>Pages</legend>
-          <label>
-            <input
-              type="radio"
-              name="layout"
-              checked={layout === "fit"}
-              onChange={() => setLayout("fit")}
-            />
-            <span>Fit content</span>
-            <span className="layout-hint">one page, canvas size</span>
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="layout"
-              checked={layout === "a4"}
-              onChange={() => setLayout("a4")}
-            />
-            <span>A4 pages</span>
-            <span className="layout-hint">scaled to width, paginated</span>
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="layout"
-              disabled={!pdfPagesAvailable}
-              checked={layout === "pdf-pages"}
-              onChange={() => setLayout("pdf-pages")}
-            />
-            <span>Match PDF pages</span>
-            <span className="layout-hint">
-              {pdfPagesAvailable ? "one page per import" : "no imported PDF"}
-            </span>
-          </label>
-        </fieldset>
-
         {error
           ? (
             <p className="modal-note modal-error" role="alert">
@@ -153,9 +104,7 @@ export function ExportDialog({
             <p className="modal-note">
               {subject.length === 0
                 ? "Nothing to export yet."
-                : `${pageCount} ${
-                  pageCount === 1 ? "page" : "pages"
-                }. Toolbars and selection outlines are never included.`}
+                : "One page sized to the content. Toolbars and selection outlines are never included."}
             </p>
           )}
 
@@ -172,7 +121,7 @@ export function ExportDialog({
             type="button"
             className="btn btn-primary"
             disabled={disabled}
-            onClick={() => onExport({ scope, layout })}
+            onClick={() => onExport({ scope })}
           >
             {busy ? "Exporting..." : "Export PDF"}
           </button>

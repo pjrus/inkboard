@@ -1,7 +1,7 @@
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument } from "pdf-lib";
 import type { CanvasObject } from "../document/schema";
-import { type ExportLayout, planPages } from "./exportPlan";
+import { planPages } from "./exportPlan";
 import { ExportResources, renderPage } from "./ExportRenderer";
 
 /**
@@ -17,7 +17,6 @@ import { ExportResources, renderPage } from "./ExportRenderer";
 export interface ExportOptions {
   objects: CanvasObject[];
   boardName: string;
-  layout: ExportLayout;
   onProgress?: (done: number, total: number, label: string) => void;
 }
 
@@ -30,8 +29,8 @@ export interface ExportResult {
 export async function exportToPDF(
   options: ExportOptions,
 ): Promise<ExportResult> {
-  const { objects, boardName, layout, onProgress } = options;
-  const plan = planPages(objects, layout);
+  const { objects, boardName, onProgress } = options;
+  const plan = planPages(objects);
   if (plan.length === 0) {
     throw new Error("There is nothing on this board to export yet.");
   }

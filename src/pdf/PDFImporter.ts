@@ -2,9 +2,9 @@ import * as pdfjsLib from "pdfjs-dist";
 import type { CanvasDocument } from "../document/crdt";
 import { newId } from "../document/ids";
 import type {
+  ImageObject,
   PDFDocumentMetadata,
   PDFLayout,
-  PDFPageObject,
 } from "../document/schema";
 import { getDB } from "../storage/db";
 import { layoutPages, type PageSize } from "./PDFLayoutEngine";
@@ -63,13 +63,15 @@ export interface ImportOptions {
 
 export interface ImportResult {
   pdfDocumentId: string;
-  pages: PDFPageObject[];
+  pages: ImageObject[];
   failedPages: number[];
 }
 
 /**
  * Insert a PDF into the board.
  *
+ * Each page becomes an ordinary image object; `pdfDocumentId` and
+ * `pageNumber` only tie it to this import for the layout and remove controls.
  * All page objects are committed to the CRDT up front (one undo step) with
  * their final positions; they render as blank sheets until each page's
  * raster asset lands in IndexedDB, at which point `onPageReady` fires and the
@@ -92,9 +94,9 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   const placements = layoutPages(inspected.sizes, layout, origin);
   const now = Date.now();
 
-  const pages: PDFPageObject[] = placements.map((p, i) => ({
+  const pages: ImageObject[] = placements.map((p, i) => ({
     id: newId(),
-    type: "pdf-page",
+    type: "image",
     assetId: `${pdfDocumentId}-p${i + 1}`,
     pdfDocumentId,
     pageNumber: i + 1,
@@ -142,7 +144,7 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   for (let i = 0; i < pages.length; i++) {
     const pageObj = pages[i];
     try {
-      const page = await inspected.pdf.getPage(pageObj.pageNumber);
+      const page = await inspected.pdf.getPage(i + 1);
       const base = page.getViewport({ scale: 1 });
       const scale = Math.min(
         RASTER_SCALE,
@@ -168,8 +170,8 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
       });
       onPageReady?.(pageObj.assetId);
     } catch (err) {
-      console.error(`Failed to render page ${pageObj.pageNumber}`, err);
-      failedPages.push(pageObj.pageNumber);
+      console.error(`Failed to render page ${i + 1}`, err);
+      failedPages.push(i + 1);
     }
     onProgress?.(i + 1, pages.length);
     // Yield to the event loop between pages so input stays responsive.

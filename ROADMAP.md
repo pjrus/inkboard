@@ -15,7 +15,7 @@ Mostly UI on top of plumbing that already exists.
 - [x] **Ask for persistent storage.** Call `navigator.storage.persist()` when
       the first board is created so the browser does not evict IndexedDB under
       disk pressure. For a local-only app this is one line of real protection.
-- [ ] **Copy / paste / duplicate** (Ctrl+C / Ctrl+V / Ctrl+D). The selection
+- [x] **Copy / paste / duplicate** (Ctrl+C / Ctrl+V / Ctrl+D). The selection
       already has ids and objects are plain JSON; internal copy is clone with
       fresh ids from `document/ids.ts` plus an offset.
 - [ ] **Highlighter.** A translucent pen drawn with `multiply` blending and no
@@ -64,16 +64,17 @@ Mostly UI on top of plumbing that already exists.
 
 ## PDF and images
 
-- [ ] **Paste or drop images.** `LassoFilter.images` already mentions imported
-      images, but `CanvasObject` has no image type. A `PDFPageObject` is
-      essentially an image with a `pdfDocumentId`; add an `"image"` type that
-      reuses the `db.assets` store, `ImageCache` and the JPEG export path.
+- [ ] **Paste or drop images.** The `"image"` object type exists (imported PDF
+      pages are images); what is missing is getting a file or system
+      clipboard image into `db.assets` and onto the canvas.
 - [ ] **Vector PDF export.** When the original PDF was kept (`sourceAssetId`),
       export pages with pdf-lib's `embedPage` instead of the stored JPEG:
-      sharper, smaller and with the original text still selectable.
+      sharper, smaller and with the original text still selectable. Only
+      pages still attached to their import know their source page; copies
+      would stay JPEG.
 - [ ] **Blank and template pages.** Insert an empty, lined, grid or dotted
       A4 page for notebook-style use, exported like an imported page.
-- [ ] **Rotate pages 90°.** `PDFPageObject.rotation` already exists.
+- [ ] **Rotate pages 90°.** `ImageObject.rotation` already exists.
 - [ ] **Page navigator.** A sidebar of page thumbnails for a document; click to
       jump. Most useful for long PDFs.
 - [ ] **Select and copy PDF text** from imported pages via the PDF.js text
@@ -116,7 +117,8 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Clean up orphaned assets.** Removing a PDF deletes it from the CRDT but
       its page images stay in IndexedDB until the whole board is deleted.
       Sweep unreferenced assets on board open, once undo can no longer bring
-      them back.
+      them back. Several images on a board can share one asset (duplicates
+      do), so sweep by reference, not by PDF.
 - [ ] **Version history.** Named checkpoints from Yjs snapshots ("restore to
       this morning").
 - [ ] **Auto-backup to a folder** with the File System Access API (Chromium
