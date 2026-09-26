@@ -109,7 +109,7 @@ Mostly UI on top of plumbing that already exists.
 
 ## Data and storage
 
-- [ ] **Backup / restore** as a single `.inkboard` file: the Yjs update plus
+- [x] **Backup / restore** as a single `.inkboard` file: the Yjs update plus
       every referenced asset. Everything is local-only today, so clearing site
       data wipes every board. Highest priority in this section.
 - [ ] **Per-board storage usage.** `BoardList` shows the total; add a size per

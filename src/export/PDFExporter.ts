@@ -1,6 +1,7 @@
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument } from "pdf-lib";
 import type { CanvasObject } from "../document/schema";
+import { downloadBlob } from "./download";
 import { planPages } from "./exportPlan";
 import { ExportResources, renderPage } from "./ExportRenderer";
 
@@ -72,17 +73,8 @@ export function pdfFileName(boardName: string): string {
 
 /** Hand the finished bytes to the browser's download machinery. */
 export function downloadPDF(result: ExportResult): void {
-  const blob = new Blob([result.bytes.slice().buffer], {
-    type: "application/pdf",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = result.fileName;
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Give the browser a moment to start the download before revoking.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  downloadBlob(
+    new Blob([result.bytes.slice().buffer], { type: "application/pdf" }),
+    result.fileName,
+  );
 }

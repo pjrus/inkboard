@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { downloadBlob } from "../export/download";
 import type { BoardRecord } from "../storage/db";
+import { backupBoards, restoreBoards } from "./backup";
 import { boardRepository } from "./BoardRepository";
 
 interface Props {
@@ -9,6 +11,7 @@ interface Props {
 export function BoardList({ onOpen }: Props) {
   const [boards, setBoards] = useState<BoardRecord[] | null>(null);
   const [used, setUsed] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = async () => {
     setBoards(await boardRepository.list());
@@ -34,6 +37,28 @@ export function BoardList({ onOpen }: Props) {
     }
     await boardRepository.delete(b.id);
     await refresh();
+  };
+
+  const backup = async () => {
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      downloadBlob(await backupBoards(), `inkboard-backup-${date}.inkboard`);
+    } catch (err) {
+      console.error(err);
+      window.alert("Could not create the backup.");
+    }
+  };
+
+  const restore = async (file: File) => {
+    try {
+      await restoreBoards(file);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+      window.alert(
+        `Could not restore "${file.name}". Is it an Inkboard backup?`,
+      );
+    }
   };
 
   return (
@@ -84,6 +109,31 @@ export function BoardList({ onOpen }: Props) {
       <footer className="board-list-footer muted">
         Everything is stored in this browser.{" "}
         {used !== null && `Local storage used: ${formatBytes(used)}`}
+        <div className="board-list-backup">
+          {!!boards?.length && (
+            <button type="button" className="btn btn-sm" onClick={backup}>
+              Back up all boards
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => fileRef.current?.click()}
+          >
+            Restore from backup
+          </button>
+          {/* No `accept`: iOS greys out unknown extensions like .inkboard. */}
+          <input
+            ref={fileRef}
+            type="file"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void restore(f);
+              e.target.value = "";
+            }}
+          />
+        </div>
       </footer>
     </div>
   );

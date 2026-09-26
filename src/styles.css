@@ -661,6 +661,11 @@ button {
   margin-top: 28px;
   font-size: 12px;
 }
+.board-list-backup {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
 .empty {
   text-align: center;
   padding: 40px 0;

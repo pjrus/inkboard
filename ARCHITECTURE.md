@@ -27,6 +27,7 @@ src/
   storage/         db.ts (Dexie: boards, updates, assets, preferences), assetRepository.ts
   boards/          BoardRepository.ts, BoardSession.ts, BoardList.tsx, BoardView.tsx,
                    clipboard.ts (in-app copy/paste; re-homes image assets across boards)
+                   backup.ts (every board + referenced assets in one .inkboard file; restore adds copies)
   ui/              Toolbar, ColourPicker, ThicknessPicker, FontSelector, FontSizeSelector,
                    TextAlignmentControls, ThemeSelector, AppMenu, SelectionBar, ...
   store/           toolStore.ts (zustand: tool, pen settings, text settings, selection, zoom, save status)
