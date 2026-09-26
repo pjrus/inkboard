@@ -15,9 +15,8 @@ import type { FontFamilyId } from "../document/schema";
  */
 export interface FontDefinition {
   id: FontFamilyId;
+  /** Also the family name as declared by @fontsource's @font-face rules. */
   label: string;
-  /** The family name as declared by @fontsource's @font-face rules. */
-  cssFamily: string;
   /** Full CSS stack, with fallbacks so text is never invisible. */
   stack: string;
   ascent: number;
@@ -26,40 +25,17 @@ export interface FontDefinition {
 
 const FALLBACK = "system-ui, -apple-system, Segoe UI, sans-serif";
 
-export const FONTS: FontDefinition[] = [
-  {
-    id: "open-sans",
-    label: "Open Sans",
-    cssFamily: "Open Sans",
-    stack: `"Open Sans", ${FALLBACK}`,
-    ascent: 1.0688,
-    descent: -0.293,
-  },
-  {
-    id: "inter",
-    label: "Inter",
-    cssFamily: "Inter",
-    stack: `"Inter", ${FALLBACK}`,
-    ascent: 0.9688,
-    descent: -0.2412,
-  },
-  {
-    id: "roboto",
-    label: "Roboto",
-    cssFamily: "Roboto",
-    stack: `"Roboto", ${FALLBACK}`,
-    ascent: 0.9277,
-    descent: -0.2441,
-  },
-  {
-    id: "lato",
-    label: "Lato",
-    cssFamily: "Lato",
-    stack: `"Lato", ${FALLBACK}`,
-    ascent: 0.987,
-    descent: -0.213,
-  },
+const METRICS: Omit<FontDefinition, "stack">[] = [
+  { id: "open-sans", label: "Open Sans", ascent: 1.0688, descent: -0.293 },
+  { id: "inter", label: "Inter", ascent: 0.9688, descent: -0.2412 },
+  { id: "roboto", label: "Roboto", ascent: 0.9277, descent: -0.2441 },
+  { id: "lato", label: "Lato", ascent: 0.987, descent: -0.213 },
 ];
+
+export const FONTS: FontDefinition[] = METRICS.map((f) => ({
+  ...f,
+  stack: `"${f.label}", ${FALLBACK}`,
+}));
 
 const BY_ID = new Map(FONTS.map((f) => [f.id, f]));
 
@@ -68,10 +44,6 @@ export const DEFAULT_FONT = FONTS[0];
 /** Never throws: an unknown id (older document, future release) falls back. */
 export function getFont(id: string | undefined): FontDefinition {
   return (id && BY_ID.get(id as FontFamilyId)) || DEFAULT_FONT;
-}
-
-export function fontStack(id: string | undefined): string {
-  return getFont(id).stack;
 }
 
 /** A CSS `font` shorthand for canvas 2D measurement and drawing. */

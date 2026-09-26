@@ -1,13 +1,7 @@
 import fontkit from "@pdf-lib/fontkit";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import {
-  canvasFont,
-  DEFAULT_FONT,
-  FONTS,
-  fontStack,
-  getFont,
-} from "../../text/fonts";
+import { canvasFont, DEFAULT_FONT, FONTS, getFont } from "../../text/fonts";
 
 /**
  * The registry bakes in each family's vertical metrics so the canvas and the
@@ -36,10 +30,12 @@ describe("bundled fonts", () => {
 
   it("always has a fallback so text can never be invisible", () => {
     for (const f of FONTS) {
-      expect(f.stack).toContain(`"${f.cssFamily}"`);
+      expect(f.stack).toContain(`"${f.label}"`);
       expect(f.stack).toMatch(/sans-serif$/);
     }
-    expect(canvasFont("open-sans", 24)).toBe(`24px ${fontStack("open-sans")}`);
+    expect(canvasFont("open-sans", 24)).toBe(
+      `24px ${getFont("open-sans").stack}`,
+    );
   });
 
   it("falls back rather than throwing on an unknown family id", () => {
@@ -52,7 +48,7 @@ describe("bundled fonts", () => {
       const font = fontkit.create(readFileSync(FILE[f.id]));
       expect(f.ascent).toBeCloseTo(font.ascent / font.unitsPerEm, 3);
       expect(f.descent).toBeCloseTo(font.descent / font.unitsPerEm, 3);
-      expect(font.familyName).toBe(f.cssFamily);
+      expect(font.familyName).toBe(f.label);
     }
   });
 

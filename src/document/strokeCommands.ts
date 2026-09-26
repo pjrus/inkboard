@@ -10,16 +10,27 @@ export function clampWidth(w: number): number {
   return Math.min(MAX_STROKE_WIDTH, Math.max(MIN_STROKE_WIDTH, w));
 }
 
+/**
+ * The preset above (direction 1) or below (-1) `value`, or `beyond` when
+ * `value` is already past the last preset in that direction.
+ */
+export function nextStep(
+  steps: number[],
+  value: number,
+  direction: 1 | -1,
+  beyond: number,
+): number {
+  const eps = 1e-6;
+  const next = direction === 1
+    ? steps.find((s) => s > value + eps)
+    : [...steps].reverse().find((s) => s < value - eps);
+  return next ?? beyond;
+}
+
 /** Next step above (direction 1) or below (-1) the given width, relative to it. */
 export function nextWidthStep(width: number, direction: 1 | -1): number {
-  const eps = 1e-6;
-  if (direction === 1) {
-    const next = THICKNESS_STEPS.find((s) => s > width + eps);
-    return clampWidth(next ?? MAX_STROKE_WIDTH);
-  }
-  let prev: number | undefined;
-  for (const s of THICKNESS_STEPS) if (s < width - eps) prev = s;
-  return clampWidth(prev ?? MIN_STROKE_WIDTH);
+  const beyond = direction === 1 ? MAX_STROKE_WIDTH : MIN_STROKE_WIDTH;
+  return clampWidth(nextStep(THICKNESS_STEPS, width, direction, beyond));
 }
 
 /** Summarise a set of values as a single value or "mixed". */

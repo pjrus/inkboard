@@ -85,14 +85,6 @@ export class CanvasDocument {
     return m ? (m.toJSON() as PDFDocumentMetadata) : undefined;
   }
 
-  getPDFDocuments(): PDFDocumentMetadata[] {
-    const out: PDFDocumentMetadata[] = [];
-    this.pdfDocuments.forEach((m) =>
-      out.push(m.toJSON() as PDFDocumentMetadata)
-    );
-    return out;
-  }
-
   pagesOf(pdfDocumentId: string): PDFPageObject[] {
     const pages: PDFPageObject[] = [];
     for (const o of this.cache.values()) {
@@ -275,23 +267,20 @@ export class CanvasDocument {
 
   /** Set the base width of the given strokes (bounds are recomputed). */
   setStrokeWidth(ids: string[], width: number): void {
-    this.transact(() => {
-      for (const id of ids) {
-        const m = this.objects.get(id);
-        if (!m || m.get("type") !== "stroke") continue;
-        m.set("width", width);
-        m.set("bounds", computeBoundsFlat(m.get("points") as number[], width));
-      }
-    });
+    this.mapStrokeWidths(ids, () => width);
   }
 
   /** Step every stroke's width to the next/previous preset relative to its own width. */
   adjustStrokeWidths(ids: string[], direction: 1 | -1): void {
+    this.mapStrokeWidths(ids, (w) => nextWidthStep(w, direction));
+  }
+
+  private mapStrokeWidths(ids: string[], fn: (width: number) => number): void {
     this.transact(() => {
       for (const id of ids) {
         const m = this.objects.get(id);
         if (!m || m.get("type") !== "stroke") continue;
-        const width = nextWidthStep(m.get("width") as number, direction);
+        const width = fn(m.get("width") as number);
         m.set("width", width);
         m.set("bounds", computeBoundsFlat(m.get("points") as number[], width));
       }

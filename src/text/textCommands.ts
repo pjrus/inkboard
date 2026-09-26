@@ -1,4 +1,5 @@
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from "../document/schema";
+import { nextStep } from "../document/strokeCommands";
 
 /**
  * Shared font-size scale, mirroring strokeCommands.ts for stroke widths, so
@@ -13,12 +14,6 @@ export function clampFontSize(size: number): number {
 
 /** Next preset above (direction 1) or below (-1) the given size. */
 export function nextFontSizeStep(size: number, direction: 1 | -1): number {
-  const eps = 1e-6;
-  if (direction === 1) {
-    const next = FONT_SIZE_PRESETS.find((s) => s > size + eps);
-    return clampFontSize(next ?? size * 1.25);
-  }
-  let prev: number | undefined;
-  for (const s of FONT_SIZE_PRESETS) if (s < size - eps) prev = s;
-  return clampFontSize(prev ?? size / 1.25);
+  const beyond = direction === 1 ? size * 1.25 : size / 1.25;
+  return clampFontSize(nextStep(FONT_SIZE_PRESETS, size, direction, beyond));
 }

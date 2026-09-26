@@ -6,7 +6,7 @@ import type {
   PDFLayout,
   PDFPageObject,
 } from "../document/schema";
-import { putAsset } from "../storage/assetRepository";
+import { getDB } from "../storage/db";
 import { layoutPages, type PageSize } from "./PDFLayoutEngine";
 
 // PDF.js does its parsing/rendering work in a worker so the UI stays responsive.
@@ -59,7 +59,6 @@ export interface ImportOptions {
   onPageReady?: (assetId: string) => void;
   /** Called once with every page asset id, before rasterisation begins. */
   onPagesPlanned?: (assetIds: string[]) => void;
-  signal?: AbortSignal;
 }
 
 export interface ImportResult {
@@ -88,7 +87,6 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
     onProgress,
     onPageReady,
     onPagesPlanned,
-    signal,
   } = opts;
   const pdfDocumentId = newId(10);
   const placements = layoutPages(inspected.sizes, layout, origin);
@@ -112,7 +110,7 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   if (opts.keepSource !== false) {
     sourceAssetId = `${pdfDocumentId}-src`;
     try {
-      await putAsset({
+      await getDB().assets.put({
         id: sourceAssetId,
         boardId,
         mimeType: "application/pdf",
@@ -142,7 +140,6 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
   const ctx = canvas.getContext("2d", { alpha: false })!;
 
   for (let i = 0; i < pages.length; i++) {
-    if (signal?.aborted) break;
     const pageObj = pages[i];
     try {
       const page = await inspected.pdf.getPage(pageObj.pageNumber);
@@ -159,7 +156,7 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
       page.cleanup();
       const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
-      await putAsset({
+      await getDB().assets.put({
         id: pageObj.assetId,
         boardId,
         mimeType: blob.type,

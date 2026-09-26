@@ -51,7 +51,7 @@ export async function loadFonts(): Promise<void> {
   try {
     if (typeof document !== "undefined" && document.fonts) {
       await Promise.all(
-        FONTS.map((f) => document.fonts.load(`400 16px "${f.cssFamily}"`)),
+        FONTS.map((f) => document.fonts.load(`400 16px "${f.label}"`)),
       );
     }
   } catch (err) {

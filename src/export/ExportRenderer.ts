@@ -12,7 +12,7 @@ import {
   pushGraphicsState,
   rgb,
 } from "pdf-lib";
-import { strokeOutline } from "../canvas/strokeGeometry";
+import { hasVaryingPressure, strokeOutline } from "../canvas/strokeGeometry";
 import {
   objectCenter,
   rotatePoint,
@@ -23,11 +23,10 @@ import {
   type FontFamilyId,
   type PDFPageObject,
   type StrokeObject,
-  type StrokePoint,
   type TextObject,
   unpackPoints,
 } from "../document/schema";
-import { getAsset } from "../storage/assetRepository";
+import { getDB } from "../storage/db";
 import { loadFontBytes } from "../text/fontLoader";
 import { getFont } from "../text/fonts";
 import { layoutText } from "../text/textLayout";
@@ -78,7 +77,7 @@ export class ExportResources {
     if (this.images.has(assetId)) return this.images.get(assetId)!;
     let image: PDFImage | null = null;
     try {
-      const rec = await getAsset(assetId);
+      const rec = await getDB().assets.get(assetId);
       if (rec) {
         const bytes = new Uint8Array(await rec.blob.arrayBuffer());
         image = rec.mimeType === "image/png"
@@ -239,15 +238,6 @@ async function drawText(
       rotate: pdfRotation(angle),
     });
   }
-}
-
-function hasVaryingPressure(pts: StrokePoint[]): boolean {
-  if (pts.length < 2) return false;
-  const first = pts[0].pressure ?? 0.5;
-  for (const p of pts) {
-    if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
-  }
-  return false;
 }
 
 /**

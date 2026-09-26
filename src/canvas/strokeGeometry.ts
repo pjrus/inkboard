@@ -161,9 +161,17 @@ export function computeBoundsFlat(flat: number[], width: number): Bounds {
   return computeBounds(pts, width);
 }
 
-export interface XY {
-  x: number;
-  y: number;
+export type { Point as XY } from "./coordinates";
+import type { Point as XY } from "./coordinates";
+
+/** Whether a stroke's pressure varies enough to be worth rendering. */
+export function hasVaryingPressure(pts: StrokePoint[]): boolean {
+  if (pts.length < 2) return false;
+  const first = pts[0].pressure ?? 0.5;
+  for (const p of pts) {
+    if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
+  }
+  return false;
 }
 
 /** Ray-casting point-in-polygon. */
@@ -300,24 +308,6 @@ export function lassoSelectsQuad(
     }
   }
   return inside / (BOX_SAMPLES * BOX_SAMPLES) >= LASSO_BOX_FRACTION;
-}
-
-/** Lasso test for an unrotated rectangle. */
-export function lassoSelectsBox(
-  box: Bounds,
-  poly: XY[],
-  polyBounds?: Bounds,
-): boolean {
-  return lassoSelectsQuad(
-    [
-      { x: box.minX, y: box.minY },
-      { x: box.maxX, y: box.minY },
-      { x: box.maxX, y: box.maxY },
-      { x: box.minX, y: box.maxY },
-    ],
-    poly,
-    polyBounds,
-  );
 }
 
 /** Fraction of the lasso's own outline that must fall inside an object. */

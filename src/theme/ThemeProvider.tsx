@@ -8,11 +8,9 @@ import {
   useState,
 } from "react";
 import {
-  cachedThemePreference,
   loadThemePreference,
   onSystemThemeChange,
   type ResolvedTheme,
-  resolveTheme,
   saveThemePreference,
   systemTheme,
   type ThemePreference,
@@ -41,27 +39,14 @@ const META_THEME_COLOR: Record<ResolvedTheme, string> = {
  * document state is rewritten and no object is re-created.
  */
 export function ThemeProvider({ children }: { children: ReactNode; }) {
-  // Paint from the synchronous mirror, then reconcile with IndexedDB below.
   const [preference, setPreferenceState] = useState<ThemePreference>(
-    cachedThemePreference,
+    loadThemePreference,
   );
   const [system, setSystem] = useState<ResolvedTheme>(() => systemTheme());
 
-  useEffect(() => {
-    let cancelled = false;
-    void loadThemePreference().then((p) => {
-      if (!cancelled) setPreferenceState(p);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useEffect(() => onSystemThemeChange(setSystem), []);
 
-  const theme: ResolvedTheme = preference === "system"
-    ? system
-    : resolveTheme(preference);
+  const theme: ResolvedTheme = preference === "system" ? system : preference;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -74,7 +59,7 @@ export function ThemeProvider({ children }: { children: ReactNode; }) {
 
   const setPreference = useCallback((p: ThemePreference) => {
     setPreferenceState(p);
-    void saveThemePreference(p);
+    saveThemePreference(p);
   }, []);
 
   const value = useMemo(

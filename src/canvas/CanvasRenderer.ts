@@ -22,7 +22,7 @@ import {
   visibleWorldBounds,
 } from "./coordinates";
 import { ImageCache } from "./ImageCache";
-import { strokeOutline, type XY } from "./strokeGeometry";
+import { hasVaryingPressure, strokeOutline, type XY } from "./strokeGeometry";
 import {
   boundsCenter,
   objectCenter,
@@ -777,15 +777,6 @@ function pageBounds(
     maxX: page.x + dx + page.width,
     maxY: page.y + dy + page.height,
   };
-}
-
-function hasVaryingPressure(pts: StrokePoint[]): boolean {
-  if (pts.length < 2) return false;
-  const first = pts[0].pressure ?? 0.5;
-  for (const p of pts) {
-    if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
-  }
-  return false;
 }
 
 function outlineToPath(outline: number[][]): Path2D {

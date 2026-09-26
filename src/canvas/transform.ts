@@ -32,10 +32,8 @@ import {
  * Degrees exist only where a UI or the PDF format asks for them.
  */
 
-export interface XY {
-  x: number;
-  y: number;
-}
+export type { Point as XY } from "./coordinates";
+import type { Point as XY } from "./coordinates";
 
 /** Snap increment for a modifier-held rotation, in radians (15 degrees). */
 export const ROTATION_SNAP = Math.PI / 12;

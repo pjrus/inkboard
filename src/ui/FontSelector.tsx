@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FontFamilyId } from "../document/schema";
 import { summarise } from "../document/strokeCommands";
 import { useToolStore } from "../store/toolStore";
-import { FONTS, fontStack, getFont } from "../text/fonts";
+import { FONTS, getFont } from "../text/fonts";
 import { ChevronIcon } from "./icons";
 import { Popover } from "./Popover";
 
@@ -45,7 +45,7 @@ export function FontSelector() {
       >
         <span
           className="font-name"
-          style={mixed ? undefined : { fontFamily: fontStack(font) }}
+          style={mixed ? undefined : { fontFamily: getFont(font).stack }}
         >
           {mixed ? "Mixed" : getFont(font).label}
         </span>

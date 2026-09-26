@@ -6,7 +6,7 @@ import {
   type TextObject,
   type Viewport,
 } from "../document/schema";
-import { fontStack } from "../text/fonts";
+import { getFont } from "../text/fonts";
 import { textHeight } from "../text/textMeasure";
 import type { CanvasRenderer } from "./CanvasRenderer";
 import { objectCenter, rotatePoint } from "./transform";
@@ -134,7 +134,7 @@ export function TextEditorOverlay({
         style={{
           width: object.width,
           height,
-          fontFamily: fontStack(object.fontFamily),
+          fontFamily: getFont(object.fontFamily).stack,
           fontSize: object.fontSize,
           lineHeight: TEXT_LINE_HEIGHT,
           color: object.color,

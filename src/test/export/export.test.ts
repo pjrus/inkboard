@@ -163,7 +163,7 @@ describe("export page planning", () => {
 
   it("paginates tall content onto A4 pages that tile without gaps", () => {
     const tall = [stroke({ minX: 0, minY: 0, maxX: 500, maxY: 6000 })];
-    const pages = planA4Pages(tall, "auto", 0);
+    const pages = planA4Pages(tall, 0);
     expect(pages.length).toBeGreaterThan(1);
     expect(pages[0].pageWidth).toBeCloseTo(A4_PORTRAIT.width);
     for (let i = 1; i < pages.length; i++) {
@@ -175,14 +175,9 @@ describe("export page planning", () => {
     ).toBeCloseTo(A4_PORTRAIT.width - 72);
   });
 
-  it("chooses landscape for wide content on auto", () => {
+  it("chooses landscape for wide content", () => {
     const wide = [stroke({ minX: 0, minY: 0, maxX: 4000, maxY: 500 })];
-    expect(planA4Pages(wide, "auto", 0)[0].pageWidth).toBeCloseTo(
-      A4_PORTRAIT.height,
-    );
-    expect(planA4Pages(wide, "portrait", 0)[0].pageWidth).toBeCloseTo(
-      A4_PORTRAIT.width,
-    );
+    expect(planA4Pages(wide, 0)[0].pageWidth).toBeCloseTo(A4_PORTRAIT.height);
   });
 
   it("emits one output page per imported PDF page, at the page's own size", () => {

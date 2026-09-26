@@ -1,11 +1,7 @@
 import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument } from "pdf-lib";
 import type { CanvasObject } from "../document/schema";
-import {
-  type ExportLayout,
-  type ExportOrientation,
-  planPages,
-} from "./exportPlan";
+import { type ExportLayout, planPages } from "./exportPlan";
 import { ExportResources, renderPage } from "./ExportRenderer";
 
 /**
@@ -22,9 +18,7 @@ export interface ExportOptions {
   objects: CanvasObject[];
   boardName: string;
   layout: ExportLayout;
-  orientation?: ExportOrientation;
   onProgress?: (done: number, total: number, label: string) => void;
-  signal?: AbortSignal;
 }
 
 export interface ExportResult {
@@ -33,22 +27,13 @@ export interface ExportResult {
   pageCount: number;
 }
 
-export class ExportError extends Error {}
-
 export async function exportToPDF(
   options: ExportOptions,
 ): Promise<ExportResult> {
-  const {
-    objects,
-    boardName,
-    layout,
-    orientation = "auto",
-    onProgress,
-    signal,
-  } = options;
-  const plan = planPages(objects, layout, orientation);
+  const { objects, boardName, layout, onProgress } = options;
+  const plan = planPages(objects, layout);
   if (plan.length === 0) {
-    throw new ExportError("There is nothing on this board to export yet.");
+    throw new Error("There is nothing on this board to export yet.");
   }
 
   const pdf = await PDFDocument.create();
@@ -60,7 +45,6 @@ export async function exportToPDF(
   const resources = new ExportResources(pdf);
   onProgress?.(0, plan.length, plan[0].label);
   for (let i = 0; i < plan.length; i++) {
-    if (signal?.aborted) throw new ExportError("Export cancelled.");
     const geometry = plan[i];
     const page = pdf.addPage([geometry.pageWidth, geometry.pageHeight]);
     await renderPage(page, objects, geometry, resources);

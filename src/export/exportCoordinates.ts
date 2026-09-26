@@ -1,3 +1,4 @@
+import type { Point } from "../canvas/coordinates";
 import type { Bounds } from "../document/schema";
 
 /**
@@ -29,11 +30,6 @@ export interface PageGeometry {
   label: string;
 }
 
-export interface Point2 {
-  x: number;
-  y: number;
-}
-
 export function contentX(g: PageGeometry, worldX: number): number {
   return g.marginX + (worldX - g.source.minX) * g.scale;
 }
@@ -47,7 +43,7 @@ export function contentToPdfY(g: PageGeometry, cy: number): number {
   return g.pageHeight - cy;
 }
 
-export function toPdf(g: PageGeometry, worldX: number, worldY: number): Point2 {
+export function toPdf(g: PageGeometry, worldX: number, worldY: number): Point {
   return { x: contentX(g, worldX), y: contentToPdfY(g, contentY(g, worldY)) };
 }
 
@@ -55,7 +51,7 @@ export function toPdf(g: PageGeometry, worldX: number, worldY: number): Point2 {
  * Anchor for `drawSvgPath`, which translates to (x, y) and then flips y.
  * Anchoring at the page's top-left makes SVG path coordinates content space.
  */
-export function svgAnchor(g: PageGeometry): Point2 {
+export function svgAnchor(g: PageGeometry): Point {
   return { x: 0, y: g.pageHeight };
 }
 

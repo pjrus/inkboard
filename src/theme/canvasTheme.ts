@@ -64,8 +64,3 @@ const DARK: CanvasTheme = {
 export function canvasTheme(theme: ResolvedTheme): CanvasTheme {
   return theme === "dark" ? DARK : LIGHT;
 }
-
-/** Ink colour new content defaults to before the user has chosen one. */
-export function defaultInk(theme: ResolvedTheme): string {
-  return canvasTheme(theme).defaultInk;
-}

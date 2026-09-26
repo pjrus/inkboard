@@ -1,66 +1,40 @@
-import { getDB } from "../storage/db";
-
 /**
- * Appearance is a *local* preference, not document content: it lives in the
- * IndexedDB preferences table and never enters the CRDT, so opening the same
+ * Appearance is a *local* preference, not document content: it lives in
+ * localStorage and never enters the CRDT, so opening the same
  * board on another device does not drag your theme along with it.
  */
 
 export type ThemePreference = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
 
-const KEY = "theme";
-/** Mirror of the same value, for the one read that cannot wait. */
-const CACHE_KEY = "inkboard.theme";
+const KEY = "inkboard.theme";
 export const DEFAULT_THEME_PREFERENCE: ThemePreference = "system";
 
 function isPreference(v: unknown): v is ThemePreference {
   return v === "light" || v === "dark" || v === "system";
 }
 
-function cache(preference: ThemePreference): void {
-  try {
-    globalThis.localStorage?.setItem(CACHE_KEY, preference);
-  } catch {
-    // Private browsing and blocked site data: the IndexedDB copy still works.
-  }
-}
-
 /**
- * The preference as far as we can tell without waiting.
- *
- * IndexedDB is the record of truth, but reading it is asynchronous, and a
- * theme that arrives a frame late is a theme that visibly flashes the wrong
- * one first. The provider paints from this and reconciles a moment later.
+ * Synchronous on purpose: a theme that arrives a frame late visibly flashes
+ * the wrong one first. Blocked storage just means "follow the system".
  */
-export function cachedThemePreference(): ThemePreference {
+export function loadThemePreference(): ThemePreference {
   try {
-    const v = globalThis.localStorage?.getItem(CACHE_KEY);
+    const v = globalThis.localStorage?.getItem(KEY);
     return isPreference(v) ? v : DEFAULT_THEME_PREFERENCE;
   } catch {
     return DEFAULT_THEME_PREFERENCE;
   }
 }
 
-export async function loadThemePreference(): Promise<ThemePreference> {
+// ponytail: blocked localStorage means the choice lasts only this session;
+// add an IndexedDB fallback if that ever matters.
+export function saveThemePreference(preference: ThemePreference): void {
   try {
-    const row = await getDB().preferences.get(KEY);
-    const preference = isPreference(row?.value)
-      ? row.value
-      : DEFAULT_THEME_PREFERENCE;
-    cache(preference);
-    return preference;
+    globalThis.localStorage?.setItem(KEY, preference);
   } catch {
-    // A board can still be used if preferences are unreadable.
-    return DEFAULT_THEME_PREFERENCE;
+    // Private browsing and blocked site data: nothing to persist to.
   }
-}
-
-export async function saveThemePreference(
-  preference: ThemePreference,
-): Promise<void> {
-  cache(preference);
-  await getDB().preferences.put({ key: KEY, value: preference });
 }
 
 function systemQuery(): MediaQueryList | null {
@@ -70,10 +44,6 @@ function systemQuery(): MediaQueryList | null {
 
 export function systemTheme(): ResolvedTheme {
   return systemQuery()?.matches ? "dark" : "light";
-}
-
-export function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  return preference === "system" ? systemTheme() : preference;
 }
 
 /** Watch the OS setting. Only meaningful while the preference is "system". */

@@ -1,4 +1,4 @@
-import { getAsset } from "../storage/assetRepository";
+import { getDB } from "../storage/db";
 
 /**
  * LRU cache of decoded page images. Pages are decoded lazily as they come
@@ -6,13 +6,10 @@ import { getAsset } from "../storage/assetRepository";
  * so a 300-page import never has 300 bitmaps resident at once.
  */
 export class ImageCache {
-  private entries = new Map<
-    string,
-    { bitmap: ImageBitmap; lastUsed: number; }
-  >();
+  /** Insertion order is recency order: a hit re-inserts, eviction takes the first. */
+  private entries = new Map<string, ImageBitmap>();
   private loading = new Set<string>();
   private missing = new Set<string>();
-  private tick = 0;
 
   constructor(
     private readonly onLoaded: () => void,
@@ -21,10 +18,11 @@ export class ImageCache {
 
   /** Returns the bitmap if decoded; otherwise kicks off a load and returns undefined. */
   get(assetId: string): ImageBitmap | undefined {
-    const e = this.entries.get(assetId);
-    if (e) {
-      e.lastUsed = ++this.tick;
-      return e.bitmap;
+    const bitmap = this.entries.get(assetId);
+    if (bitmap) {
+      this.entries.delete(assetId);
+      this.entries.set(assetId, bitmap);
+      return bitmap;
     }
     if (!this.loading.has(assetId) && !this.missing.has(assetId)) {
       void this.load(assetId);
@@ -39,23 +37,20 @@ export class ImageCache {
   /** Forget a "missing" verdict, e.g. after the asset has just been written. */
   invalidate(assetId: string): void {
     this.missing.delete(assetId);
-    const e = this.entries.get(assetId);
-    if (e) {
-      e.bitmap.close();
-      this.entries.delete(assetId);
-    }
+    this.entries.get(assetId)?.close();
+    this.entries.delete(assetId);
   }
 
   private async load(assetId: string) {
     this.loading.add(assetId);
     try {
-      const rec = await getAsset(assetId);
+      const rec = await getDB().assets.get(assetId);
       if (!rec) {
         this.missing.add(assetId);
         return;
       }
       const bitmap = await createImageBitmap(rec.blob);
-      this.entries.set(assetId, { bitmap, lastUsed: ++this.tick });
+      this.entries.set(assetId, bitmap);
       this.evict();
       this.onLoaded();
     } catch (err) {
@@ -67,20 +62,15 @@ export class ImageCache {
   }
 
   private evict() {
-    if (this.entries.size <= this.capacity) return;
-    const sorted = Array.from(this.entries.entries()).sort(
-      (a, b) => a[1].lastUsed - b[1].lastUsed,
-    );
-    const excess = this.entries.size - this.capacity;
-    for (let i = 0; i < excess; i++) {
-      const [id, e] = sorted[i];
-      e.bitmap.close();
+    for (const [id, bitmap] of this.entries) {
+      if (this.entries.size <= this.capacity) return;
+      bitmap.close();
       this.entries.delete(id);
     }
   }
 
   clear() {
-    for (const e of this.entries.values()) e.bitmap.close();
+    for (const b of this.entries.values()) b.close();
     this.entries.clear();
     this.missing.clear();
   }

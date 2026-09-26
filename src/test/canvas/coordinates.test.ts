@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  centerOn,
   clampScale,
   MAX_SCALE,
   MIN_SCALE,
@@ -45,10 +44,5 @@ describe("coordinate transforms", () => {
   it("computes visible world bounds with overscan", () => {
     const b = visibleWorldBounds({ x: 0, y: 0, scale: 2 }, 800, 600, 100);
     expect(b).toEqual({ minX: -50, minY: -50, maxX: 450, maxY: 350 });
-  });
-
-  it("centerOn puts the world point in the middle of the screen", () => {
-    const c = centerOn({ x: 1000, y: 2000 }, 1, 800, 600);
-    expect(worldToScreen({ x: 1000, y: 2000 }, c)).toEqual({ x: 400, y: 300 });
   });
 });

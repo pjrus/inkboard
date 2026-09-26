@@ -2,10 +2,9 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CanvasDocument } from "../../document/crdt";
 import { DEFAULT_TEXT_WIDTH } from "../../document/schema";
-import { getDB, InkboardDB, setDB } from "../../storage/db";
-import { canvasTheme, defaultInk } from "../../theme/canvasTheme";
+import { InkboardDB, setDB } from "../../storage/db";
+import { canvasTheme } from "../../theme/canvasTheme";
 import {
-  cachedThemePreference,
   DEFAULT_THEME_PREFERENCE,
   loadThemePreference,
   saveThemePreference,
@@ -14,8 +13,7 @@ import {
 let counter = 0;
 beforeEach(() => {
   setDB(new InkboardDB(`theme-test-${Date.now()}-${counter++}`));
-  // Node has no Storage by default; the mirror is optional in the app, so a
-  // minimal stand-in is enough to exercise it here.
+  // Node has no Storage by default; a minimal stand-in is enough here.
   const store = new Map<string, string>();
   Object.defineProperty(globalThis, "localStorage", {
     configurable: true,
@@ -30,31 +28,19 @@ beforeEach(() => {
 describe("theme preference", () => {
   it("defaults to following the system", async () => {
     expect(DEFAULT_THEME_PREFERENCE).toBe("system");
-    expect(await loadThemePreference()).toBe("system");
+    expect(loadThemePreference()).toBe("system");
   });
 
-  it("persists locally across sessions", async () => {
-    await saveThemePreference("dark");
-    expect(await loadThemePreference()).toBe("dark");
-    await saveThemePreference("light");
-    expect(await loadThemePreference()).toBe("light");
+  it("persists locally across sessions", () => {
+    saveThemePreference("dark");
+    expect(loadThemePreference()).toBe("dark");
+    saveThemePreference("light");
+    expect(loadThemePreference()).toBe("light");
   });
 
-  it("keeps a synchronous mirror so a chosen theme paints without a flash", async () => {
-    await saveThemePreference("dark");
-    expect(cachedThemePreference()).toBe("dark");
-    // Reading IndexedDB refreshes the mirror, so the two cannot drift.
-    await getDB().preferences.put({ key: "theme", value: "light" });
-    expect(await loadThemePreference()).toBe("light");
-    expect(cachedThemePreference()).toBe("light");
-  });
-
-  it("ignores a corrupted stored value instead of breaking the app", async () => {
-    await new InkboardDB(`theme-test-${counter}`).preferences.put({
-      key: "theme",
-      value: "chartreuse",
-    });
-    expect(await loadThemePreference()).toBe("system");
+  it("ignores a corrupted stored value instead of breaking the app", () => {
+    localStorage.setItem("inkboard.theme", "chartreuse");
+    expect(loadThemePreference()).toBe("system");
   });
 
   it("is never written into the shared document", async () => {
@@ -68,7 +54,7 @@ describe("theme preference", () => {
       fontSize: 20,
       color: "#1b1b1f",
     });
-    await saveThemePreference("dark");
+    saveThemePreference("dark");
     const json = JSON.stringify(doc.ydoc.toJSON());
     expect(json).not.toContain("theme");
     expect(json).not.toContain("dark");
@@ -87,8 +73,8 @@ describe("canvas theme", () => {
   });
 
   it("gives new content light ink on dark and dark ink on light", () => {
-    expect(defaultInk("light")).toBe("#1b1b1f");
-    expect(defaultInk("dark")).toBe("#f2f1ee");
+    expect(canvasTheme("light").defaultInk).toBe("#1b1b1f");
+    expect(canvasTheme("dark").defaultInk).toBe("#f2f1ee");
     expect(canvasTheme("dark").background).not.toBe(
       canvasTheme("light").background,
     );

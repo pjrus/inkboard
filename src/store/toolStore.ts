@@ -9,7 +9,7 @@ import type {
   Tool,
 } from "../document/schema";
 import type { ToolPreferences } from "../storage/db";
-import { defaultInk } from "../theme/canvasTheme";
+import { canvasTheme } from "../theme/canvasTheme";
 import type { ResolvedTheme } from "../theme/themePreferences";
 
 /**
@@ -126,20 +126,6 @@ interface ToolState extends ToolPreferences {
 
 const PREF_KEYS = Object.keys(DEFAULT_TOOL_PREFS) as (keyof ToolPreferences)[];
 
-let persistTimer: ReturnType<typeof setTimeout> | null = null;
-function persistPrefs(get: () => ToolState) {
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    const s = get();
-    void boardRepository.saveToolPreferences({
-      ...DEFAULT_TOOL_PREFS,
-      ...(Object.fromEntries(
-        PREF_KEYS.map((k) => [k, s[k]]),
-      ) as Partial<ToolPreferences>),
-    });
-  }, 200);
-}
-
 export const useToolStore = create<ToolState>((set, get) => ({
   selection: null,
   selectionCommands: null,
@@ -164,7 +150,6 @@ export const useToolStore = create<ToolState>((set, get) => ({
       tool,
       selectedObjectId: tool === "pan" ? get().selectedObjectId : null,
     });
-    persistPrefs(get);
   },
   setCanvasMode: (canvasMode) => {
     if (get().canvasMode === canvasMode) return;
@@ -174,7 +159,6 @@ export const useToolStore = create<ToolState>((set, get) => ({
       canvasMode,
       selection: canvasMode === "view" ? null : get().selection,
     });
-    persistPrefs(get);
   },
   /**
    * Toggling every type off would make the lasso useless, so the last
@@ -185,32 +169,13 @@ export const useToolStore = create<ToolState>((set, get) => ({
     const next = { ...current, [key]: !current[key] };
     if (!next.ink && !next.text && !next.images) return;
     set({ lassoFilter: next });
-    persistPrefs(get);
   },
-  setColor: (color) => {
-    set({ color, colorExplicit: true });
-    persistPrefs(get);
-  },
-  setWidth: (width) => {
-    set({ width });
-    persistPrefs(get);
-  },
-  setTextColor: (textColor) => {
-    set({ textColor, textColorExplicit: true });
-    persistPrefs(get);
-  },
-  setTextFont: (textFont) => {
-    set({ textFont });
-    persistPrefs(get);
-  },
-  setTextFontSize: (textFontSize) => {
-    set({ textFontSize });
-    persistPrefs(get);
-  },
-  setTextAlign: (textAlign) => {
-    set({ textAlign });
-    persistPrefs(get);
-  },
+  setColor: (color) => set({ color, colorExplicit: true }),
+  setWidth: (width) => set({ width }),
+  setTextColor: (textColor) => set({ textColor, textColorExplicit: true }),
+  setTextFont: (textFont) => set({ textFont }),
+  setTextFontSize: (textFontSize) => set({ textFontSize }),
+  setTextAlign: (textAlign) => set({ textAlign }),
   /**
    * Following the theme only ever moves colours the user has not chosen.
    * Explicit picks, and every colour already on the board, are left alone.
@@ -218,12 +183,11 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setTheme: (theme) => {
     const s = get();
     if (s.theme === theme) return;
-    const ink = defaultInk(theme);
+    const ink = canvasTheme(theme).defaultInk;
     const patch: Partial<ToolState> = { theme };
     if (!s.colorExplicit) patch.color = ink;
     if (!s.textColorExplicit) patch.textColor = ink;
     set(patch);
-    if (patch.color || patch.textColor) persistPrefs(get);
   },
   markStylusSeen: () => {
     if (!get().stylusSeen) set({ stylusSeen: true });
@@ -242,7 +206,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   },
   hydrate: async () => {
     const prefs = await boardRepository.getToolPreferences();
-    const ink = defaultInk(get().theme);
+    const ink = canvasTheme(get().theme).defaultInk;
     set({
       ...prefs,
       color: prefs.colorExplicit ? prefs.color : ink,
@@ -250,3 +214,19 @@ export const useToolStore = create<ToolState>((set, get) => ({
     });
   },
 }));
+
+// Any change to a persisted preference is saved, debounced.
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+useToolStore.subscribe((s, prev) => {
+  if (!PREF_KEYS.some((k) => s[k] !== prev[k])) return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    const now = useToolStore.getState();
+    void boardRepository.saveToolPreferences({
+      ...DEFAULT_TOOL_PREFS,
+      ...(Object.fromEntries(
+        PREF_KEYS.map((k) => [k, now[k]]),
+      ) as Partial<ToolPreferences>),
+    });
+  }, 200);
+});

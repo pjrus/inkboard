@@ -7,6 +7,7 @@ import { DocumentPersistence } from "../../document/persistence";
 import type { StrokeObject } from "../../document/schema";
 import { nextWidthStep, summarise } from "../../document/strokeCommands";
 import { InkboardDB, setDB } from "../../storage/db";
+import { nextFontSizeStep } from "../../text/textCommands";
 
 const stroke = (width: number, color = "#000") => ({
   tool: "pen" as const,
@@ -24,6 +25,14 @@ describe("width steps", () => {
     expect(nextWidthStep(40, 1)).toBe(40);
     expect(nextWidthStep(1, -1)).toBe(0.5);
     expect(nextWidthStep(0.5, -1)).toBe(0.5);
+  });
+
+  it("font sizes step through presets, then scale by 1.25 within limits", () => {
+    expect(nextFontSizeStep(16, 1)).toBe(18);
+    expect(nextFontSizeStep(17, -1)).toBe(16);
+    expect(nextFontSizeStep(64, 1)).toBe(80);
+    expect(nextFontSizeStep(12, -1)).toBeCloseTo(9.6);
+    expect(nextFontSizeStep(200, 1)).toBe(200);
   });
   it("summarises mixed values", () => {
     expect(summarise([4, 4])).toEqual({ value: 4, mixed: false });

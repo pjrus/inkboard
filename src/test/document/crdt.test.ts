@@ -112,7 +112,7 @@ describe("CanvasDocument (CRDT)", () => {
     expect(d.pagesOf("doc").map((p) => p.y)).toEqual([0, 840, 1680]);
     d.undo();
     expect(d.getAll()).toHaveLength(0);
-    expect(d.getPDFDocuments()).toHaveLength(0);
+    expect(d.getPDFDocument("doc")).toBeUndefined();
   });
 
   it("notifies listeners with typed changes", () => {

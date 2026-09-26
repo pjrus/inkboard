@@ -19,7 +19,6 @@ import type { PageGeometry } from "./exportCoordinates";
  *             comes back out looking like the original document
  */
 export type ExportLayout = "fit" | "a4" | "pdf-pages";
-export type ExportOrientation = "auto" | "portrait" | "landscape";
 
 export const A4_PORTRAIT = { width: 595.28, height: 841.89 };
 /** Margin used by the paginated layouts, in PDF points. */
@@ -27,18 +26,9 @@ export const PAGE_MARGIN = 36;
 /** The PDF format caps a page at 200 inches; keep "fit" pages inside that. */
 const MAX_PAGE_POINTS = 14400;
 
-export interface ExportPlan {
-  pages: PageGeometry[];
-  /** Objects the plan will draw, in document order. */
-  objects: CanvasObject[];
-}
-
-function pageSize(orientation: ExportOrientation, content: Bounds | null) {
-  const landscape = orientation === "landscape"
-    || (orientation === "auto"
-      && content !== null
-      && boundsWidth(content) > boundsHeight(content));
-  return landscape
+/** Landscape A4 when the content is wider than it is tall. */
+function pageSize(content: Bounds) {
+  return boundsWidth(content) > boundsHeight(content)
     ? { width: A4_PORTRAIT.height, height: A4_PORTRAIT.width }
     : { width: A4_PORTRAIT.width, height: A4_PORTRAIT.height };
 }
@@ -69,12 +59,11 @@ export function planFitPages(
 /** Content scaled to fit the page width, then sliced into page-height strips. */
 export function planA4Pages(
   objects: CanvasObject[],
-  orientation: ExportOrientation,
   padding = EXPORT_PADDING,
 ): PageGeometry[] {
   const b = contentBounds(objects, padding);
   if (!b) return [];
-  const { width: pageWidth, height: pageHeight } = pageSize(orientation, b);
+  const { width: pageWidth, height: pageHeight } = pageSize(b);
   const innerW = pageWidth - PAGE_MARGIN * 2;
   const innerH = pageHeight - PAGE_MARGIN * 2;
   const scale = Math.min(innerW / boundsWidth(b), 1000);
@@ -151,10 +140,9 @@ export function planPDFPages(
 export function planPages(
   objects: CanvasObject[],
   layout: ExportLayout,
-  orientation: ExportOrientation = "auto",
 ): PageGeometry[] {
   if (objects.length === 0) return [];
-  if (layout === "a4") return planA4Pages(objects, orientation);
+  if (layout === "a4") return planA4Pages(objects);
   if (layout === "pdf-pages") return planPDFPages(objects);
   return planFitPages(objects);
 }
