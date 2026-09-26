@@ -6,7 +6,7 @@ from.
 
 **Suggested order:** persistent storage → backup/restore → clipboard → images
 → highlighter. Data safety first, then the things every annotation user
-reaches for on day one.
+reaches for on day one. The first three are done; images are next.
 
 ## Cheap wins
 
@@ -29,8 +29,9 @@ Mostly UI on top of plumbing that already exists.
       maths already exists in `export/exportBounds.ts`.
 - [ ] **Arrow-key nudge** for the selection (1 unit, Shift for 10).
 - [ ] **Recent colours** row in `ColourPicker`, kept as a local preference.
-- [ ] **Duplicate board** from `BoardList`: copy the Yjs state and assets under
-      a new board id.
+- [ ] **Duplicate board** from `BoardList`. `boards/backup.ts` already copies
+      a board under fresh board and asset ids on restore; duplicate is the same
+      copy without the file in between.
 
 ## Ink
 
@@ -109,9 +110,12 @@ Mostly UI on top of plumbing that already exists.
 
 ## Data and storage
 
-- [x] **Backup / restore** as a single `.inkboard` file: the Yjs update plus
-      every referenced asset. Everything is local-only today, so clearing site
-      data wipes every board. Highest priority in this section.
+- [x] **Backup / restore** of every board as a single `.inkboard` file: the
+      Yjs state plus every referenced asset. Restore adds copies with fresh
+      ids, so it never touches a board that still exists.
+- [ ] **Back up one board** from the board menu, which doubles as a way to hand
+      a board to someone else. `backupBoards` needs to take board ids, and the
+      open board must flush its pending updates first.
 - [ ] **Per-board storage usage.** `BoardList` shows the total; add a size per
       board and the remaining quota from `navigator.storage.estimate()`.
 - [ ] **Clean up orphaned assets.** Removing a PDF deletes it from the CRDT but
@@ -122,7 +126,8 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Version history.** Named checkpoints from Yjs snapshots ("restore to
       this morning").
 - [ ] **Auto-backup to a folder** with the File System Access API (Chromium
-      only), for people who want their boards in Dropbox or similar.
+      only), for people who want their boards in Dropbox or similar. The file
+      is the one `backupBoards()` already produces.
 
 ## Export and sharing
 
@@ -166,7 +171,3 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Notebook mode.** A paged, fixed-size layout as an alternative to the
       infinite canvas, for people who think in pages.
 - [ ] **Math.** LaTeX in text boxes (KaTeX), rendered to both canvas and PDF.
-- [ ] **Handwriting search.** On-device recognition that indexes ink for
-      search without converting it.
-- [ ] **Handwriting → text** for a lasso selection. Same recognition model;
-      only worth it if people ask.
