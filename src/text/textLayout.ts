@@ -114,12 +114,11 @@ export function layoutText(
     return {
       text: t,
       width: w,
-      x:
-        align === "center"
-          ? (width - w) / 2
-          : align === "right"
-            ? width - w
-            : 0,
+      x: align === "center"
+        ? (width - w) / 2
+        : align === "right"
+        ? width - w
+        : 0,
       baseline: base + i * lineHeight,
     };
   });

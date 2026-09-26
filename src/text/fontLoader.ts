@@ -1,5 +1,5 @@
-import { FONTS } from "./fonts";
 import type { FontFamilyId } from "../document/schema";
+import { FONTS } from "./fonts";
 
 /**
  * Font loading for a local-first app.
@@ -26,10 +26,10 @@ import "@fontsource/lato/latin-400.css";
 // WOFF (v1) copies for PDF embedding. Vite turns these into asset URLs that
 // are part of the build output, so export works offline too. WOFF rather than
 // WOFF2 because it is what @pdf-lib/fontkit subsets reliably.
-import openSansRegular from "@fontsource/open-sans/files/open-sans-latin-400-normal.woff?url";
 import interRegular from "@fontsource/inter/files/inter-latin-400-normal.woff?url";
-import robotoRegular from "@fontsource/roboto/files/roboto-latin-400-normal.woff?url";
 import latoRegular from "@fontsource/lato/files/lato-latin-400-normal.woff?url";
+import openSansRegular from "@fontsource/open-sans/files/open-sans-latin-400-normal.woff?url";
+import robotoRegular from "@fontsource/roboto/files/roboto-latin-400-normal.woff?url";
 
 const FILES: Record<FontFamilyId, string> = {
   "open-sans": openSansRegular,

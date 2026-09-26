@@ -1,0 +1,12 @@
+{
+  "lineWidth": 80,
+  "indentWidth": 2,
+  "typescript": { "quoteStyle": "alwaysDouble", "semiColons": "always" },
+  "excludes": ["dist", "node_modules", "package-lock.json"],
+  "plugins": [
+    "npm:@dprint/typescript@0.96.1",
+    "npm:@dprint/json@0.24.0",
+    "npm:@dprint/markdown@0.24.0",
+    "npm:dprint-plugin-malva@0.16.0"
+  ]
+}

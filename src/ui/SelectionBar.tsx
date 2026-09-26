@@ -31,14 +31,13 @@ export function SelectionBar() {
   const kinds = [strokes && "ink", texts && "text", images && "images"].filter(
     Boolean,
   ).length;
-  const what =
-    kinds > 1
-      ? `${n} items`
-      : texts
-        ? `${texts} text ${texts === 1 ? "box" : "boxes"}`
-        : images
-          ? `${images} ${images === 1 ? "image" : "images"}`
-          : `${n} ${n === 1 ? "item" : "items"}`;
+  const what = kinds > 1
+    ? `${n} items`
+    : texts
+    ? `${texts} text ${texts === 1 ? "box" : "boxes"}`
+    : images
+    ? `${images} ${images === 1 ? "image" : "images"}`
+    : `${n} ${n === 1 ? "item" : "items"}`;
 
   return (
     <div className="selection-bar" role="toolbar" aria-label="Selection">
@@ -49,7 +48,8 @@ export function SelectionBar() {
             type="button"
             aria-label="Thinner ([)"
             title="Thinner ([)"
-            onClick={() => commands.adjustWidth(-1)}
+            onClick={() =>
+              commands.adjustWidth(-1)}
           >
             &minus;
           </button>
@@ -60,7 +60,8 @@ export function SelectionBar() {
             type="button"
             aria-label="Thicker (])"
             title="Thicker (])"
-            onClick={() => commands.adjustWidth(1)}
+            onClick={() =>
+              commands.adjustWidth(1)}
           >
             +
           </button>

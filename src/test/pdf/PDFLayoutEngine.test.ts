@@ -38,7 +38,7 @@ describe("PDF layout engine", () => {
       p.forEach((pl, i) =>
         expect(pl.width / pl.height).toBeCloseTo(
           sizes[i].width / sizes[i].height,
-        ),
+        )
       );
     }
   });

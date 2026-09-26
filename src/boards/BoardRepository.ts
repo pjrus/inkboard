@@ -1,11 +1,11 @@
 import { newId } from "../document/ids";
-import { getDB, type BoardRecord, type ToolPreferences } from "../storage/db";
 import {
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
   DEFAULT_LASSO_FILTER,
   type Viewport,
 } from "../document/schema";
+import { type BoardRecord, getDB, type ToolPreferences } from "../storage/db";
 
 export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   tool: "pen",

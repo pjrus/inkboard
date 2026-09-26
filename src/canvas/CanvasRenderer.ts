@@ -1,12 +1,12 @@
 import type { CanvasDocument } from "../document/crdt";
 import {
-  unpackPoints,
   type Bounds,
   type PDFPageObject,
   type PenTool,
   type StrokeObject,
   type StrokePoint,
   type TextObject,
+  unpackPoints,
   type Viewport,
 } from "../document/schema";
 import { canvasFont } from "../text/fonts";
@@ -15,7 +15,7 @@ import {
   onTextMeasurementsInvalidated,
   textBounds,
 } from "../text/textMeasure";
-import { canvasTheme, type CanvasTheme } from "../theme/canvasTheme";
+import { type CanvasTheme, canvasTheme } from "../theme/canvasTheme";
 import {
   boundsIntersect,
   DEFAULT_VIEWPORT,
@@ -111,7 +111,7 @@ export class CanvasRenderer {
   activeStroke: ActiveStroke | null = null;
   eraserCursor: EraserCursor | null = null;
   selectedId: string | null = null;
-  dragPreview: { id: string; dx: number; dy: number } | null = null;
+  dragPreview: { id: string; dx: number; dy: number; } | null = null;
   /** Local-only object selection (never persisted or synced). */
   selectedIds = new Set<string>();
   /** Uncommitted move/rotation of the selection while a gesture is running. */
@@ -119,7 +119,7 @@ export class CanvasRenderer {
   /** Live angle readout shown while rotating, e.g. "45°". */
   angleLabel: string | null = null;
   /** Live width while a text box is being resized (not yet committed). */
-  textResize: { id: string; width: number } | null = null;
+  textResize: { id: string; width: number; } | null = null;
   /** The text box whose DOM editor is open; drawn by the overlay, not here. */
   editingTextId: string | null = null;
   /** Temporary lasso outline in world space while the user drags. */
@@ -138,8 +138,9 @@ export class CanvasRenderer {
     this.rebuildLists();
     this.disposers.push(
       doc.onChange((changes) => {
-        for (const c of changes)
+        for (const c of changes) {
           if (c.kind !== "add") this.pathCache.delete(c.id);
+        }
         this.rebuildLists();
         this.invalidateStatic();
       }),
@@ -216,7 +217,7 @@ export class CanvasRenderer {
    * Top-most page under a world point, if any. Rotation is accounted for: the
    * point is taken back into the page's own frame before the rectangle test.
    */
-  hitTestPage(p: { x: number; y: number }): PDFPageObject | undefined {
+  hitTestPage(p: { x: number; y: number; }): PDFPageObject | undefined {
     for (let i = this.pages.length - 1; i >= 0; i--) {
       if (rectContains(this.pages[i], p)) return this.pages[i];
     }
@@ -229,12 +230,13 @@ export class CanvasRenderer {
    * follows the box's rotation.
    */
   hitTestText(
-    p: { x: number; y: number },
+    p: { x: number; y: number; },
     padWorld = 0,
   ): TextObject | undefined {
     for (let i = this.texts.length - 1; i >= 0; i--) {
-      if (rectContains(this.effectiveText(this.texts[i]), p, padWorld))
+      if (rectContains(this.effectiveText(this.texts[i]), p, padWorld)) {
         return this.texts[i];
+      }
     }
     return undefined;
   }
@@ -269,8 +271,9 @@ export class CanvasRenderer {
     const out: (StrokeObject | TextObject | PDFPageObject)[] = [];
     for (const p of this.pages) if (this.selectedIds.has(p.id)) out.push(p);
     for (const s of this.strokes) if (this.selectedIds.has(s.id)) out.push(s);
-    for (const t of this.texts)
+    for (const t of this.texts) {
       if (this.selectedIds.has(t.id)) out.push(this.effectiveText(t));
+    }
     return out;
   }
 
@@ -319,7 +322,7 @@ export class CanvasRenderer {
    * World-space centre of the rotation grip, which floats above the selection.
    * One grip for the whole selection, never one per object.
    */
-  rotationHandle(): { x: number; y: number; radius: number } | null {
+  rotationHandle(): { x: number; y: number; radius: number; } | null {
     const b = this.selectionBaseBounds();
     if (!b || this.editingTextId) return null;
     const p = this.previewPoint({
@@ -341,7 +344,7 @@ export class CanvasRenderer {
   }
 
   /** World-space centre of the width grip, or null when none is shown. */
-  textResizeHandle(): { x: number; y: number; radius: number } | null {
+  textResizeHandle(): { x: number; y: number; radius: number; } | null {
     const raw = this.soleSelectedText();
     if (!raw || this.editingTextId === raw.id) return null;
     const t = this.effectiveText(raw);
@@ -437,10 +440,12 @@ export class CanvasRenderer {
     // Layer 10: PDF pages
     for (const page of this.pages) {
       const selected = hasSelection && this.selectedIds.has(page.id);
-      if (!selected && !boundsIntersect(transformedBounds(page), visible))
+      if (!selected && !boundsIntersect(transformedBounds(page), visible)) {
         continue;
-      inPreview(page.id, () =>
-        this.drawPage(ctx, page, pageBounds(page, this.dragPreview)),
+      }
+      inPreview(
+        page.id,
+        () => this.drawPage(ctx, page, pageBounds(page, this.dragPreview)),
       );
     }
 
@@ -456,8 +461,9 @@ export class CanvasRenderer {
       if (text.id === this.editingTextId) continue; // the DOM editor draws it
       const selected = hasSelection && this.selectedIds.has(text.id);
       const t = this.effectiveText(text);
-      if (!selected && !boundsIntersect(transformedBounds(t), visible))
+      if (!selected && !boundsIntersect(transformedBounds(t), visible)) {
         continue;
+      }
       inPreview(text.id, () => this.drawText(ctx, t));
     }
 
@@ -576,8 +582,11 @@ export class CanvasRenderer {
     page: PDFPageObject,
     b: Bounds,
   ) {
-    this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () =>
-      this.drawPageUpright(ctx, page, b),
+    this.withRotation(
+      ctx,
+      page.rotation ?? 0,
+      boundsCenter(b),
+      () => this.drawPageUpright(ctx, page, b),
     );
   }
 
@@ -605,9 +614,8 @@ export class CanvasRenderer {
       // recoloured, in either theme.
       ctx.drawImage(bitmap, b.minX, b.minY, w, h);
     } else {
-      const pending =
-        this.pendingAssets.has(page.assetId) ||
-        !this.imageCache.isMissing(page.assetId);
+      const pending = this.pendingAssets.has(page.assetId)
+        || !this.imageCache.isMissing(page.assetId);
       ctx.fillStyle = theme.pagePlaceholderText;
       ctx.font = `${Math.max(12, 16 / scale)}px system-ui, sans-serif`;
       ctx.textAlign = "center";
@@ -675,8 +683,9 @@ export class CanvasRenderer {
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
       for (const line of layout.lines) {
-        if (line.text !== "")
+        if (line.text !== "") {
           ctx.fillText(line.text, text.x + line.x, text.y + line.baseline);
+        }
       }
       ctx.restore();
     });
@@ -702,8 +711,9 @@ export class CanvasRenderer {
     if (this.lassoPath && this.lassoPath.length > 1) {
       ctx.beginPath();
       ctx.moveTo(this.lassoPath[0].x, this.lassoPath[0].y);
-      for (let i = 1; i < this.lassoPath.length; i++)
+      for (let i = 1; i < this.lassoPath.length; i++) {
         ctx.lineTo(this.lassoPath[i].x, this.lassoPath[i].y);
+      }
       ctx.closePath();
       ctx.fillStyle = theme.selectionFill;
       ctx.fill();
@@ -757,7 +767,7 @@ export class CanvasRenderer {
 
 function pageBounds(
   page: PDFPageObject,
-  drag: { id: string; dx: number; dy: number } | null,
+  drag: { id: string; dx: number; dy: number; } | null,
 ): Bounds {
   const dx = drag && drag.id === page.id ? drag.dx : 0;
   const dy = drag && drag.id === page.id ? drag.dy : 0;
@@ -772,8 +782,9 @@ function pageBounds(
 function hasVaryingPressure(pts: StrokePoint[]): boolean {
   if (pts.length < 2) return false;
   const first = pts[0].pressure ?? 0.5;
-  for (const p of pts)
+  for (const p of pts) {
     if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
+  }
   return false;
 }
 

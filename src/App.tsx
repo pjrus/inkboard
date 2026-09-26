@@ -4,7 +4,7 @@ import { BoardView } from "./boards/BoardView";
 import { loadFonts } from "./text/fontLoader";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
-type Route = { view: "list" } | { view: "board"; id: string };
+type Route = { view: "list"; } | { view: "board"; id: string; };
 
 function parseHash(): Route {
   const m = window.location.hash.match(/^#\/b\/([A-Za-z0-9_-]+)/);
@@ -26,14 +26,14 @@ export function App() {
 
   return (
     <ThemeProvider>
-      {route.view === "board" ? (
-        <BoardView
-          boardId={route.id}
-          onBack={() => (window.location.hash = "#/")}
-        />
-      ) : (
-        <BoardList onOpen={(id) => (window.location.hash = `#/b/${id}`)} />
-      )}
+      {route.view === "board"
+        ? (
+          <BoardView
+            boardId={route.id}
+            onBack={() => (window.location.hash = "#/")}
+          />
+        )
+        : <BoardList onOpen={(id) => (window.location.hash = `#/b/${id}`)} />}
     </ThemeProvider>
   );
 }

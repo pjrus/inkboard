@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CanvasObject } from "../document/schema";
-import { hasImportedPages, planPages, type ExportLayout } from "./exportPlan";
+import { type ExportLayout, hasImportedPages, planPages } from "./exportPlan";
 
 export interface ExportChoice {
   scope: "all" | "selection";
@@ -10,7 +10,7 @@ export interface ExportChoice {
 interface Props {
   objects: CanvasObject[];
   selectedObjects: CanvasObject[];
-  busy: { done: number; total: number; label: string } | null;
+  busy: { done: number; total: number; label: string; } | null;
   error: string | null;
   onCancel: () => void;
   onExport: (choice: ExportChoice) => void;
@@ -125,31 +125,39 @@ export function ExportDialog({
           </label>
         </fieldset>
 
-        {error ? (
-          <p className="modal-note modal-error" role="alert">
-            {error}
-          </p>
-        ) : busy ? (
-          <div className="export-progress" role="status" aria-live="polite">
-            <div className="toast-meta">
-              Preparing PDF... {busy.label} ({busy.done} / {busy.total})
+        {error
+          ? (
+            <p className="modal-note modal-error" role="alert">
+              {error}
+            </p>
+          )
+          : busy
+          ? (
+            <div className="export-progress" role="status" aria-live="polite">
+              <div className="toast-meta">
+                Preparing PDF... {busy.label} ({busy.done} / {busy.total})
+              </div>
+              <div className="progress" aria-hidden="true">
+                <div
+                  className="progress-bar"
+                  style={{
+                    width: `${
+                      busy.total ? (busy.done / busy.total) * 100 : 0
+                    }%`,
+                  }}
+                />
+              </div>
             </div>
-            <div className="progress" aria-hidden="true">
-              <div
-                className="progress-bar"
-                style={{
-                  width: `${busy.total ? (busy.done / busy.total) * 100 : 0}%`,
-                }}
-              />
-            </div>
-          </div>
-        ) : (
-          <p className="modal-note">
-            {subject.length === 0
-              ? "Nothing to export yet."
-              : `${pageCount} ${pageCount === 1 ? "page" : "pages"}. Toolbars and selection outlines are never included.`}
-          </p>
-        )}
+          )
+          : (
+            <p className="modal-note">
+              {subject.length === 0
+                ? "Nothing to export yet."
+                : `${pageCount} ${
+                  pageCount === 1 ? "page" : "pages"
+                }. Toolbars and selection outlines are never included.`}
+            </p>
+          )}
 
         <div className="modal-actions">
           <button

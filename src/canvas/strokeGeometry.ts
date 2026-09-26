@@ -118,13 +118,15 @@ export function strokeHitTest(
   radius: number,
 ): boolean {
   const threshold = radius + width / 2;
-  if (points.length === 1)
+  if (points.length === 1) {
     return (
       Math.hypot(points[0].x - centre.x, points[0].y - centre.y) <= threshold
     );
+  }
   for (let i = 0; i + 1 < points.length; i++) {
-    if (pointSegmentDistance(centre, points[i], points[i + 1]) <= threshold)
+    if (pointSegmentDistance(centre, points[i], points[i + 1]) <= threshold) {
       return true;
+    }
   }
   return false;
 }
@@ -153,8 +155,9 @@ export function strokeSegmentHitTest(
 /** Bounds from a flat [x,y,p,...] point array. */
 export function computeBoundsFlat(flat: number[], width: number): Bounds {
   const pts: StrokePoint[] = [];
-  for (let i = 0; i + 2 < flat.length; i += 3)
+  for (let i = 0; i + 2 < flat.length; i += 3) {
     pts.push({ x: flat[i], y: flat[i + 1] });
+  }
   return computeBounds(pts, width);
 }
 
@@ -170,10 +173,11 @@ export function pointInPolygon(p: XY, poly: XY[]): boolean {
     const a = poly[i];
     const b = poly[j];
     if (
-      a.y > p.y !== b.y > p.y &&
-      p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x
-    )
+      a.y > p.y !== b.y > p.y
+      && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x
+    ) {
       inside = !inside;
+    }
   }
   return inside;
 }
@@ -221,17 +225,17 @@ export function lassoSelectsStroke(
   const half = width / 2;
   let inside = 0;
   for (const p of points) {
-    const nearBox =
-      p.x >= pb.minX - half &&
-      p.x <= pb.maxX + half &&
-      p.y >= pb.minY - half &&
-      p.y <= pb.maxY + half;
+    const nearBox = p.x >= pb.minX - half
+      && p.x <= pb.maxX + half
+      && p.y >= pb.minY - half
+      && p.y <= pb.maxY + half;
     if (!nearBox) continue;
     if (
-      pointInPolygon(p, poly) ||
-      (half > 0 && distanceToPolygonEdge(p, poly) <= half)
-    )
+      pointInPolygon(p, poly)
+      || (half > 0 && distanceToPolygonEdge(p, poly) <= half)
+    ) {
       inside++;
+    }
   }
   return inside / points.length >= LASSO_INSIDE_FRACTION;
 }
@@ -260,12 +264,13 @@ export function lassoSelectsQuad(
   const pb = polyBounds ?? polygonBounds(poly);
   const qb = polygonBounds(corners);
   if (
-    qb.maxX < pb.minX ||
-    qb.minX > pb.maxX ||
-    qb.maxY < pb.minY ||
-    qb.minY > pb.maxY
-  )
+    qb.maxX < pb.minX
+    || qb.minX > pb.maxX
+    || qb.maxY < pb.minY
+    || qb.minY > pb.maxY
+  ) {
     return false;
+  }
   const [a, b, c, d] = corners;
   const centre = {
     x: (a.x + b.x + c.x + d.x) / 4,
@@ -289,8 +294,9 @@ export function lassoSelectsQuad(
           },
           poly,
         )
-      )
+      ) {
         inside++;
+      }
     }
   }
   return inside / (BOX_SAMPLES * BOX_SAMPLES) >= LASSO_BOX_FRACTION;

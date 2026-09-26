@@ -1,3 +1,4 @@
+import { transformedBounds } from "../canvas/transform";
 import type { Bounds, CanvasObject, PDFPageObject } from "../document/schema";
 import {
   boundsHeight,
@@ -6,7 +7,6 @@ import {
   EXPORT_PADDING,
   overlaps,
 } from "./exportBounds";
-import { transformedBounds } from "../canvas/transform";
 import type { PageGeometry } from "./exportCoordinates";
 
 /**
@@ -34,11 +34,10 @@ export interface ExportPlan {
 }
 
 function pageSize(orientation: ExportOrientation, content: Bounds | null) {
-  const landscape =
-    orientation === "landscape" ||
-    (orientation === "auto" &&
-      content !== null &&
-      boundsWidth(content) > boundsHeight(content));
+  const landscape = orientation === "landscape"
+    || (orientation === "auto"
+      && content !== null
+      && boundsWidth(content) > boundsHeight(content));
   return landscape
     ? { width: A4_PORTRAIT.height, height: A4_PORTRAIT.width }
     : { width: A4_PORTRAIT.width, height: A4_PORTRAIT.height };
@@ -92,10 +91,9 @@ export function planA4Pages(
       marginX: PAGE_MARGIN,
       // A single short page is centred; a paginated run stays top-aligned so
       // the slices join up.
-      marginY:
-        total === 1
-          ? Math.max(PAGE_MARGIN, (pageHeight - boundsHeight(b) * scale) / 2)
-          : PAGE_MARGIN,
+      marginY: total === 1
+        ? Math.max(PAGE_MARGIN, (pageHeight - boundsHeight(b) * scale) / 2)
+        : PAGE_MARGIN,
       label: `Page ${i + 1} of ${total}`,
     });
   }
@@ -136,8 +134,8 @@ export function planPDFPages(
   const pageRects = pages.map((g) => g.source);
   const strays = objects.filter(
     (o) =>
-      o.type !== "pdf-page" &&
-      !pageRects.some((r) => overlaps(transformedBounds(o), r)),
+      o.type !== "pdf-page"
+      && !pageRects.some((r) => overlaps(transformedBounds(o), r)),
   );
   if (strays.length) {
     for (const extra of planFitPages(strays, padding)) {

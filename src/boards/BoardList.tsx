@@ -29,8 +29,9 @@ export function BoardList({ onOpen }: Props) {
       !window.confirm(
         `Delete "${b.name}" and everything on it? This cannot be undone.`,
       )
-    )
+    ) {
       return;
+    }
     await boardRepository.delete(b.id);
     await refresh();
   };
@@ -43,41 +44,43 @@ export function BoardList({ onOpen }: Props) {
           New board
         </button>
       </header>
-      {boards === null ? (
-        <p className="muted">Loading…</p>
-      ) : boards.length === 0 ? (
-        <div className="empty">
-          <p>No boards yet.</p>
-          <button type="button" className="btn btn-primary" onClick={create}>
-            Create your first board
-          </button>
-        </div>
-      ) : (
-        <ul className="board-items">
-          {boards.map((b) => (
-            <li key={b.id}>
-              <button
-                type="button"
-                className="board-item"
-                onClick={() => onOpen(b.id)}
-              >
-                <span className="board-name">{b.name}</span>
-                <span className="board-date">
-                  Edited {formatDate(b.updatedAt)}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                aria-label={`Delete ${b.name}`}
-                onClick={() => remove(b)}
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {boards === null
+        ? <p className="muted">Loading…</p>
+        : boards.length === 0
+        ? (
+          <div className="empty">
+            <p>No boards yet.</p>
+            <button type="button" className="btn btn-primary" onClick={create}>
+              Create your first board
+            </button>
+          </div>
+        )
+        : (
+          <ul className="board-items">
+            {boards.map((b) => (
+              <li key={b.id}>
+                <button
+                  type="button"
+                  className="board-item"
+                  onClick={() => onOpen(b.id)}
+                >
+                  <span className="board-name">{b.name}</span>
+                  <span className="board-date">
+                    Edited {formatDate(b.updatedAt)}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  aria-label={`Delete ${b.name}`}
+                  onClick={() => remove(b)}
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       <footer className="board-list-footer muted">
         Everything is stored in this browser.{" "}
         {used !== null && `Local storage used: ${formatBytes(used)}`}

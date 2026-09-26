@@ -1,4 +1,4 @@
-import { getDB, type AssetRecord } from "./db";
+import { type AssetRecord, getDB } from "./db";
 
 /** Binary asset storage: rendered PDF page images and retained source PDFs. */
 export async function putAsset(asset: AssetRecord): Promise<void> {

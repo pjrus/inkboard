@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { THICKNESS_PRESETS, useToolStore } from "../store/toolStore";
 import { summarise } from "../document/strokeCommands";
-import { Popover } from "./Popover";
+import { THICKNESS_PRESETS, useToolStore } from "../store/toolStore";
 import { ChevronIcon } from "./icons";
+import { Popover } from "./Popover";
 
 export function ThicknessPicker() {
   const penWidth = useToolStore((s) => s.width);
@@ -13,8 +13,9 @@ export function ThicknessPicker() {
   const [open, setOpen] = useState(false);
   // Thickness only means something for handwriting: a text-only selection
   // falls back to configuring the pen.
-  const selection =
-    rawSelection && rawSelection.strokeIds.length > 0 ? rawSelection : null;
+  const selection = rawSelection && rawSelection.strokeIds.length > 0
+    ? rawSelection
+    : null;
   const wSummary = selection ? summarise(selection.widths) : null;
   const cSummary = selection ? summarise(selection.colors) : null;
   const mixed = wSummary?.mixed ?? false;
@@ -35,9 +36,7 @@ export function ThicknessPicker() {
         title={label}
         onClick={() => setOpen((o) => !o)}
       >
-        {mixed ? (
-          <span className="thickness-mixed">Mixed</span>
-        ) : (
+        {mixed ? <span className="thickness-mixed">Mixed</span> : (
           <span
             className="thickness-dot"
             style={{

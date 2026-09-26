@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { transformedBounds, unionBounds } from "../../canvas/transform";
 import type {
   Bounds,
   CanvasObject,
@@ -7,22 +8,21 @@ import type {
   TextObject,
 } from "../../document/schema";
 import { contentBounds, overlaps } from "../../export/exportBounds";
-import { transformedBounds, unionBounds } from "../../canvas/transform";
 import {
   contentRect,
   contentToPdfY,
   contentX,
   contentY,
+  type PageGeometry,
   svgAnchor,
   toPdf,
-  type PageGeometry,
 } from "../../export/exportCoordinates";
 import {
   A4_PORTRAIT,
   planA4Pages,
   planFitPages,
-  planPDFPages,
   planPages,
+  planPDFPages,
 } from "../../export/exportPlan";
 import { objectsOnPage, pdfColor } from "../../export/ExportRenderer";
 import { pdfFileName } from "../../export/PDFExporter";

@@ -1,6 +1,6 @@
 import * as pdfjsLib from "pdfjs-dist";
-import { newId } from "../document/ids";
 import type { CanvasDocument } from "../document/crdt";
+import { newId } from "../document/ids";
 import type {
   PDFDocumentMetadata,
   PDFLayout,
@@ -28,9 +28,9 @@ export interface InspectedPDF {
 
 export async function inspectPDF(file: File): Promise<InspectedPDF> {
   if (
-    file.type &&
-    file.type !== "application/pdf" &&
-    !file.name.toLowerCase().endsWith(".pdf")
+    file.type
+    && file.type !== "application/pdf"
+    && !file.name.toLowerCase().endsWith(".pdf")
   ) {
     throw new Error("That file does not look like a PDF.");
   }
@@ -53,7 +53,7 @@ export interface ImportOptions {
   inspected: InspectedPDF;
   layout: PDFLayout;
   /** World-space top-left of the first page. */
-  origin: { x: number; y: number };
+  origin: { x: number; y: number; };
   keepSource?: boolean;
   onProgress?: (done: number, total: number) => void;
   onPageReady?: (assetId: string) => void;

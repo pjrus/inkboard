@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
 import fontkit from "@pdf-lib/fontkit";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   canvasFont,

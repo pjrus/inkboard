@@ -1,12 +1,12 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { InkboardDB, setDB } from "../../storage/db";
 import {
   boardRepository,
   DEFAULT_TOOL_PREFS,
 } from "../../boards/BoardRepository";
 import { CanvasDocument } from "../../document/crdt";
 import { DocumentPersistence } from "../../document/persistence";
+import { InkboardDB, setDB } from "../../storage/db";
 
 let counter = 0;
 beforeEach(() => {
@@ -82,8 +82,9 @@ describe("board persistence", () => {
       color: "#d93025",
       textAlign: "center",
     });
-    for (const ch of "Typed on the canvas")
+    for (const ch of "Typed on the canvas") {
       doc1.editText(t.id, (y) => y.insert(y.length, ch));
+    }
     await p1.destroy();
 
     const doc2 = new CanvasDocument();

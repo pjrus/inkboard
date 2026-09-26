@@ -43,7 +43,7 @@ export class DocumentPersistence {
   }
 
   /** Load all persisted updates into the document. */
-  async load(): Promise<{ updateCount: number }> {
+  async load(): Promise<{ updateCount: number; }> {
     const rows = await getDB()
       .updates.where("boardId")
       .equals(this.boardId)

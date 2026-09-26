@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { summarise } from "../document/strokeCommands";
-import { FONT_SIZE_PRESETS, nextFontSizeStep } from "../text/textCommands";
 import { useToolStore } from "../store/toolStore";
-import { Popover } from "./Popover";
+import { FONT_SIZE_PRESETS, nextFontSizeStep } from "../text/textCommands";
 import { ChevronIcon } from "./icons";
+import { Popover } from "./Popover";
 
 /**
  * Font size as a preset list plus a stepper, matching the thickness control.

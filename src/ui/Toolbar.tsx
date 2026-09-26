@@ -5,21 +5,21 @@ import { AppMenu } from "./AppMenu";
 import { ColourPicker } from "./ColourPicker";
 import { FontSelector } from "./FontSelector";
 import { FontSizeSelector } from "./FontSizeSelector";
-import { TextAlignmentControls } from "./TextAlignmentControls";
-import { ThicknessPicker } from "./ThicknessPicker";
-import { LassoFilterControls } from "./LassoFilterControls";
-import { ModeSwitch } from "./ModeSwitch";
 import {
   EraserIcon,
   HandIcon,
   LassoIcon,
   PdfIcon,
-  PenIcon,
   PencilIcon,
+  PenIcon,
   RedoIcon,
   TextIcon,
   UndoIcon,
 } from "./icons";
+import { LassoFilterControls } from "./LassoFilterControls";
+import { ModeSwitch } from "./ModeSwitch";
+import { TextAlignmentControls } from "./TextAlignmentControls";
+import { ThicknessPicker } from "./ThicknessPicker";
 
 interface Props {
   onInsertPDF: (file: File) => void;

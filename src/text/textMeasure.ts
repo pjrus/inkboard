@@ -1,6 +1,6 @@
 import type { Bounds, TextObject } from "../document/schema";
-import { canvasFont } from "./fonts";
 import { onFontsReady } from "./fontLoader";
+import { canvasFont } from "./fonts";
 import { layoutText, type Measure, type TextLayoutResult } from "./textLayout";
 
 /**
@@ -29,10 +29,9 @@ const invalidationListeners = new Set<() => void>();
 
 function context(): CanvasRenderingContext2D | null {
   if (ctx === undefined) {
-    ctx =
-      typeof document !== "undefined"
-        ? document.createElement("canvas").getContext("2d")
-        : null;
+    ctx = typeof document !== "undefined"
+      ? document.createElement("canvas").getContext("2d")
+      : null;
   }
   return ctx;
 }
@@ -62,7 +61,9 @@ type LayoutInput = Pick<
 >;
 
 function layoutKey(o: LayoutInput): string {
-  return `${o.fontFamily} ${o.fontSize} ${o.width} ${o.textAlign ?? "left"} ${o.text}`;
+  return `${o.fontFamily} ${o.fontSize} ${o.width} ${
+    o.textAlign ?? "left"
+  } ${o.text}`;
 }
 
 export function measureText(o: LayoutInput): TextLayoutResult {

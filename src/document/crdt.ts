@@ -1,9 +1,8 @@
 import * as Y from "yjs";
-import { newId } from "./ids";
-import { nextWidthStep } from "./strokeCommands";
-import { nextFontSizeStep } from "../text/textCommands";
 import { computeBoundsFlat } from "../canvas/strokeGeometry";
 import { objectCenter, rotatePoint } from "../canvas/transform";
+import { nextFontSizeStep } from "../text/textCommands";
+import { newId } from "./ids";
 import type {
   CanvasObject,
   PDFDocumentMetadata,
@@ -12,6 +11,7 @@ import type {
   StrokeObject,
   TextObject,
 } from "./schema";
+import { nextWidthStep } from "./strokeCommands";
 
 /**
  * CanvasDocument wraps a Y.Doc and exposes a typed API for canvas objects.
@@ -35,9 +35,9 @@ import type {
 export const LOCAL_ORIGIN = Symbol("local");
 
 export type ObjectChange =
-  | { kind: "add"; id: string; object: CanvasObject }
-  | { kind: "update"; id: string; object: CanvasObject }
-  | { kind: "remove"; id: string };
+  | { kind: "add"; id: string; object: CanvasObject; }
+  | { kind: "update"; id: string; object: CanvasObject; }
+  | { kind: "remove"; id: string; };
 
 export type ObjectListener = (
   changes: ObjectChange[],
@@ -88,7 +88,7 @@ export class CanvasDocument {
   getPDFDocuments(): PDFDocumentMetadata[] {
     const out: PDFDocumentMetadata[] = [];
     this.pdfDocuments.forEach((m) =>
-      out.push(m.toJSON() as PDFDocumentMetadata),
+      out.push(m.toJSON() as PDFDocumentMetadata)
     );
     return out;
   }
@@ -96,8 +96,9 @@ export class CanvasDocument {
   pagesOf(pdfDocumentId: string): PDFPageObject[] {
     const pages: PDFPageObject[] = [];
     for (const o of this.cache.values()) {
-      if (o.type === "pdf-page" && o.pdfDocumentId === pdfDocumentId)
+      if (o.type === "pdf-page" && o.pdfDocumentId === pdfDocumentId) {
         pages.push(o);
+      }
     }
     pages.sort((a, b) => a.pageNumber - b.pageNumber);
     return pages;
@@ -127,7 +128,7 @@ export class CanvasDocument {
   }
 
   addStroke(
-    stroke: Omit<StrokeObject, "id" | "type" | "createdAt"> & { id?: string },
+    stroke: Omit<StrokeObject, "id" | "type" | "createdAt"> & { id?: string; },
   ): StrokeObject {
     const obj: StrokeObject = {
       ...stroke,
@@ -214,8 +215,9 @@ export class CanvasDocument {
       for (const id of ids) {
         const m = this.objects.get(id);
         if (!m || m.get("type") !== "text") continue;
-        for (const [k, v] of Object.entries(patch))
+        for (const [k, v] of Object.entries(patch)) {
           if (v !== undefined) m.set(k, v);
+        }
         m.set("updatedAt", now);
       }
     });
@@ -324,7 +326,7 @@ export class CanvasDocument {
   rotateObjects(
     ids: string[],
     angleDelta: number,
-    pivot: { x: number; y: number },
+    pivot: { x: number; y: number; },
   ): void {
     if (ids.length === 0 || angleDelta === 0) return;
     const now = Date.now();
@@ -389,7 +391,7 @@ export class CanvasDocument {
   setPDFLayout(
     pdfDocumentId: string,
     layout: PDFLayout,
-    positions: { id: string; x: number; y: number }[],
+    positions: { id: string; x: number; y: number; }[],
   ): void {
     const meta = this.pdfDocuments.get(pdfDocumentId);
     if (!meta) return;
@@ -443,7 +445,7 @@ export class CanvasDocument {
   private rebuildCache() {
     this.cache.clear();
     this.objects.forEach((m, id) =>
-      this.cache.set(id, m.toJSON() as CanvasObject),
+      this.cache.set(id, m.toJSON() as CanvasObject)
     );
   }
 
@@ -484,7 +486,11 @@ export class CanvasDocument {
         }
       }
     }
-    if (changes.length) for (const l of this.listeners) l(changes, txn.origin);
+    if (changes.length) {
+      for (const l of this.listeners) {
+        l(changes, txn.origin);
+      }
+    }
   }
 }
 

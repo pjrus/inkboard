@@ -1,5 +1,5 @@
-import type { Bounds, CanvasObject } from "../document/schema";
 import { transformedBounds, unionBounds } from "../canvas/transform";
+import type { Bounds, CanvasObject } from "../document/schema";
 
 /** Breathing room around exported content, in world units. */
 export const EXPORT_PADDING = 40;

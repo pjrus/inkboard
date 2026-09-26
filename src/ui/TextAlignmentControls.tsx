@@ -1,9 +1,9 @@
-import { summarise } from "../document/strokeCommands";
 import type { TextAlign } from "../document/schema";
+import { summarise } from "../document/strokeCommands";
 import { useToolStore } from "../store/toolStore";
 import { AlignCenterIcon, AlignLeftIcon, AlignRightIcon } from "./icons";
 
-const OPTIONS: { value: TextAlign; label: string; icon: () => JSX.Element }[] =
+const OPTIONS: { value: TextAlign; label: string; icon: () => JSX.Element; }[] =
   [
     { value: "left", label: "Align left", icon: AlignLeftIcon },
     { value: "center", label: "Align centre", icon: AlignCenterIcon },

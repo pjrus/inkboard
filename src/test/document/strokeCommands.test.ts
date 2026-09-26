@@ -2,11 +2,11 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { boardRepository } from "../../boards/BoardRepository";
-import { InkboardDB, setDB } from "../../storage/db";
 import { CanvasDocument } from "../../document/crdt";
 import { DocumentPersistence } from "../../document/persistence";
 import type { StrokeObject } from "../../document/schema";
 import { nextWidthStep, summarise } from "../../document/strokeCommands";
+import { InkboardDB, setDB } from "../../storage/db";
 
 const stroke = (width: number, color = "#000") => ({
   tool: "pen" as const,

@@ -1,5 +1,5 @@
-import { useTheme } from "../theme/ThemeProvider";
 import type { ThemePreference } from "../theme/themePreferences";
+import { useTheme } from "../theme/ThemeProvider";
 import { MoonIcon, SunIcon, SystemIcon } from "./icons";
 
 const OPTIONS: {

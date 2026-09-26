@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { summarise } from "../document/strokeCommands";
 import type { FontFamilyId } from "../document/schema";
-import { FONTS, fontStack, getFont } from "../text/fonts";
+import { summarise } from "../document/strokeCommands";
 import { useToolStore } from "../store/toolStore";
-import { Popover } from "./Popover";
+import { FONTS, fontStack, getFont } from "../text/fonts";
 import { ChevronIcon } from "./icons";
+import { Popover } from "./Popover";
 
 /**
  * Font picker over the four bundled families.

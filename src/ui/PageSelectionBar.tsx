@@ -80,7 +80,9 @@ export function PageSelectionBar({ doc, page, onDeselect }: Props) {
         onClick={() => {
           if (
             window.confirm(
-              `Remove all ${meta?.pageCount ?? ""} pages of ${meta?.fileName ?? "this PDF"} from the board?`,
+              `Remove all ${meta?.pageCount ?? ""} pages of ${
+                meta?.fileName ?? "this PDF"
+              } from the board?`,
             )
           ) {
             doc.removePDFDocument(page.pdfDocumentId);

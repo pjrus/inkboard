@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { boardRepository, DEFAULT_TOOL_PREFS } from "../boards/BoardRepository";
+import type { SaveStatus } from "../document/persistence";
 import type {
   CanvasMode,
   FontFamilyId,
@@ -6,9 +8,7 @@ import type {
   TextAlign,
   Tool,
 } from "../document/schema";
-import type { SaveStatus } from "../document/persistence";
 import type { ToolPreferences } from "../storage/db";
-import { boardRepository, DEFAULT_TOOL_PREFS } from "../boards/BoardRepository";
 import { defaultInk } from "../theme/canvasTheme";
 import type { ResolvedTheme } from "../theme/themePreferences";
 
@@ -236,8 +236,9 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setImportProgress: (importProgress) => set({ importProgress }),
   setHistory: (canUndo, canRedo) => {
     const s = get();
-    if (s.canUndo !== canUndo || s.canRedo !== canRedo)
+    if (s.canUndo !== canUndo || s.canRedo !== canRedo) {
       set({ canUndo, canRedo });
+    }
   },
   hydrate: async () => {
     const prefs = await boardRepository.getToolPreferences();

@@ -2,10 +2,10 @@ import "fake-indexeddb/auto";
 import { readFile } from "node:fs/promises";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CanvasDocument } from "../../document/crdt";
-import { DEFAULT_TEXT_WIDTH, type CanvasObject } from "../../document/schema";
+import { type CanvasObject, DEFAULT_TEXT_WIDTH } from "../../document/schema";
+import { exportToPDF } from "../../export/PDFExporter";
 import { putAsset } from "../../storage/assetRepository";
 import { InkboardDB, setDB } from "../../storage/db";
-import { exportToPDF } from "../../export/PDFExporter";
 
 /**
  * End-to-end export: build a board like the one in the README's test recipe,
@@ -19,12 +19,11 @@ import { exportToPDF } from "../../export/PDFExporter";
 beforeAll(() => {
   const realFetch = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.pathname
-          : input.url;
+    const url = typeof input === "string"
+      ? input
+      : input instanceof URL
+      ? input.pathname
+      : input.url;
     if (url.startsWith("/node_modules/")) {
       const bytes = await readFile(`${process.cwd()}${url}`);
       return new Response(new Uint8Array(bytes));
@@ -100,7 +99,8 @@ async function buildBoard(): Promise<CanvasObject[]> {
     x: 60,
     y: 200,
     width: DEFAULT_TEXT_WIDTH,
-    text: "Annotation over the imported page, long enough to wrap onto a second line.",
+    text:
+      "Annotation over the imported page, long enough to wrap onto a second line.",
     fontFamily: "open-sans",
     fontSize: 20,
     color: "#2b6de9",
@@ -197,7 +197,7 @@ describe("PDF export", () => {
     const pages = await readBack(result.bytes);
     // The annotation is 300 world units wide at size 20: it cannot be one line.
     const annotation = pages[0].lines.filter((l) =>
-      /Annotation|wrap|second line/.test(l),
+      /Annotation|wrap|second line/.test(l)
     );
     expect(annotation.length).toBeGreaterThan(1);
     expect(pages[0].text).toContain(

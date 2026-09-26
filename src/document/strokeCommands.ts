@@ -23,7 +23,9 @@ export function nextWidthStep(width: number, direction: 1 | -1): number {
 }
 
 /** Summarise a set of values as a single value or "mixed". */
-export function summarise<T>(values: T[]): { value: T | null; mixed: boolean } {
+export function summarise<T>(
+  values: T[],
+): { value: T | null; mixed: boolean; } {
   if (values.length === 0) return { value: null, mixed: false };
   const first = values[0];
   const mixed = values.some((v) => v !== first);

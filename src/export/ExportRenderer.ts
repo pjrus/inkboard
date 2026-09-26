@@ -1,44 +1,44 @@
 import {
   clip,
+  degrees,
   endPath,
   lineTo,
   moveTo,
-  popGraphicsState,
-  pushGraphicsState,
-  degrees,
-  rgb,
   type PDFDocument,
   type PDFFont,
   type PDFImage,
   type PDFPage,
+  popGraphicsState,
+  pushGraphicsState,
+  rgb,
 } from "pdf-lib";
-import {
-  unpackPoints,
-  type CanvasObject,
-  type FontFamilyId,
-  type PDFPageObject,
-  type StrokeObject,
-  type StrokePoint,
-  type TextObject,
-} from "../document/schema";
 import { strokeOutline } from "../canvas/strokeGeometry";
 import {
   objectCenter,
   rotatePoint,
   transformedBounds,
 } from "../canvas/transform";
-import { getFont } from "../text/fonts";
-import { loadFontBytes } from "../text/fontLoader";
-import { layoutText } from "../text/textLayout";
+import {
+  type CanvasObject,
+  type FontFamilyId,
+  type PDFPageObject,
+  type StrokeObject,
+  type StrokePoint,
+  type TextObject,
+  unpackPoints,
+} from "../document/schema";
 import { getAsset } from "../storage/assetRepository";
+import { loadFontBytes } from "../text/fontLoader";
+import { getFont } from "../text/fonts";
+import { layoutText } from "../text/textLayout";
 import { overlaps } from "./exportBounds";
 import {
+  contentRect,
   contentX,
   contentY,
-  contentRect,
+  type PageGeometry,
   svgAnchor,
   toPdf,
-  type PageGeometry,
 } from "./exportCoordinates";
 
 /**
@@ -81,10 +81,9 @@ export class ExportResources {
       const rec = await getAsset(assetId);
       if (rec) {
         const bytes = new Uint8Array(await rec.blob.arrayBuffer());
-        image =
-          rec.mimeType === "image/png"
-            ? await this.pdf.embedPng(bytes)
-            : await this.pdf.embedJpg(bytes);
+        image = rec.mimeType === "image/png"
+          ? await this.pdf.embedPng(bytes)
+          : await this.pdf.embedJpg(bytes);
       }
     } catch (err) {
       console.error("Could not embed page image", assetId, err);
@@ -125,9 +124,9 @@ export async function renderPage(
   );
 
   for (const object of objectsOnPage(objects, geometry)) {
-    if (object.type === "pdf-page")
+    if (object.type === "pdf-page") {
       await drawPDFPage(page, object, geometry, resources);
-    else if (object.type === "stroke") drawStroke(page, object, geometry);
+    } else if (object.type === "stroke") drawStroke(page, object, geometry);
     else await drawText(page, object, geometry, resources);
   }
 
@@ -245,8 +244,9 @@ async function drawText(
 function hasVaryingPressure(pts: StrokePoint[]): boolean {
   if (pts.length < 2) return false;
   const first = pts[0].pressure ?? 0.5;
-  for (const p of pts)
+  for (const p of pts) {
     if (Math.abs((p.pressure ?? 0.5) - first) > 1e-3) return true;
+  }
   return false;
 }
 

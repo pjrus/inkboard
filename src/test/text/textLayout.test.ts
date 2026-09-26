@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { TEXT_LINE_HEIGHT } from "../../document/schema";
+import { getFont } from "../../text/fonts";
 import {
   firstBaseline,
   layoutText,
   lineHeightFor,
   wrapLines,
 } from "../../text/textLayout";
-import { getFont } from "../../text/fonts";
 
 /** A predictable measurer: every character is half the font size wide. */
 const measure = (size: number) => (t: string) => t.length * size * 0.5;
@@ -80,9 +80,8 @@ describe("text layout", () => {
   it("centres the font's own ascent and descent inside the line box", () => {
     const f = getFont("open-sans");
     const size = 20;
-    const expected =
-      (lineHeightFor(size) - (f.ascent - f.descent) * size) / 2 +
-      f.ascent * size;
+    const expected = (lineHeightFor(size) - (f.ascent - f.descent) * size) / 2
+      + f.ascent * size;
     expect(firstBaseline("open-sans", size)).toBeCloseTo(expected);
     // Baselines are one line height apart, whatever the family.
     const layout = layoutText(

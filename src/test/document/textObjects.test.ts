@@ -148,12 +148,12 @@ describe("text objects in the CRDT", () => {
     d.translateObjects([stroke.id, text.id], 25, -10);
     expect(d.get(text.id)).toMatchObject({ x: 125, y: 40 });
     expect(
-      (d.get(stroke.id) as { points: number[] }).points.slice(0, 2),
+      (d.get(stroke.id) as { points: number[]; }).points.slice(0, 2),
     ).toEqual([25, -10]);
     d.undo();
     expect(d.get(text.id)).toMatchObject({ x: 100, y: 50 });
     expect(
-      (d.get(stroke.id) as { points: number[] }).points.slice(0, 2),
+      (d.get(stroke.id) as { points: number[]; }).points.slice(0, 2),
     ).toEqual([0, 0]);
   });
 

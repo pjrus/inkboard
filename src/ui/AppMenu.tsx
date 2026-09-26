@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { ExportIcon, MenuIcon } from "./icons";
 import { Popover } from "./Popover";
 import { ThemeSelector } from "./ThemeSelector";
-import { ExportIcon, MenuIcon } from "./icons";
 
 interface Props {
   onExportPDF: () => void;

@@ -1,5 +1,5 @@
 import type { Viewport } from "../document/schema";
-import { clampScale, screenToWorld, type Point } from "./coordinates";
+import { clampScale, type Point, screenToWorld } from "./coordinates";
 
 /**
  * Two-finger pinch/pan gesture maths.

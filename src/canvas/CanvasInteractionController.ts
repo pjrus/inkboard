@@ -13,16 +13,17 @@ import type {
 } from "../document/schema";
 import { MAX_TEXT_WIDTH, MIN_TEXT_WIDTH, packPoints } from "../document/schema";
 import { DEFAULT_TEXT_WIDTH } from "../document/schema";
+import type { CanvasSelection } from "../store/toolStore";
 import { lineHeightFor } from "../text/textLayout";
+import type { CanvasRenderer } from "./CanvasRenderer";
 import {
   pan,
+  type Point,
   screenLengthToWorld,
   screenToWorld,
   zoomBy,
-  type Point,
 } from "./coordinates";
-import { beginPinch, updatePinch, type PinchStart } from "./gestures";
-import type { CanvasRenderer } from "./CanvasRenderer";
+import { beginPinch, type PinchStart, updatePinch } from "./gestures";
 import {
   computeBounds,
   polygonBounds,
@@ -36,7 +37,6 @@ import {
   snapAngle,
   toDegrees,
 } from "./transform";
-import type { CanvasSelection } from "../store/toolStore";
 
 /**
  * Central pointer/wheel/keyboard state machine for the canvas.
@@ -47,49 +47,54 @@ import type { CanvasSelection } from "../store/toolStore";
  * class; the controller only decides when it opens and closes.
  */
 type State =
-  | { type: "idle" }
+  | { type: "idle"; }
   | {
-      type: "drawing";
-      pointerId: number;
-      points: StrokePoint[];
-      tool: PenTool;
-      color: string;
-      width: number;
-      hasPressure: boolean;
-    }
-  | { type: "erasing"; pointerId: number; last: Point }
-  | { type: "panning"; pointerId: number; last: Point }
-  | { type: "pinching"; pinch: PinchStart }
+    type: "drawing";
+    pointerId: number;
+    points: StrokePoint[];
+    tool: PenTool;
+    color: string;
+    width: number;
+    hasPressure: boolean;
+  }
+  | { type: "erasing"; pointerId: number; last: Point; }
+  | { type: "panning"; pointerId: number; last: Point; }
+  | { type: "pinching"; pinch: PinchStart; }
   | {
-      type: "movingObject";
-      pointerId: number;
-      objectId: string;
-      start: Point;
-      moved: boolean;
-    }
+    type: "movingObject";
+    pointerId: number;
+    objectId: string;
+    start: Point;
+    moved: boolean;
+  }
   | {
-      type: "lassoing";
-      pointerId: number;
-      points: XY[];
-      additive: boolean;
-      startScreen: Point;
-      maxDistPx: number;
-    }
-  | { type: "movingSelection"; pointerId: number; start: Point; moved: boolean }
+    type: "lassoing";
+    pointerId: number;
+    points: XY[];
+    additive: boolean;
+    startScreen: Point;
+    maxDistPx: number;
+  }
   | {
-      type: "rotatingSelection";
-      pointerId: number;
-      pivot: Point;
-      startAngle: number;
-      angle: number;
-    }
+    type: "movingSelection";
+    pointerId: number;
+    start: Point;
+    moved: boolean;
+  }
   | {
-      type: "resizingText";
-      pointerId: number;
-      id: string;
-      startScreenX: number;
-      startWidth: number;
-    };
+    type: "rotatingSelection";
+    pointerId: number;
+    pivot: Point;
+    startAngle: number;
+    angle: number;
+  }
+  | {
+    type: "resizingText";
+    pointerId: number;
+    id: string;
+    startScreenX: number;
+    startWidth: number;
+  };
 
 export interface TextStyle {
   fontFamily: FontFamilyId;
@@ -155,8 +160,9 @@ export class CanvasInteractionController {
     this.disposers.push(
       doc.onChange((changes) => {
         for (const c of changes) {
-          if (c.kind === "remove" && c.id === this.editingTextId)
+          if (c.kind === "remove" && c.id === this.editingTextId) {
             this.endTextEdit(false);
+          }
         }
         if (this.selectedIds.size === 0) return;
         let touched = false;
@@ -193,8 +199,9 @@ export class CanvasInteractionController {
 
   private selectedIdsOfType(type: "stroke" | "text"): string[] {
     const out: string[] = [];
-    for (const id of this.selectedIds)
+    for (const id of this.selectedIds) {
       if (this.selectable(id)?.type === type) out.push(id);
+    }
     return out;
   }
 
@@ -428,10 +435,10 @@ export class CanvasInteractionController {
     if (!b) return false;
     const pad = screenLengthToWorld(SELECTION_GRAB_PAD_PX, this.viewport);
     return (
-      wp.x >= b.minX - pad &&
-      wp.x <= b.maxX + pad &&
-      wp.y >= b.minY - pad &&
-      wp.y <= b.maxY + pad
+      wp.x >= b.minX - pad
+      && wp.x <= b.maxX + pad
+      && wp.y >= b.minY - pad
+      && wp.y <= b.maxY + pad
     );
   }
 
@@ -468,22 +475,22 @@ export class CanvasInteractionController {
   updateCursor() {
     const tool = this.host.getTool();
     let cursor = "default";
-    if (this.state.type === "panning" || this.state.type === "pinching")
+    if (this.state.type === "panning" || this.state.type === "pinching") {
       cursor = "grabbing";
-    else if (
-      this.state.type === "movingObject" ||
-      this.state.type === "movingSelection"
-    )
+    } else if (
+      this.state.type === "movingObject"
+      || this.state.type === "movingSelection"
+    ) {
       cursor = "move";
-    else if (this.state.type === "rotatingSelection") cursor = "grabbing";
+    } else if (this.state.type === "rotatingSelection") cursor = "grabbing";
     else if (this.state.type === "resizingText") cursor = "ew-resize";
     // In View mode the canvas is one big pannable surface, whatever the tool.
     else if (!this.editable) cursor = "grab";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
     else if (tool === "text") cursor = "text";
-    else if (tool === "pen" || tool === "pencil" || tool === "lasso")
+    else if (tool === "pen" || tool === "pencil" || tool === "lasso") {
       cursor = "crosshair";
-    else if (tool === "eraser") cursor = "none";
+    } else if (tool === "eraser") cursor = "none";
     this.el.style.cursor = cursor;
   }
 
@@ -559,11 +566,11 @@ export class CanvasInteractionController {
     const prev = this.lastTap;
     this.lastTap = { t: now, x: sp.x, y: sp.y, id };
     return (
-      prev !== null &&
-      prev.id === id &&
-      id !== null &&
-      now - prev.t < DOUBLE_TAP_MS &&
-      Math.hypot(sp.x - prev.x, sp.y - prev.y) < DOUBLE_TAP_SLOP_PX
+      prev !== null
+      && prev.id === id
+      && id !== null
+      && now - prev.t < DOUBLE_TAP_MS
+      && Math.hypot(sp.x - prev.x, sp.y - prev.y) < DOUBLE_TAP_SLOP_PX
     );
   }
 
@@ -618,15 +625,16 @@ export class CanvasInteractionController {
 
     // Grips win over everything else while they are showing.
     if (
-      this.selectedIds.size > 0 &&
-      this.onRotationHandle(wp) &&
-      this.beginRotation(wp, e.pointerId)
-    )
+      this.selectedIds.size > 0
+      && this.onRotationHandle(wp)
+      && this.beginRotation(wp, e.pointerId)
+    ) {
       return;
+    }
 
     if (
-      (tool === "lasso" || tool === "text" || tool === "pan") &&
-      this.onResizeHandle(wp)
+      (tool === "lasso" || tool === "text" || tool === "pan")
+      && this.onResizeHandle(wp)
     ) {
       const t = this.renderer.soleSelectedText();
       if (t) {
@@ -724,9 +732,9 @@ export class CanvasInteractionController {
         // Double-tapping a selected text box opens it for editing.
         const text = this.renderer.hitTestText(wp);
         if (
-          text &&
-          this.selectedIds.has(text.id) &&
-          this.isDoubleTap(sp, text.id)
+          text
+          && this.selectedIds.has(text.id)
+          && this.isDoubleTap(sp, text.id)
         ) {
           this.beginTextEdit(text.id);
           return;
@@ -772,9 +780,9 @@ export class CanvasInteractionController {
   /** Click selects a text box; a second click on the same box edits it. */
   private beginTextInteraction(text: TextObject, sp: Point, e: PointerEvent) {
     const doubled = this.isDoubleTap(sp, text.id);
-    if (!e.shiftKey && !this.selectedIds.has(text.id))
+    if (!e.shiftKey && !this.selectedIds.has(text.id)) {
       this.selectedIds = new Set([text.id]);
-    else if (e.shiftKey) this.selectedIds.add(text.id);
+    } else if (e.shiftKey) this.selectedIds.add(text.id);
     this.publishSelection();
     if (doubled) {
       e.preventDefault(); // keep focus for the editor (see the text tool above)
@@ -808,15 +816,15 @@ export class CanvasInteractionController {
     const s = this.state;
     switch (s.type) {
       case "idle":
-        if (this.host.getTool() === "eraser")
+        if (this.host.getTool() === "eraser") {
           this.showEraserCursor(screenToWorld(sp, this.viewport));
+        }
         return;
       case "drawing": {
         if (e.pointerId !== s.pointerId) return;
-        const events =
-          typeof e.getCoalescedEvents === "function"
-            ? e.getCoalescedEvents()
-            : [e];
+        const events = typeof e.getCoalescedEvents === "function"
+          ? e.getCoalescedEvents()
+          : [e];
         const r = this.el.getBoundingClientRect();
         for (const ce of events.length ? events : [e]) {
           const wp = screenToWorld(
@@ -825,11 +833,12 @@ export class CanvasInteractionController {
           );
           const last = s.points[s.points.length - 1];
           if (
-            last &&
-            Math.abs(last.x - wp.x) < 1e-3 &&
-            Math.abs(last.y - wp.y) < 1e-3
-          )
+            last
+            && Math.abs(last.x - wp.x) < 1e-3
+            && Math.abs(last.y - wp.y) < 1e-3
+          ) {
             continue;
+          }
           s.points.push({
             x: wp.x,
             y: wp.y,
@@ -945,8 +954,9 @@ export class CanvasInteractionController {
     if (s.type === "idle" || s.type === "pinching") return;
     if ("pointerId" in s && s.pointerId !== e.pointerId) return;
 
-    if (this.el.hasPointerCapture(e.pointerId))
+    if (this.el.hasPointerCapture(e.pointerId)) {
       this.el.releasePointerCapture(e.pointerId);
+    }
 
     switch (s.type) {
       case "drawing":
@@ -959,8 +969,9 @@ export class CanvasInteractionController {
       case "movingObject": {
         const preview = this.renderer.dragPreview;
         this.renderer.dragPreview = null;
-        if (s.moved && preview)
+        if (s.moved && preview) {
           this.doc.translateObjects([s.objectId], preview.dx, preview.dy);
+        }
         this.renderer.invalidateStatic();
         break;
       }
@@ -972,8 +983,9 @@ export class CanvasInteractionController {
         this.renderer.selectionPreview = null;
         // A tap inside the selection without movement keeps the selection.
         // One drag, one CRDT transaction, one undo entry.
-        if (s.moved && drag)
+        if (s.moved && drag) {
           this.doc.translateObjects(this.getSelectedIds(), drag.dx, drag.dy);
+        }
         this.renderer.invalidateStatic();
         break;
       }
@@ -981,8 +993,9 @@ export class CanvasInteractionController {
         this.renderer.selectionPreview = null;
         this.renderer.angleLabel = null;
         // One gesture, one CRDT transaction, one undo entry.
-        if (s.angle !== 0)
+        if (s.angle !== 0) {
           this.doc.rotateObjects(this.getSelectedIds(), s.angle, s.pivot);
+        }
         this.renderer.invalidateStatic();
         this.renderer.invalidateOverlay();
         break;
@@ -990,8 +1003,9 @@ export class CanvasInteractionController {
       case "resizingText": {
         const resize = this.renderer.textResize;
         this.renderer.textResize = null;
-        if (resize && Math.abs(resize.width - s.startWidth) > 0.5)
+        if (resize && Math.abs(resize.width - s.startWidth) > 0.5) {
           this.setTextWidth(s.id, resize.width);
+        }
         this.renderer.invalidateStatic();
         break;
       }
@@ -1003,7 +1017,7 @@ export class CanvasInteractionController {
   }
 
   private finishLasso(
-    s: Extract<State, { type: "lassoing" }>,
+    s: Extract<State, { type: "lassoing"; }>,
     cancelled: boolean,
   ) {
     this.renderer.lassoPath = null;
@@ -1023,7 +1037,7 @@ export class CanvasInteractionController {
       return;
     }
     const hits = this.objectsInLasso(poly);
-    if (s.additive) for (const id of hits) this.selectedIds.add(id);
+    if (s.additive) { for (const id of hits) this.selectedIds.add(id); }
     else this.selectedIds = new Set(hits);
     this.publishSelection();
   }
@@ -1036,8 +1050,9 @@ export class CanvasInteractionController {
       // almost certainly the start of a gesture, not ink: discard it.
       this.renderer.activeStroke = null;
       this.renderer.invalidateOverlay();
-      if (this.el.hasPointerCapture(s.pointerId))
+      if (this.el.hasPointerCapture(s.pointerId)) {
         this.el.releasePointerCapture(s.pointerId);
+      }
     } else if (s.type === "movingObject") {
       this.renderer.dragPreview = null;
       this.renderer.invalidateStatic();
@@ -1048,8 +1063,9 @@ export class CanvasInteractionController {
       // Second finger landed: this was a gesture, not a lasso.
       this.renderer.lassoPath = null;
       this.renderer.invalidateOverlay();
-      if (this.el.hasPointerCapture(s.pointerId))
+      if (this.el.hasPointerCapture(s.pointerId)) {
         this.el.releasePointerCapture(s.pointerId);
+      }
     } else if (s.type === "movingSelection" || s.type === "rotatingSelection") {
       this.renderer.selectionPreview = null;
       this.renderer.angleLabel = null;
@@ -1063,7 +1079,7 @@ export class CanvasInteractionController {
   }
 
   private commitStroke(
-    s: Extract<State, { type: "drawing" }>,
+    s: Extract<State, { type: "drawing"; }>,
     cancelled: boolean,
   ) {
     this.renderer.activeStroke = null;
@@ -1102,17 +1118,20 @@ export class CanvasInteractionController {
     for (const stroke of this.renderer.getStrokes()) {
       const b = stroke.bounds;
       if (
-        b.maxX < sweep.minX ||
-        b.minX > sweep.maxX ||
-        b.maxY < sweep.minY ||
-        b.minY > sweep.maxY
-      )
+        b.maxX < sweep.minX
+        || b.minX > sweep.maxX
+        || b.maxY < sweep.minY
+        || b.minY > sweep.maxY
+      ) {
         continue;
+      }
       const pts: StrokePoint[] = [];
-      for (let i = 0; i + 2 < stroke.points.length; i += 3)
+      for (let i = 0; i + 2 < stroke.points.length; i += 3) {
         pts.push({ x: stroke.points[i], y: stroke.points[i + 1] });
-      if (strokeSegmentHitTest(pts, stroke.width, from, to, radius))
+      }
+      if (strokeSegmentHitTest(pts, stroke.width, from, to, radius)) {
         hits.push(stroke.id);
+      }
     }
     if (hits.length) this.doc.removeObjects(hits, true);
   }
@@ -1161,9 +1180,9 @@ export function isTypingTarget(t: EventTarget | null): boolean {
   if (!(t instanceof HTMLElement)) return false;
   const tag = t.tagName;
   return (
-    tag === "INPUT" ||
-    tag === "TEXTAREA" ||
-    tag === "SELECT" ||
-    t.isContentEditable
+    tag === "INPUT"
+    || tag === "TEXTAREA"
+    || tag === "SELECT"
+    || t.isContentEditable
   );
 }

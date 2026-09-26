@@ -1,11 +1,11 @@
 import {
-  unpackPoints,
   type Bounds,
   type CanvasObject,
   type LassoFilter,
   type PDFPageObject,
   type StrokeObject,
   type TextObject,
+  unpackPoints,
 } from "../document/schema";
 import { textBounds } from "../text/textMeasure";
 import {
@@ -152,10 +152,10 @@ export function rectContains(o: CanvasObject, p: XY, pad = 0): boolean {
   const angle = rotationOf(o);
   const local = angle === 0 ? p : rotatePoint(p, boundsCenter(r), -angle);
   return (
-    local.x >= r.minX - pad &&
-    local.x <= r.maxX + pad &&
-    local.y >= r.minY - pad &&
-    local.y <= r.maxY + pad
+    local.x >= r.minX - pad
+    && local.x <= r.maxX + pad
+    && local.y >= r.minY - pad
+    && local.y <= r.maxY + pad
   );
 }
 

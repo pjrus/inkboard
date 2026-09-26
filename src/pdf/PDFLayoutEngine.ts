@@ -22,7 +22,7 @@ export const DEFAULT_PAGE_GAP = 48;
 export function layoutPages(
   sizes: PageSize[],
   layout: PDFLayout,
-  origin: { x: number; y: number },
+  origin: { x: number; y: number; },
   gap: number = DEFAULT_PAGE_GAP,
 ): PagePlacement[] {
   const out: PagePlacement[] = [];

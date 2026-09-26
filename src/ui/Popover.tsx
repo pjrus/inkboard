@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 interface Props {
   open: boolean;
@@ -15,11 +15,12 @@ export function Popover({ open, onClose, children, label }: Props) {
     const onDown = (e: PointerEvent) => {
       const el = ref.current;
       if (
-        el &&
-        !el.contains(e.target as Node) &&
-        !el.parentElement?.contains(e.target as Node)
-      )
+        el
+        && !el.contains(e.target as Node)
+        && !el.parentElement?.contains(e.target as Node)
+      ) {
         onClose();
+      }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();

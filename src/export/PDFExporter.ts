@@ -1,12 +1,12 @@
-import { PDFDocument } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument } from "pdf-lib";
 import type { CanvasObject } from "../document/schema";
-import { ExportResources, renderPage } from "./ExportRenderer";
 import {
-  planPages,
   type ExportLayout,
   type ExportOrientation,
+  planPages,
 } from "./exportPlan";
+import { ExportResources, renderPage } from "./ExportRenderer";
 
 /**
  * Client-side PDF export.
@@ -47,8 +47,9 @@ export async function exportToPDF(
     signal,
   } = options;
   const plan = planPages(objects, layout, orientation);
-  if (plan.length === 0)
+  if (plan.length === 0) {
     throw new ExportError("There is nothing on this board to export yet.");
+  }
 
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);

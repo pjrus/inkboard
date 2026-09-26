@@ -14,8 +14,8 @@ export function ImportProgressToast() {
         {p.error
           ? p.error
           : p.done < p.total
-            ? "Importing PDF"
-            : "PDF imported"}
+          ? "Importing PDF"
+          : "PDF imported"}
       </div>
       {!p.error && (
         <>

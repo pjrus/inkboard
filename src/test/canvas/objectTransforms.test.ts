@@ -1,14 +1,5 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { CanvasDocument } from "../../document/crdt";
-import {
-  DEFAULT_LASSO_FILTER,
-  type CanvasObject,
-  type LassoFilter,
-  type PDFPageObject,
-  type StrokeObject,
-  type TextObject,
-} from "../../document/schema";
 import {
   lassoHits,
   matchesLassoFilter,
@@ -20,6 +11,15 @@ import {
   toDegrees,
   transformedBounds,
 } from "../../canvas/transform";
+import { CanvasDocument } from "../../document/crdt";
+import {
+  type CanvasObject,
+  DEFAULT_LASSO_FILTER,
+  type LassoFilter,
+  type PDFPageObject,
+  type StrokeObject,
+  type TextObject,
+} from "../../document/schema";
 
 const HALF_TURN = Math.PI;
 const QUARTER = Math.PI / 2;
@@ -216,7 +216,7 @@ describe("moving and rotating a mixed selection", () => {
     doc.undo();
     // A single undo brings the whole mixed selection back together.
     ids.forEach((id, i) =>
-      near(transformedBounds(doc.get(id)!).minX, before[i].minX),
+      near(transformedBounds(doc.get(id)!).minX, before[i].minX)
     );
   });
 
@@ -260,7 +260,7 @@ describe("moving and rotating a mixed selection", () => {
     const rotated = ids.map((id) => transformedBounds(doc.get(id)!));
     doc.undo();
     ids.forEach((id, i) =>
-      expect(transformedBounds(doc.get(id)!)).not.toEqual(rotated[i]),
+      expect(transformedBounds(doc.get(id)!)).not.toEqual(rotated[i])
     );
     doc.redo();
     ids.forEach((id, i) => {

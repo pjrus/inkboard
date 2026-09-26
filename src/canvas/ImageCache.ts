@@ -8,7 +8,7 @@ import { getAsset } from "../storage/assetRepository";
 export class ImageCache {
   private entries = new Map<
     string,
-    { bitmap: ImageBitmap; lastUsed: number }
+    { bitmap: ImageBitmap; lastUsed: number; }
   >();
   private loading = new Set<string>();
   private missing = new Set<string>();
@@ -26,8 +26,9 @@ export class ImageCache {
       e.lastUsed = ++this.tick;
       return e.bitmap;
     }
-    if (!this.loading.has(assetId) && !this.missing.has(assetId))
+    if (!this.loading.has(assetId) && !this.missing.has(assetId)) {
       void this.load(assetId);
+    }
     return undefined;
   }
 

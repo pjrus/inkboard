@@ -25,11 +25,12 @@ function hostTransform(o: TextObject, vp: Viewport): string {
   const angle = o.rotation ?? 0;
   // The element's own origin is its top-left, so the *rotated* position of
   // that corner is where it has to sit before the box is turned.
-  const corner =
-    angle === 0
-      ? { x: o.x, y: o.y }
-      : rotatePoint({ x: o.x, y: o.y }, objectCenter(o), angle);
-  const t = `translate(${corner.x * vp.scale + vp.x}px, ${corner.y * vp.scale + vp.y}px) scale(${vp.scale})`;
+  const corner = angle === 0
+    ? { x: o.x, y: o.y }
+    : rotatePoint({ x: o.x, y: o.y }, objectCenter(o), angle);
+  const t = `translate(${corner.x * vp.scale + vp.x}px, ${
+    corner.y * vp.scale + vp.y
+  }px) scale(${vp.scale})`;
   return angle === 0 ? t : `${t} rotate(${angle}rad)`;
 }
 
@@ -199,9 +200,9 @@ function spliceText(
   let endPrev = prev.length;
   let endNext = next.length;
   while (
-    endPrev > start &&
-    endNext > start &&
-    prev[endPrev - 1] === next[endNext - 1]
+    endPrev > start
+    && endNext > start
+    && prev[endPrev - 1] === next[endNext - 1]
   ) {
     endPrev--;
     endNext--;

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { PALETTE, useToolStore } from "../store/toolStore";
 import { summarise } from "../document/strokeCommands";
-import { Popover } from "./Popover";
+import { PALETTE, useToolStore } from "../store/toolStore";
 import { ChevronIcon } from "./icons";
+import { Popover } from "./Popover";
 
 /**
  * Colour for the current target, in priority order: the selection, then the
@@ -32,12 +32,11 @@ export function ColourPicker() {
   const current = PALETTE.find(
     (p) => p.value.toLowerCase() === color.toLowerCase(),
   );
-  const label =
-    target === "selection"
-      ? "Selection colour"
-      : target === "text"
-        ? "Text colour"
-        : "Colour";
+  const label = target === "selection"
+    ? "Selection colour"
+    : target === "text"
+    ? "Text colour"
+    : "Colour";
 
   return (
     <div className="tb-anchor">
@@ -60,8 +59,8 @@ export function ColourPicker() {
         {mixed && <div className="popover-hint">Mixed colours</div>}
         <div className="swatch-grid" role="radiogroup" aria-label={label}>
           {PALETTE.map((p) => {
-            const selected =
-              !mixed && p.value.toLowerCase() === color.toLowerCase();
+            const selected = !mixed
+              && p.value.toLowerCase() === color.toLowerCase();
             return (
               <button
                 key={p.value}

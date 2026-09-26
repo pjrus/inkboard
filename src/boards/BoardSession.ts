@@ -1,7 +1,7 @@
 import { CanvasDocument } from "../document/crdt";
 import { DocumentPersistence } from "../document/persistence";
-import type { BoardRecord } from "../storage/db";
 import type { Viewport } from "../document/schema";
+import type { BoardRecord } from "../storage/db";
 import { boardRepository } from "./BoardRepository";
 
 /**
@@ -41,8 +41,9 @@ export class BoardSession {
   async close(finalViewport?: Viewport) {
     this.closed = true;
     if (this.viewportTimer) clearTimeout(this.viewportTimer);
-    if (finalViewport)
+    if (finalViewport) {
       await boardRepository.saveViewport(this.board.id, finalViewport);
+    }
     await this.persistence.destroy();
     this.doc.destroy();
   }

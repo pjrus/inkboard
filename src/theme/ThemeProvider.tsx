@@ -1,20 +1,20 @@
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import {
   cachedThemePreference,
   loadThemePreference,
   onSystemThemeChange,
+  type ResolvedTheme,
   resolveTheme,
   saveThemePreference,
   systemTheme,
-  type ResolvedTheme,
   type ThemePreference,
 } from "./themePreferences";
 
@@ -40,7 +40,7 @@ const META_THEME_COLOR: Record<ResolvedTheme, string> = {
  * variable block in styles.css. Switching theme touches one attribute; no
  * document state is rewritten and no object is re-created.
  */
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children }: { children: ReactNode; }) {
   // Paint from the synchronous mirror, then reconcile with IndexedDB below.
   const [preference, setPreferenceState] = useState<ThemePreference>(
     cachedThemePreference,
@@ -59,15 +59,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => onSystemThemeChange(setSystem), []);
 
-  const theme: ResolvedTheme =
-    preference === "system" ? system : resolveTheme(preference);
+  const theme: ResolvedTheme = preference === "system"
+    ? system
+    : resolveTheme(preference);
 
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
     document
-      .querySelector('meta[name="theme-color"]')
+      .querySelector("meta[name=\"theme-color\"]")
       ?.setAttribute("content", META_THEME_COLOR[theme]);
   }, [theme]);
 
@@ -80,9 +81,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => ({ preference, theme, setPreference }),
     [preference, theme, setPreference],
   );
-  return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}
+  </ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {
