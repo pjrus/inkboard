@@ -118,13 +118,20 @@ Mostly UI on top of plumbing that already exists.
       open board must flush its pending updates first.
 - [ ] **Per-board storage usage.** `BoardList` shows the total; add a size per
       board and the remaining quota from `navigator.storage.estimate()`.
-- [ ] **Clean up orphaned assets.** Removing a PDF deletes it from the CRDT but
-      its page images stay in IndexedDB until the whole board is deleted.
-      Sweep unreferenced assets on board open, once undo can no longer bring
-      them back. Several images on a board can share one asset (duplicates
-      do), so sweep by reference, not by PDF.
-- [ ] **Version history.** Named checkpoints from Yjs snapshots ("restore to
-      this morning").
+- [ ] **Clean up orphaned assets.** Deleting an image (Remove PDF, or a lasso
+      selection) removes it from the CRDT, but its asset stays in IndexedDB
+      until the whole board is deleted. So does a removed PDF's retained
+      original (`sourceAssetId`), and the assets a cross-board paste wrote
+      before it was undone. Sweep on board open: the undo stack lives in
+      memory, so nothing can bring them back by then. Images on one board can
+      share an asset (duplicates and same-board pastes do), so sweep by
+      reference; `boards/backup.ts` already walks every reference, and backups
+      already leave orphans out.
+- [ ] **Version history.** Named checkpoints ("restore to this morning"). Yjs
+      snapshots need `gc: false`, which keeps every deleted stroke forever,
+      and `CanvasDocument` uses the default `gc: true`; storing a full
+      `Y.encodeStateAsUpdate` copy per checkpoint is simpler. Either way the
+      orphan sweep must keep assets a checkpoint still references.
 - [ ] **Auto-backup to a folder** with the File System Access API (Chromium
       only), for people who want their boards in Dropbox or similar. The file
       is the one `backupBoards()` already produces.

@@ -24,7 +24,7 @@ src/
                    exportPlan.ts (one page sized to the content),
                    ExportRenderer.ts (draws objects onto a page), PDFExporter.ts, ExportDialog.tsx
   pdf/             PDFImporter.ts (PDF.js -> JPEG assets), PDFLayoutEngine.ts (vertical/horizontal placement)
-  storage/         db.ts (Dexie: boards, updates, assets, preferences), assetRepository.ts
+  storage/         db.ts (Dexie: boards, updates, assets, preferences)
   boards/          BoardRepository.ts, BoardSession.ts, BoardList.tsx, BoardView.tsx,
                    clipboard.ts (in-app copy/paste; re-homes image assets across boards)
                    backup.ts (every board + referenced assets in one .inkboard file; restore adds copies)
