@@ -2,6 +2,7 @@ import * as Y from "yjs";
 import { computeBoundsFlat } from "../canvas/strokeGeometry";
 import { objectCenter, rotatePoint } from "../canvas/transform";
 import { nextFontSizeStep } from "../text/textCommands";
+import { DEFAULT_BACKGROUND, legacyBackground } from "../theme/canvasTheme";
 import { newId } from "./ids";
 import type {
   CanvasObject,
@@ -19,6 +20,7 @@ import { nextWidthStep } from "./strokeCommands";
  * Structure inside the Y.Doc:
  *   objects      Y.Map<Y.Map<any>>                id -> object fields
  *   pdfDocuments Y.Map<Y.Map<any>>                id -> PDFDocumentMetadata
+ *   settings     Y.Map<any>                       board-wide values (background)
  *
  * Each canvas object is its own Y.Map so concurrent edits to different
  * fields (e.g. one peer moves a page while another rotates it) merge cleanly.
@@ -48,6 +50,7 @@ export class CanvasDocument {
   readonly ydoc: Y.Doc;
   readonly objects: Y.Map<Y.Map<unknown>>;
   readonly pdfDocuments: Y.Map<Y.Map<unknown>>;
+  readonly settings: Y.Map<unknown>;
   readonly undoManager: Y.UndoManager;
 
   private listeners = new Set<ObjectListener>();
@@ -57,13 +60,17 @@ export class CanvasDocument {
     this.ydoc = ydoc ?? new Y.Doc();
     this.objects = this.ydoc.getMap("objects");
     this.pdfDocuments = this.ydoc.getMap("pdfDocuments");
+    this.settings = this.ydoc.getMap("settings");
 
-    this.undoManager = new Y.UndoManager([this.objects, this.pdfDocuments], {
-      trackedOrigins: new Set([LOCAL_ORIGIN]),
-      // Every logical user action calls stopCapturing() first, so a long
-      // timeout here just lets multi-step actions (e.g. an import) coalesce.
-      captureTimeout: 1000,
-    });
+    this.undoManager = new Y.UndoManager(
+      [this.objects, this.pdfDocuments, this.settings],
+      {
+        trackedOrigins: new Set([LOCAL_ORIGIN]),
+        // Every logical user action calls stopCapturing() first, so a long
+        // timeout here just lets multi-step actions (e.g. an import) coalesce.
+        captureTimeout: 1000,
+      },
+    );
 
     this.rebuildCache();
     this.objects.observeDeep((events, txn) => this.handleEvents(events, txn));
@@ -96,12 +103,33 @@ export class CanvasDocument {
     return pages;
   }
 
+  /** The board's background colour, in the canvas and in exports alike. */
+  getBackground(): string {
+    return (this.settings.get("background") as string | undefined)
+      ?? DEFAULT_BACKGROUND;
+  }
+
   onChange(listener: ObjectListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
   // ---- writing -------------------------------------------------------
+
+  setBackground(colour: string): void {
+    this.transact(() => this.settings.set("background", colour));
+  }
+
+  /**
+   * Boards saved before backgrounds existed get one picked from their ink,
+   * once. Not undoable: undo should never take a board's background away.
+   */
+  ensureBackground(): void {
+    if (this.settings.has("background")) return;
+    this.ydoc.transact(() =>
+      this.settings.set("background", legacyBackground(this.getAll()))
+    );
+  }
 
   /** Run `fn` as one undoable, locally-originated transaction. */
   transact(fn: () => void, undoable = true): void {

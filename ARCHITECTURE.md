@@ -11,7 +11,8 @@ src/
                    TextEditorOverlay.tsx (the single <textarea> shown while editing),
                    CanvasViewport.tsx (thin React host)
   document/        schema.ts (CanvasObject = stroke | image | text; PDF pages are images),
-                   crdt.ts (Yjs wrapper: objects, pdfDocuments, Y.Text editing, undo, commands),
+                   crdt.ts (Yjs wrapper: objects, pdfDocuments, settings (background), Y.Text
+                                      editing, undo, commands),
                    strokeCommands.ts (shared thickness scale, width stepping),
                    ids.ts (short random ids), persistence.ts (incremental update log + compaction)
   text/            fonts.ts (the four bundled families + their real vertical metrics),
@@ -19,7 +20,8 @@ src/
                    textLayout.ts (pure wrapping/baselines with an injected measurer),
                    textMeasure.ts (the one on-screen layout cache), textCommands.ts (size scale)
   theme/           ThemeProvider.tsx, themePreferences.ts (local, never in the CRDT),
-                   canvasTheme.ts (the canvas half of the palette)
+                   canvasTheme.ts (background colours; canvas palette picked from the board's
+                                   background, never from the app theme)
   export/          exportBounds.ts, exportCoordinates.ts (world -> PDF, in one place),
                    exportPlan.ts (one page sized to the content),
                    ExportRenderer.ts (draws objects onto a page), PDFExporter.ts, ExportDialog.tsx

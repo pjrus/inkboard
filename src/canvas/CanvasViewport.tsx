@@ -3,7 +3,6 @@ import type { CanvasDocument } from "../document/crdt";
 import type { Viewport } from "../document/schema";
 import { useToolStore } from "../store/toolStore";
 import { canvasTheme } from "../theme/canvasTheme";
-import { useTheme } from "../theme/ThemeProvider";
 import { CanvasInteractionController } from "./CanvasInteractionController";
 import { CanvasRenderer } from "./CanvasRenderer";
 import { TextEditorOverlay } from "./TextEditorOverlay";
@@ -39,7 +38,6 @@ export function CanvasViewport({
   const canvasMode = useToolStore((s) => s.canvasMode);
   const editingTextId = useToolStore((s) => s.editingTextId);
   const handlesRef = useRef<CanvasHandles | null>(null);
-  const { theme } = useTheme();
 
   useEffect(() => {
     const container = containerRef.current!;
@@ -132,11 +130,18 @@ export function CanvasViewport({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc]);
 
-  // A theme change repaints; it never touches the document.
+  // The canvas follows the board's background, whatever the app theme is.
+  // Undo, redo and a change from the menu all arrive through the observer.
   useEffect(() => {
-    handlesRef.current?.renderer.setTheme(canvasTheme(theme));
-    useToolStore.getState().setTheme(theme);
-  }, [theme]);
+    const apply = () => {
+      const background = doc.getBackground();
+      handlesRef.current?.renderer.setTheme(canvasTheme(background));
+      useToolStore.getState().setBackground(background);
+    };
+    apply();
+    doc.settings.observe(apply);
+    return () => doc.settings.unobserve(apply);
+  }, [doc]);
 
   useEffect(() => {
     const controller = handlesRef.current?.controller;

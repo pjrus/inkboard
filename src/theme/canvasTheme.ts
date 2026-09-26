@@ -1,13 +1,17 @@
-import type { ResolvedTheme } from "./themePreferences";
+import type { CanvasObject } from "../document/schema";
 
 /**
- * Colours the 2D canvas needs. The DOM chrome themes itself from the CSS
- * variables in styles.css; a <canvas> cannot, so the same palette is mirrored
- * here and handed to the renderer.
+ * Colours the 2D canvas needs, chosen by the board's background colour.
  *
- * Only *presentation* lives in this file. Nothing here is ever written into a
- * document: imported PDF pages keep their own appearance in both themes, and
- * ink the user has already drawn keeps the colour it was drawn with.
+ * The app theme (light/dark) only restyles the DOM chrome through the CSS
+ * variables in styles.css. The canvas is the board itself: it looks the same
+ * in both themes, and PDF export fills the page with the same background. So
+ * everything drawn on it - selection, handles, the eraser, default ink - is
+ * picked for contrast with the board's colour, never with the app theme.
+ *
+ * Only the background is document content (see CanvasDocument). Imported PDF
+ * pages keep their own appearance, and drawn ink keeps the colour it was
+ * drawn with.
  */
 export interface CanvasTheme {
   background: string;
@@ -27,8 +31,21 @@ export interface CanvasTheme {
   defaultInk: string;
 }
 
-const LIGHT: CanvasTheme = {
-  background: "#f3f1ec",
+/** Colours a board background can be. Plain fills only. */
+export const BACKGROUNDS = [
+  { name: "Paper", value: "#f3f1ec" },
+  { name: "White", value: "#ffffff" },
+  { name: "Yellow", value: "#fbf3d0" },
+  { name: "Grey", value: "#dcdde1" },
+  { name: "Charcoal", value: "#1c1d21" },
+  { name: "Chalkboard", value: "#233a30" },
+];
+
+export const DEFAULT_BACKGROUND = BACKGROUNDS[0].value;
+/** What dark mode painted every board before boards had a background. */
+const LEGACY_DARK_BACKGROUND = "#1c1d21";
+
+const LIGHT: Omit<CanvasTheme, "background"> = {
   pageFill: "#ffffff",
   pageBorder: "rgba(0,0,0,0.12)",
   pageShadow: "rgba(20,16,8,0.10)",
@@ -43,8 +60,7 @@ const LIGHT: CanvasTheme = {
   defaultInk: "#1b1b1f",
 };
 
-const DARK: CanvasTheme = {
-  background: "#1c1d21",
+const DARK: Omit<CanvasTheme, "background"> = {
   pageFill: "#ffffff",
   // A light rim plus a deeper shadow keeps a white page legible as a page
   // rather than a glowing rectangle.
@@ -61,6 +77,28 @@ const DARK: CanvasTheme = {
   defaultInk: "#f2f1ee",
 };
 
-export function canvasTheme(theme: ResolvedTheme): CanvasTheme {
-  return theme === "dark" ? DARK : LIGHT;
+export function canvasTheme(background: string): CanvasTheme {
+  return { ...(isDark(background) ? DARK : LIGHT), background };
+}
+
+/** For `#rrggbb` colours, which is all the pickers produce. */
+export function isDark(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 128;
+}
+
+/**
+ * Background for a board saved before boards had one. Its default ink
+ * followed the app theme, so mostly light ink means it was drawn in dark mode
+ * and needs the dark background it was drawn on to stay readable.
+ */
+export function legacyBackground(objects: CanvasObject[]): string {
+  let light = 0;
+  let dark = 0;
+  for (const o of objects) {
+    if (o.type === "image") continue;
+    if (isDark(o.color)) dark++;
+    else light++;
+  }
+  return light > dark ? LEGACY_DARK_BACKGROUND : DEFAULT_BACKGROUND;
 }

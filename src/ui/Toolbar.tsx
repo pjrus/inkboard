@@ -26,6 +26,7 @@ interface Props {
   onUndo: () => void;
   onRedo: () => void;
   onExportPDF: () => void;
+  onBackground: (colour: string) => void;
 }
 
 const TOOLS: {
@@ -42,7 +43,13 @@ const TOOLS: {
   { tool: "text", label: "Text", key: "T", icon: TextIcon },
 ];
 
-export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
+export function Toolbar({
+  onInsertPDF,
+  onUndo,
+  onRedo,
+  onExportPDF,
+  onBackground,
+}: Props) {
   const tool = useToolStore((s) => s.tool);
   const setTool = useToolStore((s) => s.setTool);
   const canvasMode = useToolStore((s) => s.canvasMode);
@@ -169,7 +176,7 @@ export function Toolbar({ onInsertPDF, onUndo, onRedo, onExportPDF }: Props) {
             e.target.value = "";
           }}
         />
-        <AppMenu onExportPDF={onExportPDF} />
+        <AppMenu onExportPDF={onExportPDF} onBackground={onBackground} />
       </div>
     </div>
   );

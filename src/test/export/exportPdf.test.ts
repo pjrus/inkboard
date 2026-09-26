@@ -210,6 +210,26 @@ describe("PDF export", () => {
     expect(page.text).not.toContain("Annotation over the imported page");
   });
 
+  it("fills the page with the board's background colour", async () => {
+    const objects = await buildBoard();
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const fills = async (background?: string) => {
+      const { bytes } = await exportToPDF({
+        objects,
+        boardName: "Background",
+        background,
+      });
+      const doc = await pdfjs.getDocument({ data: bytes.slice() }).promise;
+      const ops = await (await doc.getPage(1)).getOperatorList();
+      return ops.argsArray
+        .filter((_, i) => ops.fnArray[i] === pdfjs.OPS.setFillRGBColor)
+        .map((args) => Array.from(args).join(","));
+    };
+    // #233a30 as PDF.js reports it.
+    expect(await fills("#233a30")).toContain("35,58,48");
+    expect(await fills()).not.toContain("35,58,48");
+  });
+
   it("draws ink as vector paths and the imported page as an image", async () => {
     const objects = await buildBoard();
     const result = await exportToPDF({

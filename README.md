@@ -50,9 +50,11 @@ npm run build      # typecheck + production bundle in dist/
 
 ![Export and appearance menu](docs/menu.png)
 
-### Themes
+### Themes and backgrounds
 
-Light, Dark and System. Imported PDF pages and every colour you have already chosen stay exactly as they were; only the defaults for _new_ ink and text follow the theme.
+Each board has its own background colour (Paper, White, Yellow, Grey, Charcoal or Chalkboard), picked from the board menu. It belongs to the board: PDF export fills the page with it, and dark mode leaves it alone.
+
+The app theme (Light, Dark or System) restyles only the toolbar, menus and board list. New ink and text default to a colour that stands out on the board's background; colours you have chosen, imported PDF pages and ink already drawn never change.
 
 ![Light theme](docs/canvas-light.png)
 

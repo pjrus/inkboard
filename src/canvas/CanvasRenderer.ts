@@ -15,7 +15,11 @@ import {
   onTextMeasurementsInvalidated,
   textBounds,
 } from "../text/textMeasure";
-import { type CanvasTheme, canvasTheme } from "../theme/canvasTheme";
+import {
+  type CanvasTheme,
+  canvasTheme,
+  DEFAULT_BACKGROUND,
+} from "../theme/canvasTheme";
 import {
   boundsIntersect,
   DEFAULT_VIEWPORT,
@@ -95,7 +99,7 @@ export class CanvasRenderer {
   private height = 0;
   private dpr = 1;
   private viewport: Viewport = DEFAULT_VIEWPORT;
-  private theme: CanvasTheme = canvasTheme("light");
+  private theme: CanvasTheme = canvasTheme(DEFAULT_BACKGROUND);
 
   private pages: ImageObject[] = [];
   private strokes: StrokeObject[] = [];
@@ -185,7 +189,7 @@ export class CanvasRenderer {
     return () => this.viewportListeners.delete(fn);
   }
 
-  /** Theme is presentation only: no document object is touched or rewritten. */
+  /** Presentation only: no document object is touched or rewritten. */
   setTheme(theme: CanvasTheme) {
     this.theme = theme;
     this.invalidateStatic();

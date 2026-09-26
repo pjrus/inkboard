@@ -9,8 +9,7 @@ import type {
   Tool,
 } from "../document/schema";
 import type { ToolPreferences } from "../storage/db";
-import { canvasTheme } from "../theme/canvasTheme";
-import type { ResolvedTheme } from "../theme/themePreferences";
+import { canvasTheme, DEFAULT_BACKGROUND } from "../theme/canvasTheme";
 
 /**
  * Small UI/tool store. Nothing here changes per pointer event: the canvas
@@ -93,8 +92,11 @@ interface ToolState extends ToolPreferences {
   editingTextId: string | null;
   setEditingTextId: (id: string | null) => void;
 
-  /** Mirrored from the ThemeProvider so default ink can follow the theme. */
-  theme: ResolvedTheme;
+  /**
+   * The open board's background colour, mirrored from its document so the
+   * menu can show it and default ink can contrast with it.
+   */
+  background: string;
 
   /** Once a stylus has been seen, fingers navigate instead of drawing. */
   stylusSeen: boolean;
@@ -114,7 +116,7 @@ interface ToolState extends ToolPreferences {
   setTextFont: (font: FontFamilyId) => void;
   setTextFontSize: (size: number) => void;
   setTextAlign: (align: TextAlign) => void;
-  setTheme: (theme: ResolvedTheme) => void;
+  setBackground: (background: string) => void;
   markStylusSeen: () => void;
   setSaveStatus: (s: SaveStatus) => void;
   setZoom: (z: number) => void;
@@ -135,7 +137,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setEditingTextId: (editingTextId) => set({ editingTextId }),
 
   ...DEFAULT_TOOL_PREFS,
-  theme: "light",
+  background: DEFAULT_BACKGROUND,
 
   stylusSeen: false,
   saveStatus: "idle",
@@ -177,14 +179,15 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setTextFontSize: (textFontSize) => set({ textFontSize }),
   setTextAlign: (textAlign) => set({ textAlign }),
   /**
-   * Following the theme only ever moves colours the user has not chosen.
-   * Explicit picks, and every colour already on the board, are left alone.
+   * Following the background only ever moves colours the user has not
+   * chosen. Explicit picks, and every colour already on the board, are left
+   * alone.
    */
-  setTheme: (theme) => {
+  setBackground: (background) => {
     const s = get();
-    if (s.theme === theme) return;
-    const ink = canvasTheme(theme).defaultInk;
-    const patch: Partial<ToolState> = { theme };
+    if (s.background === background) return;
+    const ink = canvasTheme(background).defaultInk;
+    const patch: Partial<ToolState> = { background };
     if (!s.colorExplicit) patch.color = ink;
     if (!s.textColorExplicit) patch.textColor = ink;
     set(patch);
@@ -206,7 +209,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   },
   hydrate: async () => {
     const prefs = await boardRepository.getToolPreferences();
-    const ink = canvasTheme(get().theme).defaultInk;
+    const ink = canvasTheme(get().background).defaultInk;
     set({
       ...prefs,
       color: prefs.colorExplicit ? prefs.color : ink,

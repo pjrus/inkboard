@@ -20,7 +20,7 @@ Mostly UI on top of plumbing that already exists.
       fresh ids from `document/ids.ts` plus an offset.
 - [ ] **Highlighter.** A translucent pen drawn with `multiply` blending and no
       pressure taper: one more `PenTool` value and one render branch.
-- [ ] **Board background colour.** A few plain colours to pick from per
+- [x] **Board background colour.** A few plain colours to pick from per
       board, no dots, ruled lines or grid. Stored with the board, so a PDF
       export is filled with the same colour and backups keep it. Dark mode
       does not change it: only the toolbar and other chrome follow the theme,

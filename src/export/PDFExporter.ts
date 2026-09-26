@@ -3,7 +3,7 @@ import { PDFDocument } from "pdf-lib";
 import type { CanvasObject } from "../document/schema";
 import { downloadBlob } from "./download";
 import { planPages } from "./exportPlan";
-import { ExportResources, renderPage } from "./ExportRenderer";
+import { ExportResources, pdfColor, renderPage } from "./ExportRenderer";
 
 /**
  * Client-side PDF export.
@@ -18,6 +18,8 @@ import { ExportResources, renderPage } from "./ExportRenderer";
 export interface ExportOptions {
   objects: CanvasObject[];
   boardName: string;
+  /** The board's background colour, filled behind everything. Omit for none. */
+  background?: string;
   onProgress?: (done: number, total: number, label: string) => void;
 }
 
@@ -30,7 +32,7 @@ export interface ExportResult {
 export async function exportToPDF(
   options: ExportOptions,
 ): Promise<ExportResult> {
-  const { objects, boardName, onProgress } = options;
+  const { objects, boardName, background, onProgress } = options;
   const plan = planPages(objects);
   if (plan.length === 0) {
     throw new Error("There is nothing on this board to export yet.");
@@ -47,6 +49,15 @@ export async function exportToPDF(
   for (let i = 0; i < plan.length; i++) {
     const geometry = plan[i];
     const page = pdf.addPage([geometry.pageWidth, geometry.pageHeight]);
+    if (background) {
+      page.drawRectangle({
+        x: 0,
+        y: 0,
+        width: geometry.pageWidth,
+        height: geometry.pageHeight,
+        color: pdfColor(background),
+      });
+    }
     await renderPage(page, objects, geometry, resources);
     onProgress?.(i + 1, plan.length, geometry.label);
     // Yield between pages so a large board does not freeze the UI.

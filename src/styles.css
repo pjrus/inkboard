@@ -141,13 +141,21 @@ button {
 .topbar > * {
   pointer-events: auto;
 }
+/*
+ * These sit straight on the board, whose colour ignores the app theme, so
+ * they carry their own backing like the status chip does.
+ */
+.topbar > .btn-ghost {
+  background: var(--surface-raised);
+  border-color: var(--border);
+}
 .board-title {
   font: inherit;
   font-weight: 600;
   font-size: 15px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: transparent;
+  background: var(--surface-raised);
   padding: 4px 8px;
   min-width: 60px;
   max-width: 40vw;
@@ -304,6 +312,9 @@ button {
   display: grid;
   grid-template-columns: repeat(4, 36px);
   gap: 4px;
+}
+.swatch-grid-row {
+  grid-template-columns: repeat(6, 36px);
 }
 .swatch-btn {
   width: 36px;

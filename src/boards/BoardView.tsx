@@ -358,6 +358,7 @@ export function BoardView({ boardId, onBack }: Props) {
       const result = await exportToPDF({
         objects,
         boardName: name,
+        background: session.doc.getBackground(),
         onProgress: (done, total, label) =>
           setExportState({ busy: { done, total, label }, error: null }),
       });
@@ -450,6 +451,7 @@ export function BoardView({ boardId, onBack }: Props) {
           onInsertPDF={onInsertPDF}
           onUndo={() => session.doc.undo()}
           onRedo={() => session.doc.redo()}
+          onBackground={(c) => session.doc.setBackground(c)}
           onExportPDF={() => {
             setExportState({ busy: null, error: null });
             setExportOpen(true);

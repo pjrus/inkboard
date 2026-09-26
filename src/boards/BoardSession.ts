@@ -25,6 +25,7 @@ export class BoardSession {
     const persistence = new DocumentPersistence(boardId, doc);
     await persistence.load();
     persistence.start();
+    doc.ensureBackground();
     return new BoardSession(board, doc, persistence);
   }
 
