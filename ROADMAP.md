@@ -67,7 +67,7 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Paste or drop images.** `LassoFilter.images` already mentions imported
       images, but `CanvasObject` has no image type. A `PDFPageObject` is
       essentially an image with a `pdfDocumentId`; add an `"image"` type that
-      reuses `assetRepository`, `ImageCache` and the JPEG export path.
+      reuses the `db.assets` store, `ImageCache` and the JPEG export path.
 - [ ] **Vector PDF export.** When the original PDF was kept (`sourceAssetId`),
       export pages with pdf-lib's `embedPage` instead of the stored JPEG:
       sharper, smaller and with the original text still selectable.
@@ -111,8 +111,8 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Backup / restore** as a single `.inkboard` file: the Yjs update plus
       every referenced asset. Everything is local-only today, so clearing site
       data wipes every board. Highest priority in this section.
-- [ ] **Storage usage** in the menu via `navigator.storage.estimate()`, and per
-      board from the asset sizes.
+- [ ] **Per-board storage usage.** `BoardList` shows the total; add a size per
+      board and the remaining quota from `navigator.storage.estimate()`.
 - [ ] **Clean up orphaned assets.** Removing a PDF deletes it from the CRDT but
       its page images stay in IndexedDB until the whole board is deleted.
       Sweep unreferenced assets on board open, once undo can no longer bring
