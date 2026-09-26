@@ -20,8 +20,11 @@ Mostly UI on top of plumbing that already exists.
       fresh ids from `document/ids.ts` plus an offset.
 - [ ] **Highlighter.** A translucent pen drawn with `multiply` blending and no
       pressure taper: one more `PenTool` value and one render branch.
-- [ ] **Page backgrounds** (dots, ruled lines, grid). Drawn in screen space on
-      the bottom canvas; a local preference that never enters the CRDT.
+- [ ] **Board background colour.** A few plain colours to pick from per
+      board, no dots, ruled lines or grid. Stored with the board, so a PDF
+      export is filled with the same colour and backups keep it. Dark mode
+      does not change it: only the toolbar and other chrome follow the theme,
+      and canvas colours such as the default ink follow the board colour.
 - [ ] **Shortcut cheat sheet.** P, N, E, H, L, T, V and `[` / `]` already
       exist in `BoardView` but nothing tells you. A `?` popover, plus the key in
       each toolbar tooltip.
