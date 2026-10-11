@@ -37,7 +37,7 @@ Mostly UI on top of plumbing that already exists.
 
 ## Ink
 
-- [ ] **Stroke eraser** that erases only part of a stroke by splitting it where
+- [x] **Stroke eraser** that erases only part of a stroke by splitting it where
       the eraser crosses, alongside the current whole-object eraser.
       `strokeGeometry.ts` already has the hit testing.
 - [ ] **Straight lines** by holding Shift while drawing.

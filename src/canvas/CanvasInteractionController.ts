@@ -11,7 +11,12 @@ import type {
   Tool,
   Viewport,
 } from "../document/schema";
-import { MAX_TEXT_WIDTH, MIN_TEXT_WIDTH, packPoints } from "../document/schema";
+import {
+  MAX_TEXT_WIDTH,
+  MIN_TEXT_WIDTH,
+  packPoints,
+  unpackPoints,
+} from "../document/schema";
 import { DEFAULT_TEXT_WIDTH } from "../document/schema";
 import type { CanvasSelection } from "../store/toolStore";
 import { lineHeightFor } from "../text/textLayout";
@@ -28,6 +33,7 @@ import {
   computeBounds,
   polygonBounds,
   simplifyPoints,
+  splitStroke,
   strokeSegmentHitTest,
   type XY,
 } from "./strokeGeometry";
@@ -523,7 +529,7 @@ export class CanvasInteractionController {
     else if (tool === "text") cursor = "text";
     else if (tool === "pen" || tool === "pencil" || tool === "lasso") {
       cursor = "crosshair";
-    } else if (tool === "eraser") cursor = "none";
+    } else if (tool === "eraser" || tool === "strokeEraser") cursor = "none";
     this.el.style.cursor = cursor;
   }
 
@@ -802,7 +808,7 @@ export class CanvasInteractionController {
       return;
     }
 
-    if (tool === "eraser") {
+    if (tool === "eraser" || tool === "strokeEraser") {
       this.doc.closeUndoGroup();
       this.state = { type: "erasing", pointerId: e.pointerId, last: wp };
       this.eraseAlong(wp, wp);
@@ -849,7 +855,7 @@ export class CanvasInteractionController {
     const s = this.state;
     switch (s.type) {
       case "idle":
-        if (this.host.getTool() === "eraser") {
+        if (this.isEraser()) {
           this.showEraserCursor(screenToWorld(sp, this.viewport));
         }
         return;
@@ -1139,7 +1145,13 @@ export class CanvasInteractionController {
     return screenLengthToWorld(ERASER_RADIUS_PX, this.viewport);
   }
 
+  private isEraser() {
+    const t = this.host.getTool();
+    return t === "eraser" || t === "strokeEraser";
+  }
+
   private eraseAlong(from: Point, to: Point) {
+    const partial = this.host.getTool() === "strokeEraser";
     const radius = this.eraserRadiusWorld();
     const sweep = {
       minX: Math.min(from.x, to.x) - radius,
@@ -1158,11 +1170,21 @@ export class CanvasInteractionController {
       ) {
         continue;
       }
-      const pts: StrokePoint[] = [];
-      for (let i = 0; i + 2 < stroke.points.length; i += 3) {
-        pts.push({ x: stroke.points[i], y: stroke.points[i + 1] });
-      }
-      if (strokeSegmentHitTest(pts, stroke.width, from, to, radius)) {
+      const pts = unpackPoints(stroke.points);
+      if (partial) {
+        const pieces = splitStroke(pts, stroke.width, from, to, radius);
+        if (!pieces) continue;
+        this.doc.replaceStroke(
+          stroke.id,
+          pieces.map((pp) => ({
+            tool: stroke.tool,
+            color: stroke.color,
+            width: stroke.width,
+            points: packPoints(pp),
+            bounds: computeBounds(pp, stroke.width),
+          })),
+        );
+      } else if (strokeSegmentHitTest(pts, stroke.width, from, to, radius)) {
         hits.push(stroke.id);
       }
     }

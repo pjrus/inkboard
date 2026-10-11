@@ -6,7 +6,14 @@
  * PDFs) are stored separately in IndexedDB and referenced by `assetId`.
  */
 
-export type Tool = "pan" | "pen" | "pencil" | "eraser" | "lasso" | "text";
+export type Tool =
+  | "pan"
+  | "pen"
+  | "pencil"
+  | "eraser"
+  | "strokeEraser"
+  | "lasso"
+  | "text";
 
 /**
  * Whether the board can be edited at all.

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeBounds,
   simplifyPoints,
+  splitStroke,
   strokeHitTest,
   strokeOutline,
   strokeSegmentHitTest,
@@ -26,6 +27,21 @@ describe("stroke geometry", () => {
     expect(
       strokeSegmentHitTest(line, 2, { x: 50, y: 20 }, { x: 50, y: 40 }, 3),
     ).toBe(false);
+  });
+
+  it("splits a stroke where the eraser crosses it", () => {
+    const pieces = splitStroke(
+      line,
+      2,
+      { x: 50, y: -10 },
+      { x: 50, y: 10 },
+      3,
+    )!;
+    expect(pieces.length).toBe(2);
+    expect(pieces[0].at(-1)!.x).toBeLessThan(50);
+    expect(pieces[1][0].x).toBeGreaterThan(50);
+    expect(splitStroke(line, 2, { x: 50, y: 20 }, { x: 50, y: 40 }, 3))
+      .toBeNull();
   });
 
   it("simplifies collinear points but keeps corners", () => {

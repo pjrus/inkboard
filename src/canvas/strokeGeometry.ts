@@ -152,6 +152,52 @@ export function strokeSegmentHitTest(
   return false;
 }
 
+/**
+ * Cut the parts of a stroke the swept eraser (a to b, `radius`) touches.
+ * Returns the surviving pieces (each 2+ points), or null if nothing was hit.
+ * Long segments are subdivided first so a cut lands where the eraser is, not
+ * at the nearest sample of a simplified stroke.
+ */
+export function splitStroke(
+  points: StrokePoint[],
+  width: number,
+  a: StrokePoint,
+  b: StrokePoint,
+  radius: number,
+): StrokePoint[][] | null {
+  const threshold = radius + width / 2;
+  const step = Math.max(threshold / 2, 0.5);
+  const dense: StrokePoint[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    dense.push(p);
+    const q = points[i + 1];
+    if (!q) break;
+    const n = Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / step);
+    for (let k = 1; k < n; k++) {
+      const t = k / n;
+      dense.push({
+        x: p.x + (q.x - p.x) * t,
+        y: p.y + (q.y - p.y) * t,
+        pressure: (p.pressure ?? 0.5) * (1 - t) + (q.pressure ?? 0.5) * t,
+      });
+    }
+  }
+  const pieces: StrokePoint[][] = [];
+  let run: StrokePoint[] = [];
+  let hit = false;
+  for (const p of dense) {
+    if (pointSegmentDistance(p, a, b) <= threshold) {
+      hit = true;
+      if (run.length > 1) pieces.push(run);
+      run = [];
+    } else run.push(p);
+  }
+  if (!hit) return null;
+  if (run.length > 1) pieces.push(run);
+  return pieces;
+}
+
 /** Bounds from a flat [x,y,p,...] point array. */
 export function computeBoundsFlat(flat: number[], width: number): Bounds {
   const pts: StrokePoint[] = [];

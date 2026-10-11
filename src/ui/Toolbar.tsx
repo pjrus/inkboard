@@ -39,6 +39,7 @@ const TOOLS: {
   { tool: "pen", label: "Pen", key: "P", icon: PenIcon },
   { tool: "pencil", label: "Pencil", key: "N", icon: PencilIcon },
   { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon },
+  { tool: "strokeEraser", label: "Stroke eraser", key: "X", icon: EraserIcon },
   { tool: "lasso", label: "Lasso", key: "L", icon: LassoIcon },
   { tool: "text", label: "Text", key: "T", icon: TextIcon },
 ];

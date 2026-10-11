@@ -160,6 +160,26 @@ export class CanvasDocument {
     return obj;
   }
 
+  /** Swap a stroke for the pieces left after erasing, as one grouped step. */
+  replaceStroke(
+    id: string,
+    pieces: Omit<StrokeObject, "id" | "type" | "createdAt">[],
+  ): void {
+    this.transactGrouped(() => {
+      if (!this.objects.has(id)) return;
+      this.objects.delete(id);
+      for (const p of pieces) {
+        const obj: StrokeObject = {
+          ...p,
+          id: newId(),
+          type: "stroke",
+          createdAt: Date.now(),
+        };
+        this.objects.set(obj.id, toYMap(obj));
+      }
+    });
+  }
+
   /**
    * Create a text box. The initial content is a Y.Text so later edits are
    * collaborative splices rather than whole-string replacements.
