@@ -32,9 +32,8 @@ Mostly UI on top of plumbing that already exists.
       maths already exists in `export/exportBounds.ts`.
 - [ ] **Arrow-key nudge** for the selection (1 unit, Shift for 10).
 - [ ] **Recent colours** row in `ColourPicker`, kept as a local preference.
-- [ ] **Duplicate board** from `BoardList`. `boards/backup.ts` already copies
-      a board under fresh board and asset ids on restore; duplicate is the same
-      copy without the file in between.
+- [x] **Duplicate board** from `BoardList`: a backup of one board restored
+      straight back under fresh board and asset ids.
 
 ## Ink
 

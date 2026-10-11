@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { downloadBlob } from "../export/download";
 import type { BoardRecord } from "../storage/db";
-import { backupBoards, restoreBoards } from "./backup";
+import { backupBoards, duplicateBoard, restoreBoards } from "./backup";
 import { boardRepository } from "./BoardRepository";
 
 interface Props {
@@ -37,6 +37,16 @@ export function BoardList({ onOpen }: Props) {
     }
     await boardRepository.delete(b.id);
     await refresh();
+  };
+
+  const duplicate = async (b: BoardRecord) => {
+    try {
+      await duplicateBoard(b.id);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+      window.alert(`Could not duplicate "${b.name}".`);
+    }
   };
 
   const backup = async () => {
@@ -93,6 +103,14 @@ export function BoardList({ onOpen }: Props) {
                   <span className="board-date">
                     Edited {formatDate(b.updatedAt)}
                   </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  aria-label={`Duplicate ${b.name}`}
+                  onClick={() => duplicate(b)}
+                >
+                  Duplicate
                 </button>
                 <button
                   type="button"
