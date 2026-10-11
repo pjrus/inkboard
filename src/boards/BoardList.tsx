@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BoardRecord } from "../storage/db";
+import { downloadBoardBackup, exportBoard, importBoard } from "./backup";
 import { boardRepository } from "./BoardRepository";
 
 interface Props {
@@ -18,6 +19,25 @@ export function BoardList({ onOpen }: Props) {
   useEffect(() => {
     void refresh();
   }, []);
+
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const backup = async (b: BoardRecord) => {
+    try {
+      downloadBoardBackup(b.name, await exportBoard(b.id));
+    } catch (err) {
+      window.alert(`Backup failed: ${(err as Error).message}`);
+    }
+  };
+
+  const restore = async (file: File) => {
+    try {
+      await importBoard(file);
+      await refresh();
+    } catch (err) {
+      window.alert(`Restore failed: ${(err as Error).message}`);
+    }
+  };
 
   const create = async () => {
     const b = await boardRepository.create("Untitled board");
@@ -40,6 +60,24 @@ export function BoardList({ onOpen }: Props) {
     <div className="board-list">
       <header className="board-list-header">
         <h1>My Boards</h1>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => fileInput.current?.click()}
+        >
+          Restore backup
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".inkboard"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) void restore(f);
+          }}
+        />
         <button type="button" className="btn btn-primary" onClick={create}>
           New board
         </button>
@@ -68,6 +106,14 @@ export function BoardList({ onOpen }: Props) {
                   <span className="board-date">
                     Edited {formatDate(b.updatedAt)}
                   </span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  aria-label={`Back up ${b.name}`}
+                  onClick={() => backup(b)}
+                >
+                  Back up
                 </button>
                 <button
                   type="button"
