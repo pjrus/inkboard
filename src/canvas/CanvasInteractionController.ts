@@ -528,7 +528,10 @@ export class CanvasInteractionController {
     else if (!this.editable) cursor = "grab";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
     else if (tool === "text") cursor = "text";
-    else if (tool === "pen" || tool === "pencil" || tool === "highlighter" || tool === "lasso") {
+    else if (
+      tool === "pen" || tool === "pencil" || tool === "highlighter"
+      || tool === "lasso"
+    ) {
       cursor = "crosshair";
     } else if (tool === "eraser" || tool === "strokeEraser") cursor = "none";
     this.el.style.cursor = cursor;

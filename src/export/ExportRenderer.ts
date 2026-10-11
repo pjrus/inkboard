@@ -13,7 +13,11 @@ import {
   pushGraphicsState,
   rgb,
 } from "pdf-lib";
-import { hasVaryingPressure, strokeAlpha, strokeOutline } from "../canvas/strokeGeometry";
+import {
+  hasVaryingPressure,
+  strokeAlpha,
+  strokeOutline,
+} from "../canvas/strokeGeometry";
 import {
   objectCenter,
   rotatePoint,
@@ -188,8 +192,9 @@ function drawStroke(page: PDFPage, stroke: StrokeObject, g: PageGeometry) {
     // Matches the on-screen translucency so pen, pencil and highlighter stay
     // visibly different in the export.
     opacity: strokeAlpha(stroke.tool),
-    blendMode:
-      stroke.tool === "highlighter" ? BlendMode.Multiply : BlendMode.Normal,
+    blendMode: stroke.tool === "highlighter"
+      ? BlendMode.Multiply
+      : BlendMode.Normal,
   });
 }
 

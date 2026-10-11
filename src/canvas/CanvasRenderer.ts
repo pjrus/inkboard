@@ -26,7 +26,12 @@ import {
   visibleWorldBounds,
 } from "./coordinates";
 import { ImageCache } from "./ImageCache";
-import { hasVaryingPressure, strokeAlpha, strokeOutline, type XY } from "./strokeGeometry";
+import {
+  hasVaryingPressure,
+  strokeAlpha,
+  strokeOutline,
+  type XY,
+} from "./strokeGeometry";
 import {
   boundsCenter,
   objectCenter,
@@ -668,7 +673,9 @@ export class CanvasRenderer {
     ctx.fillStyle = stroke.color;
     ctx.globalAlpha = strokeAlpha(stroke.tool);
     // Multiply keeps text and PDF content under the highlight readable.
-    if (stroke.tool === "highlighter") ctx.globalCompositeOperation = "multiply";
+    if (stroke.tool === "highlighter") {
+      ctx.globalCompositeOperation = "multiply";
+    }
     ctx.fill(path);
     ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;

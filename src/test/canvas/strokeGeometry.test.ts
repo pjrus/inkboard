@@ -4,8 +4,8 @@ import {
   simplifyPoints,
   splitStroke,
   strokeAlpha,
-  strokeOptions,
   strokeHitTest,
+  strokeOptions,
   strokeOutline,
   strokeSegmentHitTest,
 } from "../../canvas/strokeGeometry";
