@@ -26,7 +26,7 @@ import {
   visibleWorldBounds,
 } from "./coordinates";
 import { ImageCache } from "./ImageCache";
-import { hasVaryingPressure, strokeOutline, type XY } from "./strokeGeometry";
+import { hasVaryingPressure, strokeAlpha, strokeOutline, type XY } from "./strokeGeometry";
 import {
   boundsCenter,
   objectCenter,
@@ -666,8 +666,11 @@ export class CanvasRenderer {
       ctx.stroke(path);
     }
     ctx.fillStyle = stroke.color;
-    ctx.globalAlpha = stroke.tool === "pencil" ? 0.82 : 1;
+    ctx.globalAlpha = strokeAlpha(stroke.tool);
+    // Multiply keeps text and PDF content under the highlight readable.
+    if (stroke.tool === "highlighter") ctx.globalCompositeOperation = "multiply";
     ctx.fill(path);
+    ctx.globalCompositeOperation = "source-over";
     ctx.globalAlpha = 1;
   }
 
@@ -707,7 +710,7 @@ export class CanvasRenderer {
       const s = this.activeStroke;
       const outline = strokeOutline(s.points, s.tool, s.width, s.hasPressure);
       ctx.fillStyle = s.color;
-      ctx.globalAlpha = s.tool === "pencil" ? 0.82 : 1;
+      ctx.globalAlpha = strokeAlpha(s.tool);
       ctx.fill(outlineToPath(outline));
       ctx.globalAlpha = 1;
     }

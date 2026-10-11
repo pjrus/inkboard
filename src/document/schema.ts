@@ -10,6 +10,7 @@ export type Tool =
   | "pan"
   | "pen"
   | "pencil"
+  | "highlighter"
   | "eraser"
   | "strokeEraser"
   | "lasso"
@@ -26,7 +27,7 @@ export type CanvasMode = "edit" | "view";
 
 /** Which object types the lasso is allowed to pick up. Local, never synced. */
 export interface LassoFilter {
-  /** Pen and pencil strokes. */
+  /** Pen, pencil and highlighter strokes. */
   ink: boolean;
   text: boolean;
   /** Imported images and PDF page images. */
@@ -42,7 +43,7 @@ export const DEFAULT_LASSO_FILTER: LassoFilter = {
 export const MIN_STROKE_WIDTH = 0.5;
 export const MAX_STROKE_WIDTH = 40;
 
-export type PenTool = "pen" | "pencil";
+export type PenTool = "pen" | "pencil" | "highlighter";
 
 export interface StrokePoint {
   x: number;

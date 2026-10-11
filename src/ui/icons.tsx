@@ -27,6 +27,13 @@ export const PencilIcon = () => (
     <path d="M17.2 4.4l1.1-1.1a1.7 1.7 0 0 1 2.4 2.4l-1.1 1.1" />
   </svg>
 );
+export const HighlighterIcon = () => (
+  <svg {...base} aria-hidden="true">
+    <path d="M9 11l6 6-4 4H7v-4l2-6z" />
+    <path d="M9 11l6-6 4 4-4 8" />
+    <path d="M3 21h4" />
+  </svg>
+);
 export const EraserIcon = () => (
   <svg {...base} aria-hidden="true">
     <path d="M6.5 19.5h11" />
