@@ -987,3 +987,6 @@ button {
   min-width: 32px;
   color: var(--text-muted);
 }
+.colour-inline .swatch-grid {
+  grid-template-columns: repeat(5, 36px);
+}

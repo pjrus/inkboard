@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Tool } from "../document/schema";
 import { useToolStore } from "../store/toolStore";
 import { AppMenu } from "./AppMenu";
@@ -18,6 +18,7 @@ import {
 } from "./icons";
 import { LassoFilterControls } from "./LassoFilterControls";
 import { ModeSwitch } from "./ModeSwitch";
+import { Popover } from "./Popover";
 import { TextAlignmentControls } from "./TextAlignmentControls";
 import { ThicknessPicker } from "./ThicknessPicker";
 
@@ -58,6 +59,7 @@ export function Toolbar({
   const canRedo = useToolStore((s) => s.canRedo);
   const selection = useToolStore((s) => s.selection);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [selectOpen, setSelectOpen] = useState(false);
 
   /**
    * View mode strips the toolbar back to navigation: no tools, no property
@@ -99,34 +101,48 @@ export function Toolbar({
       <ModeSwitch />
       <span className="tb-sep" />
       <div className="tb-group" role="radiogroup" aria-label="Tool">
-        {TOOLS.map((t) => (
-          <button
-            key={t.tool}
-            type="button"
-            role="radio"
-            aria-checked={tool === t.tool}
-            aria-label={`${t.label} (${t.key})`}
-            title={`${t.label} (${t.key})`}
-            className={"tb-btn" + (tool === t.tool ? " active" : "")}
-            onClick={() => setTool(t.tool)}
-          >
-            <t.icon />
-          </button>
-        ))}
+        {TOOLS.map((t) => {
+          const btn = (
+            <button
+              key={t.tool}
+              type="button"
+              role="radio"
+              aria-checked={tool === t.tool}
+              aria-label={`${t.label} (${t.key})`}
+              title={`${t.label} (${t.key})`}
+              className={"tb-btn" + (tool === t.tool ? " active" : "")}
+              onClick={() => {
+                if (t.tool !== "lasso") return setTool(t.tool);
+                setTool("lasso");
+                setSelectOpen((o) => tool !== "lasso" || !o);
+              }}
+            >
+              <t.icon />
+            </button>
+          );
+          if (t.tool !== "lasso") return btn;
+          return (
+            <div key={t.tool} className="tb-anchor">
+              {btn}
+              <Popover
+                open={selectOpen}
+                onClose={() => setSelectOpen(false)}
+                label="Select options"
+              >
+                <LassoFilterControls />
+                <div className="popover-hint">Colour</div>
+                <ColourPicker inline />
+              </Popover>
+            </div>
+          );
+        })}
       </div>
-      {tool === "lasso" && (
-        <>
-          <span className="tb-sep" />
-          <LassoFilterControls />
-        </>
-      )}
       <span className="tb-sep" />
       <div
         className={"tb-group" + (hasSelection ? " tb-group-selection" : "")}
         title={hasSelection ? "Editing the selection" : undefined}
       >
         {hasSelection && <span className="tb-badge">Selection</span>}
-        <ColourPicker />
         {showStrokeControls && <ThicknessPicker />}
         {showTextControls && <FontSelector />}
         {showTextControls && <FontSizeSelector />}
