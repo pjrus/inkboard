@@ -1,5 +1,6 @@
 const TILE = 128;
 const cache = new Map<string, CanvasPattern | null>();
+let noise: HTMLCanvasElement | null = null;
 
 /**
  * Fill style that makes a pencil stroke look like graphite on paper: the
@@ -18,21 +19,31 @@ export function pencilFill(
   return pattern ?? color;
 }
 
+/** Alpha-only noise, generated once and shared by every colour. */
+function noiseTile() {
+  if (noise) return noise;
+  noise = document.createElement("canvas");
+  noise.width = noise.height = TILE;
+  const t = noise.getContext("2d")!;
+  const img = t.createImageData(TILE, TILE);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const r = Math.random();
+    // Mostly dense with scattered light flecks, like paper tooth.
+    img.data[i + 3] = r < 0.25 ? 70 + r * 400 : 190 + r * 65;
+  }
+  t.putImageData(img, 0, 0);
+  return noise;
+}
+
+/** Tints the shared noise with `color`: no pixel readback, one draw per colour. */
 function makePattern(ctx: CanvasRenderingContext2D, color: string) {
   const tile = document.createElement("canvas");
   tile.width = tile.height = TILE;
   const t = tile.getContext("2d");
   if (!t) return null;
-  // Draw the colour once so the browser parses it (any CSS colour works),
-  // then rewrite only the alpha channel with noise.
+  t.drawImage(noiseTile(), 0, 0);
+  t.globalCompositeOperation = "source-in";
   t.fillStyle = color;
   t.fillRect(0, 0, TILE, TILE);
-  const img = t.getImageData(0, 0, TILE, TILE);
-  for (let i = 3; i < img.data.length; i += 4) {
-    const r = Math.random();
-    // Mostly dense with scattered light flecks, like paper tooth.
-    img.data[i] = r < 0.25 ? 70 + r * 400 : 190 + r * 65;
-  }
-  t.putImageData(img, 0, 0);
   return ctx.createPattern(tile, "repeat");
 }
