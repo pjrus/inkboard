@@ -38,11 +38,13 @@ interface BackupHeader {
   }[];
 }
 
-export async function backupBoards(): Promise<Blob> {
+/** Backs up every board, or only those in `only`. */
+export async function backupBoards(only?: string[]): Promise<Blob> {
   const db = getDB();
   const header: BackupHeader = { version: VERSION, boards: [] };
   const segments: BlobPart[] = [];
   for (const board of await db.boards.toArray()) {
+    if (only && !only.includes(board.id)) continue;
     const doc = new CanvasDocument();
     await new DocumentPersistence(board.id, doc).load();
     // Yjs never hands out a SharedArrayBuffer.
@@ -75,7 +77,10 @@ export async function backupBoards(): Promise<Blob> {
 }
 
 /** Adds every board in the backup as a new board. Returns how many. */
-export async function restoreBoards(file: Blob): Promise<number> {
+export async function restoreBoards(
+  file: Blob,
+  rename: (name: string) => string = (name) => name,
+): Promise<number> {
   const preamble = new Uint8Array(await file.slice(0, PREAMBLE).arrayBuffer());
   if (
     preamble.byteLength < PREAMBLE
@@ -137,7 +142,7 @@ export async function restoreBoards(file: Blob): Promise<number> {
     }
     boards.push({
       id: boardId,
-      name: String(b.name),
+      name: rename(String(b.name)),
       createdAt: Number(b.createdAt) || now,
       updatedAt: Number(b.updatedAt) || now,
     });
@@ -168,4 +173,9 @@ function assetRefs(doc: CanvasDocument) {
     }
   }
   return refs;
+}
+
+/** Copies a board, assets included, under fresh ids. Not open boards: flush first. */
+export async function duplicateBoard(id: string): Promise<void> {
+  await restoreBoards(await backupBoards([id]), (name) => `${name} copy`);
 }

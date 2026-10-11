@@ -1,6 +1,10 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { backupBoards, restoreBoards } from "../../boards/backup";
+import {
+  backupBoards,
+  duplicateBoard,
+  restoreBoards,
+} from "../../boards/backup";
 import { boardRepository } from "../../boards/BoardRepository";
 import { CanvasDocument } from "../../document/crdt";
 import { DocumentPersistence } from "../../document/persistence";
@@ -113,5 +117,25 @@ describe("backup", () => {
       restoreBoards(file.slice(0, file.size - 1)),
     ).rejects.toThrow("incomplete");
     expect(await getDB().boards.count()).toBe(before);
+  });
+
+  it("duplicates only the chosen board, with its own assets", async () => {
+    const original = await seedBoard();
+    await boardRepository.create("Other");
+
+    await duplicateBoard(original.id);
+
+    const boards = await boardRepository.list();
+    expect(boards.map((b) => b.name).sort()).toEqual([
+      "Lecture 3",
+      "Lecture 3 copy",
+      "Other",
+    ]);
+    const copy = boards.find((b) => b.name === "Lecture 3 copy")!;
+    const owned = await getDB().assets.where("boardId").equals(copy.id)
+      .toArray();
+    expect(owned).toHaveLength(2);
+    expect(owned.map((a) => a.id)).not.toContain("doc-p1");
+    expect((await getDB().assets.get("doc-p1"))!.boardId).toBe(original.id);
   });
 });
