@@ -4,7 +4,9 @@ import { THICKNESS_PRESETS, useToolStore } from "../store/toolStore";
 import { ChevronIcon } from "./icons";
 import { Popover } from "./Popover";
 
-export function ThicknessPicker() {
+export function ThicknessPicker(
+  { inline = false, scope }: { inline?: boolean; scope?: "pen"; },
+) {
   const penWidth = useToolStore((s) => s.width);
   const penColor = useToolStore((s) => s.color);
   const setPenWidth = useToolStore((s) => s.setWidth);
@@ -13,7 +15,8 @@ export function ThicknessPicker() {
   const [open, setOpen] = useState(false);
   // Thickness only means something for handwriting: a text-only selection
   // falls back to configuring the pen.
-  const selection = rawSelection && rawSelection.strokeIds.length > 0
+  const selection = scope !== "pen" && rawSelection
+      && rawSelection.strokeIds.length > 0
     ? rawSelection
     : null;
   const wSummary = selection ? summarise(selection.widths) : null;
@@ -25,6 +28,42 @@ export function ThicknessPicker() {
     selection && commands ? commands.setWidth(w) : setPenWidth(w);
   const current = THICKNESS_PRESETS.find((p) => p.value === width);
   const label = selection ? "Selection thickness" : "Thickness";
+  const content = (
+    <>
+      {mixed && <div className="popover-hint">Mixed thicknesses</div>}
+      <div className="thickness-list" role="radiogroup" aria-label={label}>
+        {THICKNESS_PRESETS.map((p) => {
+          const selected = !mixed && p.value === width;
+          return (
+            <button
+              key={p.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              className={"thickness-row" + (selected ? " selected" : "")}
+              onClick={() => {
+                setWidth(p.value);
+                setOpen(false);
+              }}
+            >
+              <span className="thickness-preview">
+                <span
+                  style={{
+                    height: Math.max(1, p.value * 1.3),
+                    background: color,
+                  }}
+                />
+              </span>
+              <span className="thickness-name">{p.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  if (inline) return <div>{content}</div>;
+
   return (
     <div className="tb-anchor">
       <button
@@ -53,35 +92,7 @@ export function ThicknessPicker() {
         onClose={() => setOpen(false)}
         label="Choose thickness"
       >
-        {mixed && <div className="popover-hint">Mixed thicknesses</div>}
-        <div className="thickness-list" role="radiogroup" aria-label={label}>
-          {THICKNESS_PRESETS.map((p) => {
-            const selected = !mixed && p.value === width;
-            return (
-              <button
-                key={p.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                className={"thickness-row" + (selected ? " selected" : "")}
-                onClick={() => {
-                  setWidth(p.value);
-                  setOpen(false);
-                }}
-              >
-                <span className="thickness-preview">
-                  <span
-                    style={{
-                      height: Math.max(1, p.value * 1.3),
-                      background: color,
-                    }}
-                  />
-                </span>
-                <span className="thickness-name">{p.name}</span>
-              </button>
-            );
-          })}
-        </div>
+        {content}
       </Popover>
     </div>
   );
