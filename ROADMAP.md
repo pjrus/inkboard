@@ -6,7 +6,7 @@ from.
 
 **Suggested order:** persistent storage → backup/restore → clipboard → images
 → highlighter. Data safety first, then the things every annotation user
-reaches for on day one. The first three are done; images are next.
+reaches for on day one. The first three and the highlighter are done; images are next.
 
 ## Cheap wins
 
@@ -18,7 +18,7 @@ Mostly UI on top of plumbing that already exists.
 - [x] **Copy / paste / duplicate** (Ctrl+C / Ctrl+V / Ctrl+D). The selection
       already has ids and objects are plain JSON; internal copy is clone with
       fresh ids from `document/ids.ts` plus an offset.
-- [ ] **Highlighter.** A translucent pen drawn with `multiply` blending and no
+- [x] **Highlighter.** A translucent pen drawn with `multiply` blending and no
       pressure taper: one more `PenTool` value and one render branch.
 - [x] **Board background colour.** A few plain colours to pick from per
       board, no dots, ruled lines or grid. Stored with the board, so a PDF

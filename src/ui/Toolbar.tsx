@@ -8,6 +8,7 @@ import { FontSizeSelector } from "./FontSizeSelector";
 import {
   EraserIcon,
   HandIcon,
+  HighlighterIcon,
   LassoIcon,
   PdfIcon,
   PencilIcon,
@@ -38,6 +39,12 @@ const TOOLS: {
   { tool: "pan", label: "Hand", key: "H", icon: HandIcon },
   { tool: "pen", label: "Pen", key: "P", icon: PenIcon },
   { tool: "pencil", label: "Pencil", key: "N", icon: PencilIcon },
+  {
+    tool: "highlighter",
+    label: "Highlighter",
+    key: "M",
+    icon: HighlighterIcon,
+  },
   { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon },
   { tool: "strokeEraser", label: "Stroke eraser", key: "X", icon: EraserIcon },
   { tool: "lasso", label: "Lasso", key: "L", icon: LassoIcon },

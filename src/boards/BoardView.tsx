@@ -205,6 +205,9 @@ export function BoardView({ boardId, onBack }: Props) {
         case "n":
           store.setTool("pencil");
           break;
+        case "m":
+          store.setTool("highlighter");
+          break;
         case "e":
           store.setTool("eraser");
           break;

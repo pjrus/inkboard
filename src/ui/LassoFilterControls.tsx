@@ -2,7 +2,7 @@ import type { LassoFilter } from "../document/schema";
 import { useToolStore } from "../store/toolStore";
 
 const TYPES: { key: keyof LassoFilter; label: string; hint: string; }[] = [
-  { key: "ink", label: "Ink", hint: "Pen and pencil strokes" },
+  { key: "ink", label: "Ink", hint: "Pen, pencil and highlighter strokes" },
   { key: "text", label: "Text", hint: "Text boxes" },
   { key: "images", label: "Images", hint: "Imported images and PDF pages" },
 ];
