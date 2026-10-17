@@ -26,6 +26,7 @@ import {
   visibleWorldBounds,
 } from "./coordinates";
 import { ImageCache } from "./ImageCache";
+import { pencilFill } from "./pencilGrain";
 import { hasVaryingPressure, strokeOutline, type XY } from "./strokeGeometry";
 import {
   boundsCenter,
@@ -665,8 +666,9 @@ export class CanvasRenderer {
       ctx.lineJoin = "round";
       ctx.stroke(path);
     }
-    ctx.fillStyle = stroke.color;
-    ctx.globalAlpha = stroke.tool === "pencil" ? 0.82 : 1;
+    ctx.fillStyle = stroke.tool === "pencil"
+      ? pencilFill(ctx, stroke.color)
+      : stroke.color;
     ctx.fill(path);
     ctx.globalAlpha = 1;
   }
@@ -706,10 +708,8 @@ export class CanvasRenderer {
     if (this.activeStroke && this.activeStroke.points.length > 0) {
       const s = this.activeStroke;
       const outline = strokeOutline(s.points, s.tool, s.width, s.hasPressure);
-      ctx.fillStyle = s.color;
-      ctx.globalAlpha = s.tool === "pencil" ? 0.82 : 1;
+      ctx.fillStyle = s.tool === "pencil" ? pencilFill(ctx, s.color) : s.color;
       ctx.fill(outlineToPath(outline));
-      ctx.globalAlpha = 1;
     }
 
     if (this.lassoPath && this.lassoPath.length > 1) {
