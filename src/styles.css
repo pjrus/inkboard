@@ -987,3 +987,38 @@ button {
   min-width: 32px;
   color: var(--text-muted);
 }
+
+/* ---- per-tool settings chevron ---------------------------------------- */
+.tb-contents {
+  display: contents;
+}
+.tb-split {
+  display: flex;
+  align-items: center;
+}
+.tb-chev {
+  width: 16px;
+  height: 40px;
+  margin-left: -4px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tb-chev:hover,
+.tb-chev[aria-expanded="true"] {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tb-chev:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.popover > * + .popover-hint {
+  margin-top: 8px;
+}

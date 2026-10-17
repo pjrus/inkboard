@@ -9,7 +9,11 @@ import { Popover } from "./Popover";
  * text tool's next box, then the pen. Pen and text colours are stored
  * separately so choosing a text colour never changes the ink you draw with.
  */
-export function ColourPicker() {
+type Scope = "pen" | "text" | "selection";
+
+export function ColourPicker(
+  { inline = false, scope }: { inline?: boolean; scope?: Scope; },
+) {
   const tool = useToolStore((s) => s.tool);
   const penColor = useToolStore((s) => s.color);
   const setPenColor = useToolStore((s) => s.setColor);
@@ -19,9 +23,12 @@ export function ColourPicker() {
   const commands = useToolStore((s) => s.selectionCommands);
   const [open, setOpen] = useState(false);
 
-  const target = selection ? "selection" : tool === "text" ? "text" : "pen";
+  const target: Scope = scope
+    ?? (selection ? "selection" : tool === "text" ? "text" : "pen");
   const toolColor = target === "text" ? textColor : penColor;
-  const summary = selection ? summarise(selection.colors) : null;
+  const summary = target === "selection" && selection
+    ? summarise(selection.colors)
+    : null;
   const mixed = summary?.mixed ?? false;
   const color = summary ? (summary.value ?? toolColor) : toolColor;
   const setColor = (c: string) => {
@@ -37,6 +44,46 @@ export function ColourPicker() {
     : target === "text"
     ? "Text colour"
     : "Colour";
+
+  const content = (
+    <>
+      {mixed && <div className="popover-hint">Mixed colours</div>}
+      <div className="swatch-grid" role="radiogroup" aria-label={label}>
+        {PALETTE.map((p) => {
+          const selected = !mixed
+            && p.value.toLowerCase() === color.toLowerCase();
+          return (
+            <button
+              key={p.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={p.name}
+              title={p.name}
+              className={"swatch-btn" + (selected ? " selected" : "")}
+              onClick={() => {
+                setColor(p.value);
+                setOpen(false);
+              }}
+            >
+              <span className="swatch" style={{ background: p.value }} />
+            </button>
+          );
+        })}
+      </div>
+      <label className="custom-colour">
+        <span>Custom</span>
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          aria-label="Custom colour"
+        />
+      </label>
+    </>
+  );
+
+  if (inline) return <div>{content}</div>;
 
   return (
     <div className="tb-anchor">
@@ -56,39 +103,7 @@ export function ColourPicker() {
         <ChevronIcon />
       </button>
       <Popover open={open} onClose={() => setOpen(false)} label="Choose colour">
-        {mixed && <div className="popover-hint">Mixed colours</div>}
-        <div className="swatch-grid" role="radiogroup" aria-label={label}>
-          {PALETTE.map((p) => {
-            const selected = !mixed
-              && p.value.toLowerCase() === color.toLowerCase();
-            return (
-              <button
-                key={p.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                aria-label={p.name}
-                title={p.name}
-                className={"swatch-btn" + (selected ? " selected" : "")}
-                onClick={() => {
-                  setColor(p.value);
-                  setOpen(false);
-                }}
-              >
-                <span className="swatch" style={{ background: p.value }} />
-              </button>
-            );
-          })}
-        </div>
-        <label className="custom-colour">
-          <span>Custom</span>
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            aria-label="Custom colour"
-          />
-        </label>
+        {content}
       </Popover>
     </div>
   );
