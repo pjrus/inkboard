@@ -922,6 +922,90 @@ button {
   border-radius: 6px;
   white-space: nowrap;
 }
+
+/* Custom thickness popover (from clicking active slot) */
+.custom-thickness-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+  padding: 4px;
+}
+
+.custom-thickness-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.custom-thickness-val {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.custom-thickness-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 10px;
+}
+
+.custom-thickness-line {
+  width: 80%;
+  border-radius: 99px;
+  transition: height 0.1s ease;
+}
+
+.custom-thickness-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-thickness-slider {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.custom-thickness-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.preset-chip {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.preset-chip:hover {
+  background: var(--surface-2);
+}
+
+.preset-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
 .swatch-grid {
   display: grid;
   grid-template-columns: repeat(4, 36px);

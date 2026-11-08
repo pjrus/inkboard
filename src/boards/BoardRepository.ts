@@ -21,6 +21,12 @@ export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   lassoFilter: DEFAULT_LASSO_FILTER,
   highlighterColor: "#ffe838",
   highlighterWidth: 4,
+  penThicknessProfiles: [1.5, 3, 6],
+  penThicknessIndex: 1,
+  pencilThicknessProfiles: [1.5, 2.5, 4.5],
+  pencilThicknessIndex: 1,
+  highlighterThicknessProfiles: [2, 4, 8],
+  highlighterThicknessIndex: 1,
 };
 
 export const boardRepository = {
