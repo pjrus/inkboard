@@ -26,6 +26,7 @@ import {
   visibleWorldBounds,
 } from "./coordinates";
 import { ImageCache } from "./ImageCache";
+import { pencilFill } from "./pencilGrain";
 import {
   hasVaryingPressure,
   strokeAlpha,
@@ -670,7 +671,9 @@ export class CanvasRenderer {
       ctx.lineJoin = "round";
       ctx.stroke(path);
     }
-    ctx.fillStyle = stroke.color;
+    ctx.fillStyle = stroke.tool === "pencil"
+      ? pencilFill(ctx, stroke.color)
+      : stroke.color;
     ctx.globalAlpha = strokeAlpha(stroke.tool);
     // Multiply keeps text and PDF content under the highlight readable.
     if (stroke.tool === "highlighter") {
@@ -716,9 +719,13 @@ export class CanvasRenderer {
     if (this.activeStroke && this.activeStroke.points.length > 0) {
       const s = this.activeStroke;
       const outline = strokeOutline(s.points, s.tool, s.width, s.hasPressure);
-      ctx.fillStyle = s.color;
+      ctx.fillStyle = s.tool === "pencil" ? pencilFill(ctx, s.color) : s.color;
       ctx.globalAlpha = strokeAlpha(s.tool);
+      if (s.tool === "highlighter") {
+        ctx.globalCompositeOperation = "multiply";
+      }
       ctx.fill(outlineToPath(outline));
+      ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = 1;
     }
 
