@@ -57,8 +57,18 @@ export function CanvasViewport({
         getTool: () => store.getState().tool,
         getMode: () => store.getState().canvasMode,
         getLassoFilter: () => store.getState().lassoFilter,
-        getColor: () => store.getState().color,
-        getWidth: () => store.getState().width,
+        getColor: () => {
+          const s = store.getState();
+          return s.tool === "highlighter"
+            ? (s.highlighterColor ?? s.color)
+            : s.color;
+        },
+        getWidth: () => {
+          const s = store.getState();
+          return s.tool === "highlighter"
+            ? (s.highlighterWidth ?? s.width)
+            : s.width;
+        },
         getTextStyle: () => {
           const s = store.getState();
           return {

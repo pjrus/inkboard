@@ -872,10 +872,20 @@ export class CanvasInteractionController {
           : [e];
         const r = this.el.getBoundingClientRect();
         for (const ce of events.length ? events : [e]) {
-          const wp = screenToWorld(
+          let wp = screenToWorld(
             { x: ce.clientX - r.left, y: ce.clientY - r.top },
             this.viewport,
           );
+          if (ce.shiftKey && s.points.length > 0) {
+            const first = s.points[0];
+            const dx = Math.abs(wp.x - first.x);
+            const dy = Math.abs(wp.y - first.y);
+            if (dx >= dy) {
+              wp = { x: wp.x, y: first.y };
+            } else {
+              wp = { x: first.x, y: wp.y };
+            }
+          }
           const last = s.points[s.points.length - 1];
           if (
             last

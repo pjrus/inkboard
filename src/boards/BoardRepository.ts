@@ -19,6 +19,8 @@ export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   textAlign: "left",
   canvasMode: "edit",
   lassoFilter: DEFAULT_LASSO_FILTER,
+  highlighterColor: "#ffe838",
+  highlighterWidth: 4,
 };
 
 export const boardRepository = {

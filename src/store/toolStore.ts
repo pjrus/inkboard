@@ -112,6 +112,8 @@ interface ToolState extends ToolPreferences {
   toggleLassoFilter: (key: keyof LassoFilter) => void;
   setColor: (color: string) => void;
   setWidth: (width: number) => void;
+  setHighlighterColor: (color: string) => void;
+  setHighlighterWidth: (width: number) => void;
   setTextColor: (color: string) => void;
   setTextFont: (font: FontFamilyId) => void;
   setTextFontSize: (size: number) => void;
@@ -172,8 +174,24 @@ export const useToolStore = create<ToolState>((set, get) => ({
     if (!next.ink && !next.text && !next.images) return;
     set({ lassoFilter: next });
   },
-  setColor: (color) => set({ color, colorExplicit: true }),
-  setWidth: (width) => set({ width }),
+  setColor: (color) => {
+    if (get().tool === "highlighter") {
+      set({ color, colorExplicit: true, highlighterColor: color });
+    } else {
+      set({ color, colorExplicit: true });
+    }
+  },
+  setWidth: (width) => {
+    if (get().tool === "highlighter") {
+      set({ width, highlighterWidth: width });
+    } else {
+      set({ width });
+    }
+  },
+  setHighlighterColor: (highlighterColor) =>
+    set({ highlighterColor, color: highlighterColor }),
+  setHighlighterWidth: (highlighterWidth) =>
+    set({ highlighterWidth, width: highlighterWidth }),
   setTextColor: (textColor) => set({ textColor, textColorExplicit: true }),
   setTextFont: (textFont) => set({ textFont }),
   setTextFontSize: (textFontSize) => set({ textFontSize }),

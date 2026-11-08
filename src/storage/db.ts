@@ -68,6 +68,8 @@ export interface ToolPreferences {
   canvasMode: CanvasMode;
   /** Which object types the lasso may pick up. Also local-only. */
   lassoFilter: LassoFilter;
+  highlighterColor?: string;
+  highlighterWidth?: number;
 }
 
 export class InkboardDB extends Dexie {
