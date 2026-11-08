@@ -67,10 +67,6 @@ export function ThicknessPicker() {
     ? highlighterColor
     : penColor;
 
-  const currentWidth = wSummary
-    ? (wSummary.value ?? profiles[activeIndex])
-    : profiles[activeIndex];
-
   const handleSlotClick = (idx: number) => {
     if (selection && commands) {
       commands.setWidth(profiles[idx]);
@@ -264,14 +260,6 @@ export function ThicknessPicker() {
           );
         })}
       </div>
-
-      <span className="tb-thickness-badge" title="Current stroke width">
-        {mixed
-          ? "Mixed"
-          : isHighlighter
-          ? `${Math.round(currentWidth * HIGHLIGHTER_WIDTH_FACTOR)}px`
-          : `${currentWidth}px`}
-      </span>
     </div>
   );
 }
