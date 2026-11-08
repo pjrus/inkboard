@@ -3,7 +3,9 @@ import {
   computeBounds,
   simplifyPoints,
   splitStroke,
+  strokeAlpha,
   strokeHitTest,
+  strokeOptions,
   strokeOutline,
   strokeSegmentHitTest,
 } from "../../canvas/strokeGeometry";
@@ -74,5 +76,15 @@ describe("stroke geometry", () => {
       false,
     );
     expect(outline.length).toBeGreaterThan(4);
+  });
+});
+
+describe("highlighter", () => {
+  it("has a constant-width outline and is translucent", () => {
+    expect(strokeOptions("highlighter", 10, true)).toMatchObject({
+      thinning: 0,
+      simulatePressure: false,
+    });
+    expect(strokeAlpha("highlighter")).toBeLessThan(strokeAlpha("pencil"));
   });
 });

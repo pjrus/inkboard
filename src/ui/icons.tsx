@@ -14,19 +14,72 @@ export const HandIcon = () => (
     <path d="M18 11V6.5a1.5 1.5 0 0 0-3 0V11m0-1.5V4.5a1.5 1.5 0 0 0-3 0V11m0-1.5v-3a1.5 1.5 0 0 0-3 0V13l-1.8-2.2a1.6 1.6 0 0 0-2.4 2.1L8 17.5C9.3 19.8 11 21 13.5 21c3.6 0 6-2.4 6-6v-4" />
   </svg>
 );
-export const PenIcon = () => (
+export const PenIcon = ({ color }: { color?: string; } = {}) => (
   <svg {...base} aria-hidden="true">
     <path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z" />
     <path d="M13.5 6.5l3 3" />
+    {color && <circle cx="5.5" cy="18.5" r="1.5" fill={color} stroke="none" />}
   </svg>
 );
-export const PencilIcon = () => (
+export const PencilIcon = ({ color }: { color?: string; } = {}) => (
   <svg {...base} aria-hidden="true">
     <path d="M3 21l3.2-.8L18 8.4l-2.4-2.4L3.8 17.8 3 21z" />
     <path d="M15.6 6l2.4 2.4M13 8.6l2.4 2.4" />
     <path d="M17.2 4.4l1.1-1.1a1.7 1.7 0 0 1 2.4 2.4l-1.1 1.1" />
+    {color && <circle cx="4.2" cy="19.8" r="1.2" fill={color} stroke="none" />}
   </svg>
 );
+export const HighlighterIcon = ({ color }: { color?: string; } = {}) => {
+  if (color) {
+    return (
+      <svg
+        width={20}
+        height={20}
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M10 8.5L14.5 4C15.1 3.4 16.1 3.4 16.7 4L19 6.3C19.6 6.9 19.6 7.9 19 8.5L14.5 13L10 8.5Z"
+          fill={color}
+          stroke="currentColor"
+          strokeWidth={1.4}
+          strokeLinejoin="round"
+        />
+        <path
+          d="M10 8.5L14.5 13L12.5 15L8 10.5L10 8.5Z"
+          fill="#4a4d52"
+          stroke="currentColor"
+          strokeWidth={1.4}
+          strokeLinejoin="round"
+        />
+        <path
+          d="M8 10.5L12.5 15L10 16.8L6.2 14.7L8 10.5Z"
+          fill={color}
+          stroke="currentColor"
+          strokeWidth={1.4}
+          strokeLinejoin="round"
+        />
+        <line
+          x1="6"
+          y1="20"
+          x2="15"
+          y2="20"
+          stroke={color}
+          strokeWidth={2.4}
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg {...base} aria-hidden="true">
+      <path d="M9 11l6 6-4 4H7v-4l2-6z" />
+      <path d="M9 11l6-6 4 4-4 8" />
+      <path d="M3 21h4" />
+    </svg>
+  );
+};
 export const EraserIcon = () => (
   <svg {...base} aria-hidden="true">
     <path d="M6.5 19.5h11" />

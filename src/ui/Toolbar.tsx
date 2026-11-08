@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Tool } from "../document/schema";
 import { useToolStore } from "../store/toolStore";
 import { AppMenu } from "./AppMenu";
@@ -6,8 +6,10 @@ import { ColourPicker } from "./ColourPicker";
 import { FontSelector } from "./FontSelector";
 import { FontSizeSelector } from "./FontSizeSelector";
 import {
+  ChevronIcon,
   EraserIcon,
   HandIcon,
+  HighlighterIcon,
   LassoIcon,
   PdfIcon,
   PencilIcon,
@@ -16,10 +18,17 @@ import {
   TextIcon,
   UndoIcon,
 } from "./icons";
-import { LassoFilterControls } from "./LassoFilterControls";
 import { ModeSwitch } from "./ModeSwitch";
+import { Popover } from "./Popover";
 import { TextAlignmentControls } from "./TextAlignmentControls";
 import { ThicknessPicker } from "./ThicknessPicker";
+import { EraserPopover } from "./tool-popovers/EraserPopover";
+import { HandPopover } from "./tool-popovers/HandPopover";
+import { HighlighterPopover } from "./tool-popovers/HighlighterPopover";
+import { LassoPopover } from "./tool-popovers/LassoPopover";
+import { PencilPopover } from "./tool-popovers/PencilPopover";
+import { PenPopover } from "./tool-popovers/PenPopover";
+import { TextPopover } from "./tool-popovers/TextPopover";
 
 interface Props {
   onInsertPDF: (file: File) => void;
@@ -29,17 +38,24 @@ interface Props {
   onBackground: (colour: string) => void;
 }
 
-const TOOLS: {
+interface ToolDefinition {
   tool: Tool;
   label: string;
   key: string;
-  icon: () => JSX.Element;
-}[] = [
+  icon: (props?: { color?: string; }) => JSX.Element;
+}
+
+const TOOLS: ToolDefinition[] = [
   { tool: "pan", label: "Hand", key: "H", icon: HandIcon },
   { tool: "pen", label: "Pen", key: "P", icon: PenIcon },
   { tool: "pencil", label: "Pencil", key: "N", icon: PencilIcon },
+  {
+    tool: "highlighter",
+    label: "Highlighter",
+    key: "M",
+    icon: HighlighterIcon,
+  },
   { tool: "eraser", label: "Eraser", key: "E", icon: EraserIcon },
-  { tool: "strokeEraser", label: "Stroke eraser", key: "X", icon: EraserIcon },
   { tool: "lasso", label: "Lasso", key: "L", icon: LassoIcon },
   { tool: "text", label: "Text", key: "T", icon: TextIcon },
 ];
@@ -57,12 +73,17 @@ export function Toolbar({
   const canUndo = useToolStore((s) => s.canUndo);
   const canRedo = useToolStore((s) => s.canRedo);
   const selection = useToolStore((s) => s.selection);
+
+  // Colors for tool icon tinting
+  const penColor = useToolStore((s) => s.color);
+  const highlighterColor = useToolStore((s) => s.highlighterColor ?? s.color);
+
   const fileRef = useRef<HTMLInputElement>(null);
+  const [openPopover, setOpenPopover] = useState<Tool | null>(null);
 
   /**
    * View mode strips the toolbar back to navigation: no tools, no property
-   * pickers, no undo, no import. Nothing on the board can be changed from
-   * here, which is the entire point of the mode.
+   * pickers, no undo, no import.
    */
   if (canvasMode === "view") {
     return (
@@ -80,59 +101,154 @@ export function Toolbar({
     );
   }
 
-  // Which property controls make sense right now.
-  //
-  // Colour applies to everything, so it is always offered. Thickness appears
-  // whenever the selection contains ink. Font, size and alignment appear only
-  // for a text-only selection: a font picker over a selection that includes
-  // handwriting would be offering something it cannot change.
   const hasSelection = selection !== null;
   const showStrokeControls = hasSelection
     ? selection.strokeIds.length > 0
-    : tool !== "text";
+    : tool === "pen" || tool === "pencil" || tool === "highlighter";
   const showTextControls = hasSelection
     ? selection.textIds.length > 0 && selection.strokeIds.length === 0
-    : tool === "text";
+    : false;
+
+  const isToolActive = (t: Tool) => {
+    if (t === "eraser") return tool === "eraser" || tool === "strokeEraser";
+    return tool === t;
+  };
+
+  const handleToolClick = (targetTool: Tool) => {
+    const active = isToolActive(targetTool);
+    if (!active) {
+      setTool(targetTool);
+      setOpenPopover(null);
+    } else {
+      // Clicking already active tool toggles its GoodNotes popover
+      setOpenPopover((prev) => (prev === targetTool ? null : targetTool));
+    }
+  };
+
+  const renderToolPopover = (t: Tool) => {
+    const close = () => setOpenPopover(null);
+    switch (t) {
+      case "highlighter":
+        return <HighlighterPopover onClose={close} />;
+      case "pen":
+        return <PenPopover onClose={close} />;
+      case "pencil":
+        return <PencilPopover onClose={close} />;
+      case "eraser":
+      case "strokeEraser":
+        return <EraserPopover onClose={close} />;
+      case "lasso":
+        return <LassoPopover onClose={close} />;
+      case "text":
+        return <TextPopover onClose={close} />;
+      case "pan":
+        return <HandPopover onClose={close} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Drawing tools">
       <ModeSwitch />
       <span className="tb-sep" />
+
+      {/* Tool items with GoodNotes style pills and popovers */}
       <div className="tb-group" role="radiogroup" aria-label="Tool">
-        {TOOLS.map((t) => (
-          <button
-            key={t.tool}
-            type="button"
-            role="radio"
-            aria-checked={tool === t.tool}
-            aria-label={`${t.label} (${t.key})`}
-            title={`${t.label} (${t.key})`}
-            className={"tb-btn" + (tool === t.tool ? " active" : "")}
-            onClick={() => setTool(t.tool)}
-          >
-            <t.icon />
-          </button>
-        ))}
+        {TOOLS.map((t) => {
+          const active = isToolActive(t.tool);
+          const isPopoverOpen = openPopover === t.tool;
+          const displayColor = t.tool === "highlighter"
+            ? highlighterColor
+            : t.tool === "pen" || t.tool === "pencil"
+            ? penColor
+            : undefined;
+
+          const activeLabel = t.tool === "eraser" && tool === "strokeEraser"
+            ? "Object Eraser"
+            : t.label;
+
+          return (
+            <div className="tb-anchor" key={t.tool}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-haspopup="dialog"
+                aria-expanded={isPopoverOpen}
+                aria-label={`${activeLabel} (${t.key})${
+                  active ? " - click to open options" : ""
+                }`}
+                title={`${activeLabel} (${t.key})${
+                  active ? " · Click for options" : ""
+                }`}
+                className={"tb-tool-btn" + (active ? " active" : "")}
+                onClick={() => handleToolClick(t.tool)}
+              >
+                <t.icon color={displayColor} />
+                {active && (
+                  <span
+                    className={"tb-tool-chevron"
+                      + (isPopoverOpen ? " open" : "")}
+                    aria-hidden="true"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenPopover((
+                        prev,
+                      ) => (prev === t.tool ? null : t.tool));
+                    }}
+                  >
+                    <ChevronIcon />
+                  </span>
+                )}
+              </button>
+
+              {isPopoverOpen && (
+                <Popover
+                  open={true}
+                  onClose={() => setOpenPopover(null)}
+                  label={`${t.label} options`}
+                >
+                  {renderToolPopover(t.tool)}
+                </Popover>
+              )}
+            </div>
+          );
+        })}
       </div>
-      {tool === "lasso" && (
-        <>
-          <span className="tb-sep" />
-          <LassoFilterControls />
-        </>
-      )}
+
+      {/* Toolbar stroke thickness (or contextual selection controls) */}
+      {hasSelection
+        ? (
+          <>
+            <span className="tb-sep" />
+            <div
+              className="tb-group tb-group-selection"
+              title="Editing the selection"
+            >
+              <span className="tb-badge">Selection</span>
+              <ColourPicker />
+              {showStrokeControls && <ThicknessPicker />}
+              {showTextControls && <FontSelector />}
+              {showTextControls && <FontSizeSelector />}
+              {showTextControls && <TextAlignmentControls />}
+            </div>
+          </>
+        )
+        : showStrokeControls
+        ? (
+          <>
+            <span className="tb-sep" />
+            <div className="tb-group" aria-label="Stroke thickness">
+              <ThicknessPicker />
+            </div>
+          </>
+        )
+        : null}
+
       <span className="tb-sep" />
-      <div
-        className={"tb-group" + (hasSelection ? " tb-group-selection" : "")}
-        title={hasSelection ? "Editing the selection" : undefined}
-      >
-        {hasSelection && <span className="tb-badge">Selection</span>}
-        <ColourPicker />
-        {showStrokeControls && <ThicknessPicker />}
-        {showTextControls && <FontSelector />}
-        {showTextControls && <FontSizeSelector />}
-        {showTextControls && <TextAlignmentControls />}
-      </div>
-      <span className="tb-sep" />
+
+      {/* Undo & Redo */}
       <div className="tb-group">
         <button
           type="button"
@@ -155,7 +271,10 @@ export function Toolbar({
           <RedoIcon />
         </button>
       </div>
+
       <span className="tb-sep" />
+
+      {/* PDF and Menu */}
       <div className="tb-group">
         <button
           type="button"

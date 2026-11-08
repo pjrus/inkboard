@@ -18,11 +18,23 @@ export function strokeOptions(
     last: true,
     simulatePressure: !hasPressure,
   };
+  if (tool === "highlighter") {
+    // Constant width: a marker does not taper with speed or pressure.
+    return { ...base, thinning: 0, simulatePressure: false };
+  }
   if (tool === "pencil") {
     // Slightly more responsive to speed than the pen, but never vanishing.
     return { ...base, thinning: 0.4, smoothing: 0.4, streamline: 0.35 };
   }
   return { ...base, thinning: 0.5 };
+}
+
+/** Highlighter nib is this many times the chosen thickness. */
+export const HIGHLIGHTER_WIDTH_FACTOR = 5;
+
+/** Opacity a stroke is painted at; the highlighter also multiplies. */
+export function strokeAlpha(tool: PenTool): number {
+  return tool === "highlighter" ? 0.4 : tool === "pencil" ? 0.82 : 1;
 }
 
 /** Outline polygon (world units) for a stroke. */

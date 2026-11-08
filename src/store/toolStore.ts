@@ -112,6 +112,17 @@ interface ToolState extends ToolPreferences {
   toggleLassoFilter: (key: keyof LassoFilter) => void;
   setColor: (color: string) => void;
   setWidth: (width: number) => void;
+  setHighlighterColor: (color: string) => void;
+  setHighlighterWidth: (width: number) => void;
+  setThicknessProfile: (
+    tool: "pen" | "pencil" | "highlighter",
+    index: number,
+  ) => void;
+  updateThicknessProfile: (
+    tool: "pen" | "pencil" | "highlighter",
+    index: number,
+    value: number,
+  ) => void;
   setTextColor: (color: string) => void;
   setTextFont: (font: FontFamilyId) => void;
   setTextFontSize: (size: number) => void;
@@ -148,10 +159,24 @@ export const useToolStore = create<ToolState>((set, get) => ({
   canRedo: false,
 
   setTool: (tool) => {
-    set({
+    const s = get();
+    const patch: Partial<ToolState> = {
       tool,
-      selectedObjectId: tool === "pan" ? get().selectedObjectId : null,
-    });
+      selectedObjectId: tool === "pan" ? s.selectedObjectId : null,
+    };
+    if (tool === "highlighter") {
+      const idx = s.highlighterThicknessIndex ?? 1;
+      const w = (s.highlighterThicknessProfiles ?? [2, 4, 8])[idx];
+      patch.highlighterWidth = w;
+      patch.width = w;
+    } else if (tool === "pen") {
+      const idx = s.penThicknessIndex ?? 1;
+      patch.width = (s.penThicknessProfiles ?? [1.5, 3, 6])[idx];
+    } else if (tool === "pencil") {
+      const idx = s.pencilThicknessIndex ?? 1;
+      patch.width = (s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5])[idx];
+    }
+    set(patch);
   },
   setCanvasMode: (canvasMode) => {
     if (get().canvasMode === canvasMode) return;
@@ -172,8 +197,79 @@ export const useToolStore = create<ToolState>((set, get) => ({
     if (!next.ink && !next.text && !next.images) return;
     set({ lassoFilter: next });
   },
-  setColor: (color) => set({ color, colorExplicit: true }),
-  setWidth: (width) => set({ width }),
+  setColor: (color) => {
+    if (get().tool === "highlighter") {
+      set({ color, colorExplicit: true, highlighterColor: color });
+    } else {
+      set({ color, colorExplicit: true });
+    }
+  },
+  setWidth: (width) => {
+    if (get().tool === "highlighter") {
+      set({ width, highlighterWidth: width });
+    } else {
+      set({ width });
+    }
+  },
+  setHighlighterColor: (highlighterColor) =>
+    set({ highlighterColor, color: highlighterColor }),
+  setHighlighterWidth: (highlighterWidth) =>
+    set({ highlighterWidth, width: highlighterWidth }),
+  setThicknessProfile: (toolName, index) => {
+    const s = get();
+    if (toolName === "highlighter") {
+      const profiles = s.highlighterThicknessProfiles ?? [2, 4, 8];
+      const w = profiles[index];
+      set({
+        highlighterThicknessIndex: index,
+        highlighterWidth: w,
+        width: w,
+      });
+    } else if (toolName === "pencil") {
+      const profiles = s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5];
+      const w = profiles[index];
+      set({ pencilThicknessIndex: index, width: w });
+    } else {
+      const profiles = s.penThicknessProfiles ?? [1.5, 3, 6];
+      const w = profiles[index];
+      set({ penThicknessIndex: index, width: w });
+    }
+  },
+  updateThicknessProfile: (toolName, index, value) => {
+    const s = get();
+    if (toolName === "highlighter") {
+      const profiles = [
+        ...(s.highlighterThicknessProfiles ?? [2, 4, 8]),
+      ] as [number, number, number];
+      profiles[index] = value;
+      set({
+        highlighterThicknessProfiles: profiles,
+        highlighterThicknessIndex: index,
+        highlighterWidth: value,
+        width: value,
+      });
+    } else if (toolName === "pencil") {
+      const profiles = [
+        ...(s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5]),
+      ] as [number, number, number];
+      profiles[index] = value;
+      set({
+        pencilThicknessProfiles: profiles,
+        pencilThicknessIndex: index,
+        width: value,
+      });
+    } else {
+      const profiles = [
+        ...(s.penThicknessProfiles ?? [1.5, 3, 6]),
+      ] as [number, number, number];
+      profiles[index] = value;
+      set({
+        penThicknessProfiles: profiles,
+        penThicknessIndex: index,
+        width: value,
+      });
+    }
+  },
   setTextColor: (textColor) => set({ textColor, textColorExplicit: true }),
   setTextFont: (textFont) => set({ textFont }),
   setTextFontSize: (textFontSize) => set({ textFontSize }),

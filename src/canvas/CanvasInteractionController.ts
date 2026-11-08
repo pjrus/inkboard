@@ -31,6 +31,7 @@ import {
 import { beginPinch, type PinchStart, updatePinch } from "./gestures";
 import {
   computeBounds,
+  HIGHLIGHTER_WIDTH_FACTOR,
   polygonBounds,
   simplifyPoints,
   splitStroke,
@@ -527,7 +528,10 @@ export class CanvasInteractionController {
     else if (!this.editable) cursor = "grab";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
     else if (tool === "text") cursor = "text";
-    else if (tool === "pen" || tool === "pencil" || tool === "lasso") {
+    else if (
+      tool === "pen" || tool === "pencil" || tool === "highlighter"
+      || tool === "lasso"
+    ) {
       cursor = "crosshair";
     } else if (tool === "eraser" || tool === "strokeEraser") cursor = "none";
     this.el.style.cursor = cursor;
@@ -741,8 +745,10 @@ export class CanvasInteractionController {
       return;
     }
 
-    if (tool === "pen" || tool === "pencil") {
+    if (tool === "pen" || tool === "pencil" || tool === "highlighter") {
       const hasPressure = e.pointerType === "pen";
+      const width = this.host.getWidth()
+        * (tool === "highlighter" ? HIGHLIGHTER_WIDTH_FACTOR : 1);
       const points: StrokePoint[] = [
         { x: wp.x, y: wp.y, pressure: hasPressure ? e.pressure : 0.5 },
       ];
@@ -752,14 +758,14 @@ export class CanvasInteractionController {
         points,
         tool,
         color: this.host.getColor(),
-        width: this.host.getWidth(),
+        width,
         hasPressure,
       };
       this.renderer.activeStroke = {
         points,
         tool,
         color: this.host.getColor(),
-        width: this.host.getWidth(),
+        width,
         hasPressure,
       };
       this.renderer.invalidateOverlay();
@@ -866,10 +872,20 @@ export class CanvasInteractionController {
           : [e];
         const r = this.el.getBoundingClientRect();
         for (const ce of events.length ? events : [e]) {
-          const wp = screenToWorld(
+          let wp = screenToWorld(
             { x: ce.clientX - r.left, y: ce.clientY - r.top },
             this.viewport,
           );
+          if (ce.shiftKey && s.points.length > 0) {
+            const first = s.points[0];
+            const dx = Math.abs(wp.x - first.x);
+            const dy = Math.abs(wp.y - first.y);
+            if (dx >= dy) {
+              wp = { x: wp.x, y: first.y };
+            } else {
+              wp = { x: first.x, y: wp.y };
+            }
+          }
           const last = s.points[s.points.length - 1];
           if (
             last
