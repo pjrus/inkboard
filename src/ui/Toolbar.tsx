@@ -18,7 +18,6 @@ import {
   TextIcon,
   UndoIcon,
 } from "./icons";
-import { LassoFilterControls } from "./LassoFilterControls";
 import { ModeSwitch } from "./ModeSwitch";
 import { Popover } from "./Popover";
 import { TextAlignmentControls } from "./TextAlignmentControls";
@@ -61,10 +60,6 @@ const TOOLS: ToolDefinition[] = [
   { tool: "text", label: "Text", key: "T", icon: TextIcon },
 ];
 
-const QUICK_HIGHLIGHTER_COLORS = ["#ffe838", "#51cf66", "#ff6b81"];
-const QUICK_PEN_COLORS = ["#1b1b1f", "#2b6de9", "#d93025"];
-const QUICK_PENCIL_COLORS = ["#1b1b1f", "#5f6368", "#c62828"];
-
 export function Toolbar({
   onInsertPDF,
   onUndo,
@@ -79,12 +74,9 @@ export function Toolbar({
   const canRedo = useToolStore((s) => s.canRedo);
   const selection = useToolStore((s) => s.selection);
 
-  // Colors for tool-specific display
+  // Colors for tool icon tinting
   const penColor = useToolStore((s) => s.color);
-  const setPenColor = useToolStore((s) => s.setColor);
-
   const highlighterColor = useToolStore((s) => s.highlighterColor ?? s.color);
-  const setHighlighterColor = useToolStore((s) => s.setHighlighterColor);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [openPopover, setOpenPopover] = useState<Tool | null>(null);
@@ -112,10 +104,10 @@ export function Toolbar({
   const hasSelection = selection !== null;
   const showStrokeControls = hasSelection
     ? selection.strokeIds.length > 0
-    : tool !== "text";
+    : tool === "pen" || tool === "pencil" || tool === "highlighter";
   const showTextControls = hasSelection
     ? selection.textIds.length > 0 && selection.strokeIds.length === 0
-    : tool === "text";
+    : false;
 
   const isToolActive = (t: Tool) => {
     if (t === "eraser") return tool === "eraser" || tool === "strokeEraser";
@@ -225,167 +217,34 @@ export function Toolbar({
         })}
       </div>
 
-      <span className="tb-sep" />
-
-      {/* Selection controls OR Quick GoodNotes swatches for active tool */}
+      {/* Toolbar stroke thickness (or contextual selection controls) */}
       {hasSelection
         ? (
-          <div
-            className="tb-group tb-group-selection"
-            title="Editing the selection"
-          >
-            <span className="tb-badge">Selection</span>
-            <ColourPicker />
-            {showStrokeControls && <ThicknessPicker />}
-            {showTextControls && <FontSelector />}
-            {showTextControls && <FontSizeSelector />}
-            {showTextControls && <TextAlignmentControls />}
-          </div>
+          <>
+            <span className="tb-sep" />
+            <div
+              className="tb-group tb-group-selection"
+              title="Editing the selection"
+            >
+              <span className="tb-badge">Selection</span>
+              <ColourPicker />
+              {showStrokeControls && <ThicknessPicker />}
+              {showTextControls && <FontSelector />}
+              {showTextControls && <FontSizeSelector />}
+              {showTextControls && <TextAlignmentControls />}
+            </div>
+          </>
         )
-        : (
-          <div className="tb-group" aria-label="Quick options">
-            {tool === "highlighter" && (
-              <>
-                <div
-                  className="tb-quick-swatches"
-                  role="radiogroup"
-                  aria-label="Quick highlighter colors"
-                >
-                  {QUICK_HIGHLIGHTER_COLORS.map((c) => {
-                    const isCur =
-                      highlighterColor.toLowerCase() === c.toLowerCase();
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        role="radio"
-                        aria-checked={isCur}
-                        title={`Quick color: ${c}`}
-                        className={"quick-swatch-btn"
-                          + (isCur ? " active" : "")}
-                        onClick={() => setHighlighterColor(c)}
-                      >
-                        <span
-                          className="quick-swatch-dot"
-                          style={{ background: c }}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-                <ThicknessPicker />
-              </>
-            )}
-
-            {tool === "pen" && (
-              <>
-                <div
-                  className="tb-quick-swatches"
-                  role="radiogroup"
-                  aria-label="Quick pen colors"
-                >
-                  {QUICK_PEN_COLORS.map((c) => {
-                    const isCur = penColor.toLowerCase() === c.toLowerCase();
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        role="radio"
-                        aria-checked={isCur}
-                        title={`Quick color: ${c}`}
-                        className={"quick-swatch-btn"
-                          + (isCur ? " active" : "")}
-                        onClick={() => setPenColor(c)}
-                      >
-                        <span
-                          className="quick-swatch-dot"
-                          style={{ background: c }}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-                <ThicknessPicker />
-              </>
-            )}
-
-            {tool === "pencil" && (
-              <>
-                <div
-                  className="tb-quick-swatches"
-                  role="radiogroup"
-                  aria-label="Quick pencil colors"
-                >
-                  {QUICK_PENCIL_COLORS.map((c) => {
-                    const isCur = penColor.toLowerCase() === c.toLowerCase();
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        role="radio"
-                        aria-checked={isCur}
-                        title={`Quick lead color: ${c}`}
-                        className={"quick-swatch-btn"
-                          + (isCur ? " active" : "")}
-                        onClick={() => setPenColor(c)}
-                      >
-                        <span
-                          className="quick-swatch-dot"
-                          style={{ background: c }}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
-                <ThicknessPicker />
-              </>
-            )}
-
-            {(tool === "eraser" || tool === "strokeEraser") && (
-              <div className="segmented">
-                <button
-                  type="button"
-                  className={tool === "strokeEraser" ? "active" : ""}
-                  title="Object Eraser (X)"
-                  onClick={() => setTool("strokeEraser")}
-                >
-                  Object
-                </button>
-                <button
-                  type="button"
-                  className={tool === "eraser" ? "active" : ""}
-                  title="Precision Eraser (E)"
-                  onClick={() => setTool("eraser")}
-                >
-                  Precision
-                </button>
-              </div>
-            )}
-
-            {tool === "lasso" && <LassoFilterControls />}
-
-            {tool === "text" && (
-              <>
-                <FontSelector />
-                <FontSizeSelector />
-                <TextAlignmentControls />
-              </>
-            )}
-
-            {tool === "pan" && (
-              <button
-                type="button"
-                className="tb-btn tb-btn-text"
-                title="Click Hand icon for navigation options"
-                onClick={() =>
-                  setOpenPopover((p) => (p === "pan" ? null : "pan"))}
-              >
-                <span>Navigation Options</span>
-                <ChevronIcon />
-              </button>
-            )}
-          </div>
-        )}
+        : showStrokeControls
+        ? (
+          <>
+            <span className="tb-sep" />
+            <div className="tb-group" aria-label="Stroke thickness">
+              <ThicknessPicker />
+            </div>
+          </>
+        )
+        : null}
 
       <span className="tb-sep" />
 
