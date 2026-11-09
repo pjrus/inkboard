@@ -77,12 +77,9 @@ export interface ToolPreferences {
   pencilThicknessIndex?: number;
   highlighterThicknessProfiles?: [number, number, number];
   highlighterThicknessIndex?: number;
-  penColorProfiles?: string[];
-  penColorIndex?: number;
-  pencilColorProfiles?: string[];
-  pencilColorIndex?: number;
-  highlighterColorProfiles?: string[];
-  highlighterColorIndex?: number;
+  customPenColors?: string[];
+  customPencilColors?: string[];
+  customHighlighterColors?: string[];
 }
 
 export class InkboardDB extends Dexie {

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useToolStore } from "../../store/toolStore";
-import { HighlighterIcon } from "../icons";
+import { HighlighterIcon, PlusIcon } from "../icons";
 
 export const HIGHLIGHTER_PALETTE = [
   { name: "Neon Yellow", value: "#ffe838" },
@@ -19,6 +20,15 @@ interface Props {
 export function HighlighterPopover(_props: Props = {}) {
   const color = useToolStore((s) => s.highlighterColor ?? s.color);
   const setHighlighterColor = useToolStore((s) => s.setHighlighterColor);
+  const customColors = useToolStore((s) => s.customHighlighterColors ?? []);
+  const addCustomColor = useToolStore((s) => s.addCustomColor);
+  const removeCustomColor = useToolStore((s) => s.removeCustomColor);
+
+  const [inputColor, setInputColor] = useState(color);
+
+  const handleAdd = () => {
+    addCustomColor("highlighter", inputColor);
+  };
 
   return (
     <div
@@ -39,7 +49,7 @@ export function HighlighterPopover(_props: Props = {}) {
         <div
           className="swatch-grid swatch-grid-row"
           role="radiogroup"
-          aria-label="Highlighter color"
+          aria-label="Highlighter palette"
         >
           {HIGHLIGHTER_PALETTE.map((p) => {
             const isSelected = color.toLowerCase() === p.value.toLowerCase();
@@ -54,25 +64,71 @@ export function HighlighterPopover(_props: Props = {}) {
                 className={"swatch-btn" + (isSelected ? " selected" : "")}
                 onClick={() => {
                   setHighlighterColor(p.value);
+                  setInputColor(p.value);
                 }}
               >
                 <span className="swatch" style={{ background: p.value }} />
               </button>
             );
           })}
+          {customColors.map((c) => {
+            const isSelected = color.toLowerCase() === c.toLowerCase();
+            return (
+              <div key={c} className="custom-swatch-wrapper">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`Custom colour ${c}`}
+                  title={`Custom colour: ${c}`}
+                  className={"swatch-btn" + (isSelected ? " selected" : "")}
+                  onClick={() => {
+                    setHighlighterColor(c);
+                    setInputColor(c);
+                  }}
+                >
+                  <span className="swatch" style={{ background: c }} />
+                </button>
+                <button
+                  type="button"
+                  className="custom-swatch-remove"
+                  title={`Remove ${c}`}
+                  aria-label={`Remove ${c}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeCustomColor("highlighter", c);
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            );
+          })}
         </div>
+
         <div className="custom-colour">
-          <span>Custom colour</span>
+          <span>Add custom colour</span>
           <div className="custom-colour-row">
-            <span className="hex-display">{color}</span>
+            <span className="hex-display">{inputColor}</span>
             <input
               type="color"
               aria-label="Highlighter custom colour"
-              value={color}
+              value={inputColor}
               onChange={(e) => {
-                setHighlighterColor(e.target.value);
+                const val = e.target.value;
+                setInputColor(val);
+                setHighlighterColor(val);
               }}
             />
+            <button
+              type="button"
+              className="add-colour-btn"
+              title="Add to highlighter palette"
+              onClick={handleAdd}
+            >
+              <PlusIcon />
+              <span>Add</span>
+            </button>
           </div>
         </div>
       </div>
@@ -97,12 +153,6 @@ export function HighlighterPopover(_props: Props = {}) {
         <div className="tool-popover-hint">
           <span className="hint-bullet">●</span>
           <span>Translucent ink with multiply blend.</span>
-        </div>
-        <div className="tool-popover-hint">
-          <span className="hint-bullet">●</span>
-          <span>
-            Hold <strong>Shift</strong> while highlighting to snap straight.
-          </span>
         </div>
       </div>
     </div>

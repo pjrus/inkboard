@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { PALETTE, useToolStore } from "../../store/toolStore";
-import { PencilIcon } from "../icons";
+import { PencilIcon, PlusIcon } from "../icons";
 
 interface Props {
   onClose?: () => void;
@@ -8,6 +9,15 @@ interface Props {
 export function PencilPopover(_props: Props = {}) {
   const color = useToolStore((s) => s.pencilColor ?? s.color);
   const setPencilColor = useToolStore((s) => s.setPencilColor);
+  const customColors = useToolStore((s) => s.customPencilColors ?? []);
+  const addCustomColor = useToolStore((s) => s.addCustomColor);
+  const removeCustomColor = useToolStore((s) => s.removeCustomColor);
+
+  const [inputColor, setInputColor] = useState(color);
+
+  const handleAdd = () => {
+    addCustomColor("pencil", inputColor);
+  };
 
   return (
     <div className="tool-popover" role="dialog" aria-label="Pencil settings">
@@ -24,7 +34,7 @@ export function PencilPopover(_props: Props = {}) {
         <div
           className="swatch-grid swatch-grid-row"
           role="radiogroup"
-          aria-label="Pencil color"
+          aria-label="Lead colour"
         >
           {PALETTE.map((p) => {
             const isSelected = color.toLowerCase() === p.value.toLowerCase();
@@ -37,24 +47,73 @@ export function PencilPopover(_props: Props = {}) {
                 aria-label={p.name}
                 title={p.name}
                 className={"swatch-btn" + (isSelected ? " selected" : "")}
-                onClick={() => setPencilColor(p.value)}
+                onClick={() => {
+                  setPencilColor(p.value);
+                  setInputColor(p.value);
+                }}
               >
                 <span className="swatch" style={{ background: p.value }} />
               </button>
             );
           })}
+          {customColors.map((c) => {
+            const isSelected = color.toLowerCase() === c.toLowerCase();
+            return (
+              <div key={c} className="custom-swatch-wrapper">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`Custom colour ${c}`}
+                  title={`Custom colour: ${c}`}
+                  className={"swatch-btn" + (isSelected ? " selected" : "")}
+                  onClick={() => {
+                    setPencilColor(c);
+                    setInputColor(c);
+                  }}
+                >
+                  <span className="swatch" style={{ background: c }} />
+                </button>
+                <button
+                  type="button"
+                  className="custom-swatch-remove"
+                  title={`Remove ${c}`}
+                  aria-label={`Remove ${c}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeCustomColor("pencil", c);
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            );
+          })}
         </div>
+
         <div className="custom-colour">
-          <span>Custom colour</span>
+          <span>Add custom colour</span>
           <div className="custom-colour-row">
-            <span className="hex-display">{color}</span>
+            <span className="hex-display">{inputColor}</span>
             <input
               type="color"
               aria-label="Pencil custom colour"
-              value={color}
-              onChange={(e) =>
-                setPencilColor(e.target.value)}
+              value={inputColor}
+              onChange={(e) => {
+                const val = e.target.value;
+                setInputColor(val);
+                setPencilColor(val);
+              }}
             />
+            <button
+              type="button"
+              className="add-colour-btn"
+              title="Add to lead colours"
+              onClick={handleAdd}
+            >
+              <PlusIcon />
+              <span>Add</span>
+            </button>
           </div>
         </div>
       </div>

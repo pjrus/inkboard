@@ -28,12 +28,9 @@ export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   pencilThicknessIndex: 1,
   highlighterThicknessProfiles: [2, 4, 8],
   highlighterThicknessIndex: 1,
-  penColorProfiles: ["#1b1b1f", "#2b6de9", "#d93025"],
-  penColorIndex: 0,
-  pencilColorProfiles: ["#1b1b1f", "#5f6368", "#c62828"],
-  pencilColorIndex: 0,
-  highlighterColorProfiles: ["#ffe838", "#51cf66", "#ff6b81"],
-  highlighterColorIndex: 0,
+  customPenColors: [],
+  customPencilColors: [],
+  customHighlighterColors: [],
 };
 
 export const boardRepository = {

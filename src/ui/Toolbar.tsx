@@ -29,7 +29,6 @@ import { LassoPopover } from "./tool-popovers/LassoPopover";
 import { PencilPopover } from "./tool-popovers/PencilPopover";
 import { PenPopover } from "./tool-popovers/PenPopover";
 import { TextPopover } from "./tool-popovers/TextPopover";
-import { ToolColorPicker } from "./ToolColorPicker";
 
 interface Props {
   onInsertPDF: (file: File) => void;
@@ -243,8 +242,7 @@ export function Toolbar({
         ? (
           <>
             <span className="tb-sep" />
-            <div className="tb-group" aria-label="Stroke settings">
-              <ToolColorPicker />
+            <div className="tb-group" aria-label="Stroke thickness">
               <ThicknessPicker />
             </div>
           </>
