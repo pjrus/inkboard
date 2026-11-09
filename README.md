@@ -41,9 +41,11 @@ npm run build      # typecheck + production bundle in dist/
 - Mixed selections only offer the controls that apply to everything in them
 - Every edit is one undo step and flows through the CRDT; the selection itself stays local
 
-### PDF
+### Images and PDF
 
-- Import via PDF.js in a worker: each page is rasterised to a JPEG asset in IndexedDB and placed on the canvas as an ordinary image
+- Drag-and-drop image files (PNG, JPEG, WebP, GIF, SVG) or PDF documents directly onto the canvas
+- Paste screenshots and copied images directly from the system clipboard (Ctrl+V / Cmd+V)
+- Import PDF via PDF.js in a worker: each page is rasterised to a JPEG asset in IndexedDB and placed on the canvas as an ordinary image
 - Vertical or horizontal layout, switchable after import, with progressive rendering and a progress toast
 - Move or delete pages with the hand tool, or remove a whole document. Copies of a page are independent images: relayout and removal never touch them
 - Export back to PDF entirely in the browser as one continuous page sized to the content, with no page breaks. Handwriting exports as vector paths, text as real embedded text with the font bundled in, images as their stored JPEGs. No toolbars or selection outlines ever reach the file

@@ -6,7 +6,7 @@ from.
 
 **Suggested order:** persistent storage → backup/restore → clipboard → images
 → highlighter. Data safety first, then the things every annotation user
-reaches for on day one. The first three and the highlighter are done; images are next.
+reaches for on day one. All of these are done.
 
 ## Cheap wins
 
@@ -67,9 +67,10 @@ Mostly UI on top of plumbing that already exists.
 
 ## PDF and images
 
-- [ ] **Paste or drop images.** The `"image"` object type exists (imported PDF
-      pages are images); what is missing is getting a file or system
-      clipboard image into `db.assets` and onto the canvas.
+- [x] **Paste or drop images.** Paste screenshots/images from the system
+      clipboard or drop image files onto the canvas. Images are placed at the
+      drop point or viewport centre, scaled to reasonable world units, stored
+      in `db.assets`, and committed as `ImageObject`s.
 - [ ] **Vector PDF export.** When the original PDF was kept (`sourceAssetId`),
       export pages with pdf-lib's `embedPage` instead of the stored JPEG:
       sharper, smaller and with the original text still selectable. Only

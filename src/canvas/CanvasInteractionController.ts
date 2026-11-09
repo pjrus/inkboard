@@ -313,6 +313,26 @@ export class CanvasInteractionController {
     return ids.map((id) => this.doc.get(id)!);
   }
 
+  /** Select an object, choosing the single-item or group UI based on active tool. */
+  selectObject(id: string): void {
+    if (this.host.getTool() === "pan") {
+      this.setSelection(id);
+    } else {
+      this.selectedIds = new Set([id]);
+      this.publishSelection();
+    }
+  }
+
+  /** Select multiple objects (or single object) and publish the selection. */
+  selectObjects(ids: string[]): void {
+    if (ids.length === 1 && this.host.getTool() === "pan") {
+      this.setSelection(ids[0]);
+      return;
+    }
+    this.selectedIds = new Set(ids);
+    this.publishSelection();
+  }
+
   private publishSelection() {
     this.renderer.selectedIds = new Set(this.selectedIds);
     this.renderer.invalidateStatic();
