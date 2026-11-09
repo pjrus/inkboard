@@ -1687,6 +1687,15 @@ button {
 }
 
 /* ---- drag-and-drop overlay ------------------------------------------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .drag-drop-overlay {
   position: absolute;
   inset: 0;

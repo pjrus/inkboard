@@ -127,4 +127,27 @@ describe("importImage", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("infers mimeType from file extension when blob.type is empty", async () => {
+    vi.stubGlobal("createImageBitmap", async () => ({
+      width: 100,
+      height: 100,
+      close: () => {},
+    }));
+
+    const doc = new CanvasDocument();
+    const file = new File([new Uint8Array([1])], "diagram.png", { type: "" });
+
+    const img = await importImage({
+      boardId: "board-1",
+      doc,
+      fileOrBlob: file,
+      targetCenter: { x: 0, y: 0 },
+    });
+
+    const asset = await getDB().assets.get(img.assetId);
+    expect(asset?.mimeType).toBe("image/png");
+
+    vi.unstubAllGlobals();
+  });
 });

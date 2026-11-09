@@ -123,7 +123,20 @@ export async function importImage(
     let finalBlob: Blob = fileOrBlob;
     let rasterWidth = decoded.width;
     let rasterHeight = decoded.height;
-    let mimeType = fileOrBlob.type || "image/png";
+    let mimeType = fileOrBlob.type;
+    if (
+      !mimeType
+      && "name" in fileOrBlob
+      && typeof fileOrBlob.name === "string"
+    ) {
+      const ext = fileOrBlob.name.toLowerCase().split(".").pop();
+      if (ext === "png") mimeType = "image/png";
+      else if (ext === "jpg" || ext === "jpeg") mimeType = "image/jpeg";
+      else if (ext === "webp") mimeType = "image/webp";
+      else if (ext === "svg") mimeType = "image/svg+xml";
+      else if (ext === "gif") mimeType = "image/gif";
+    }
+    mimeType = mimeType || "image/png";
 
     const needsTranscode =
       (mimeType !== "image/png" && mimeType !== "image/jpeg")

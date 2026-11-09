@@ -271,11 +271,22 @@ export function BoardView({ boardId, onBack }: Props) {
 
       const items = Array.from(e.clipboardData?.items ?? []);
       const files = Array.from(e.clipboardData?.files ?? []);
-      const imageFile = files.find(isImageFile);
-      const imageItem = items.find((it) => it.type.startsWith("image/"));
-      const blob = imageFile ?? imageItem?.getAsFile();
+      const pdfFile = files.find(
+        (f) =>
+          f.type === "application/pdf"
+          || f.name.toLowerCase().endsWith(".pdf"),
+      );
+      if (pdfFile) {
+        e.preventDefault();
+        void onInsertPDF(pdfFile);
+        return;
+      }
 
-      if (blob) {
+      const imageFiles = files.filter(isImageFile);
+      const imageItem = items.find((it) => it.type.startsWith("image/"));
+      const blob = imageFiles[0] ?? imageItem?.getAsFile();
+
+      if (imageFiles.length > 0 || blob) {
         e.preventDefault();
         const { width, height } = h.renderer.getSize();
         const vp = h.renderer.getViewport();
@@ -296,22 +307,35 @@ export function BoardView({ boardId, onBack }: Props) {
           20 * pasteCountRef.current,
           vp,
         );
-        const target = {
+        const baseTarget = {
           x: center.x + offset,
           y: center.y + offset,
         };
 
-        try {
-          const obj = await importImage({
-            boardId: session.board.id,
-            doc: session.doc,
-            fileOrBlob: blob,
-            targetCenter: target,
-            onAssetReady: (id) => h.renderer.assetReady(id),
-          });
-          h.controller.selectObjects([obj.id]);
-        } catch (err) {
-          console.error("Paste image failed", err);
+        const targetsToImport = imageFiles.length > 0
+          ? imageFiles
+          : (blob ? [blob] : []);
+
+        const newIds: string[] = [];
+        for (let i = 0; i < targetsToImport.length; i++) {
+          try {
+            const obj = await importImage({
+              boardId: session.board.id,
+              doc: session.doc,
+              fileOrBlob: targetsToImport[i],
+              targetCenter: {
+                x: baseTarget.x + i * 30,
+                y: baseTarget.y + i * 30,
+              },
+              onAssetReady: (id) => h.renderer.assetReady(id),
+            });
+            newIds.push(obj.id);
+          } catch (err) {
+            console.error("Paste image failed", err);
+          }
+        }
+        if (newIds.length > 0) {
+          h.controller.selectObjects(newIds);
         }
         return;
       }
