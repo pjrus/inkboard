@@ -1,6 +1,6 @@
 import type { LassoFilter } from "../../document/schema";
 import { useToolStore } from "../../store/toolStore";
-import { LassoIcon } from "../icons";
+import { ImageIcon, LassoIcon, PenIcon, TextIcon } from "../icons";
 
 interface Props {
   onClose?: () => void;
@@ -9,25 +9,25 @@ interface Props {
 const FILTERS: {
   key: keyof LassoFilter;
   label: string;
-  icon: string;
+  Icon: React.ComponentType;
   hint: string;
 }[] = [
   {
     key: "ink",
     label: "Handwriting & Ink",
-    icon: "✍️",
+    Icon: PenIcon,
     hint: "Pen, pencil and highlighter strokes",
   },
   {
     key: "text",
     label: "Text Boxes",
-    icon: "🔤",
+    Icon: TextIcon,
     hint: "Typed collaborative text",
   },
   {
     key: "images",
     label: "Images & PDF Pages",
-    icon: "🖼️",
+    Icon: ImageIcon,
     hint: "Imported PDF documents and images",
   },
 ];
@@ -68,7 +68,9 @@ export function LassoPopover(_props: Props = {}) {
                   : f.hint}
               >
                 <div className="filter-toggle-info">
-                  <span className="filter-emoji">{f.icon}</span>
+                  <span className="filter-icon">
+                    <f.Icon />
+                  </span>
                   <div>
                     <div className="filter-label">{f.label}</div>
                     <div className="filter-hint">{f.hint}</div>
