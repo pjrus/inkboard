@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isTypingTarget } from "../canvas/CanvasInteractionController";
 import { type CanvasHandles, CanvasViewport } from "../canvas/CanvasViewport";
-import { DEFAULT_VIEWPORT, screenToWorld, zoomAt } from "../canvas/coordinates";
+import {
+  DEFAULT_VIEWPORT,
+  screenLengthToWorld,
+  screenToWorld,
+  zoomAt,
+} from "../canvas/coordinates";
+import { importImage, isImageFile } from "../canvas/imageImport";
 import type {
   CanvasObject,
   ImageObject,
@@ -52,6 +58,10 @@ export function BoardView({ boardId, onBack }: Props) {
   const selectedId = useToolStore((s) => s.selectedObjectId);
   const setImportProgress = useToolStore((s) => s.setImportProgress);
   const [docVersion, setDocVersion] = useState(0);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const dragCountRef = useRef(0);
+  const lastPasteTimeRef = useRef(0);
+  const pasteCountRef = useRef(0);
 
   // ---- open / close the board session ----------------------------------
   useEffect(() => {
@@ -150,13 +160,6 @@ export function BoardView({ boardId, onBack }: Props) {
             copyToClipboard(boardId, objs);
             return;
           }
-        } else if (k === "v" && !viewing && hasClipboard()) {
-          e.preventDefault();
-          void pasteClipboard(boardId, (objs) =>
-            // The board may have closed while image assets were being written.
-            handlesRef.current === h ? h.controller.insertCopies(objs) : [])
-            .catch((err) => console.error("Paste failed", err));
-          return;
         } else if (k === "d" && !viewing && h.controller.duplicateSelection()) {
           e.preventDefault();
           return;
@@ -255,8 +258,82 @@ export function BoardView({ boardId, onBack }: Props) {
         }
       }
     };
+
+    const onPaste = async (e: ClipboardEvent) => {
+      if (isTypingTarget(e.target)) return;
+      const store = useToolStore.getState();
+      const h = handlesRef.current;
+      if (
+        !session || !h || store.editingTextId || store.canvasMode === "view"
+      ) {
+        return;
+      }
+
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const files = Array.from(e.clipboardData?.files ?? []);
+      const imageFile = files.find(isImageFile);
+      const imageItem = items.find((it) => it.type.startsWith("image/"));
+      const blob = imageFile ?? imageItem?.getAsFile();
+
+      if (blob) {
+        e.preventDefault();
+        const { width, height } = h.renderer.getSize();
+        const vp = h.renderer.getViewport();
+        const center = screenToWorld(
+          { x: width / 2, y: height / 2 },
+          vp,
+        );
+
+        const now = Date.now();
+        if (now - lastPasteTimeRef.current < 4000) {
+          pasteCountRef.current++;
+        } else {
+          pasteCountRef.current = 0;
+        }
+        lastPasteTimeRef.current = now;
+
+        const offset = screenLengthToWorld(
+          20 * pasteCountRef.current,
+          vp,
+        );
+        const target = {
+          x: center.x + offset,
+          y: center.y + offset,
+        };
+
+        try {
+          const obj = await importImage({
+            boardId: session.board.id,
+            doc: session.doc,
+            fileOrBlob: blob,
+            targetCenter: target,
+            onAssetReady: (id) => h.renderer.assetReady(id),
+          });
+          h.controller.selectObjects([obj.id]);
+        } catch (err) {
+          console.error("Paste image failed", err);
+        }
+        return;
+      }
+
+      if (hasClipboard()) {
+        e.preventDefault();
+        void pasteClipboard(
+          session.board.id,
+          (objs) =>
+            handlesRef.current === h ? h.controller.insertCopies(objs) : [],
+        )
+          .catch((err) => console.error("Paste failed", err));
+        return;
+      }
+    };
+
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("paste", onPaste);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
@@ -419,14 +496,121 @@ export function BoardView({ boardId, onBack }: Props) {
     exportSelection = exportObjects.filter((o) => ids.has(o.id));
   }
 
+  const onDragEnter = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("Files")) {
+      dragCountRef.current++;
+      setIsDraggingOver(true);
+    }
+  };
+
+  const onDragLeave = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("Files")) {
+      dragCountRef.current = Math.max(0, dragCountRef.current - 1);
+      if (dragCountRef.current === 0) {
+        setIsDraggingOver(false);
+      }
+    }
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("Files")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+
+  const onDrop = async (e: React.DragEvent) => {
+    dragCountRef.current = 0;
+    setIsDraggingOver(false);
+    if (useToolStore.getState().canvasMode === "view") return;
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    e.preventDefault();
+
+    const pdfFile = files.find(
+      (f) =>
+        f.type === "application/pdf"
+        || f.name.toLowerCase().endsWith(".pdf"),
+    );
+    if (pdfFile) {
+      void onInsertPDF(pdfFile);
+      return;
+    }
+
+    const imageFiles = files.filter(isImageFile);
+    if (imageFiles.length > 0 && handlesRef.current && session) {
+      const h = handlesRef.current;
+      const vp = h.renderer.getViewport();
+      const dropWorld = screenToWorld({ x: e.clientX, y: e.clientY }, vp);
+      const newIds: string[] = [];
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        try {
+          const obj = await importImage({
+            boardId: session.board.id,
+            doc: session.doc,
+            fileOrBlob: file,
+            targetCenter: {
+              x: dropWorld.x + i * 30,
+              y: dropWorld.y + i * 30,
+            },
+            onAssetReady: (id) => h.renderer.assetReady(id),
+          });
+          newIds.push(obj.id);
+        } catch (err) {
+          console.error("Drop image import failed", err);
+          setImportProgress({
+            fileName: file.name,
+            done: 0,
+            total: 0,
+            error: `Could not load image ${file.name}.`,
+          });
+          setTimeout(() => setImportProgress(null), 4000);
+        }
+      }
+
+      if (newIds.length > 0) {
+        h.controller.selectObjects(newIds);
+      }
+    }
+  };
+
   return (
-    <div className="board-view">
+    <div
+      className="board-view"
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <CanvasViewport
         doc={session.doc}
         initialViewport={session.board.viewport ?? DEFAULT_VIEWPORT}
         onViewportChange={onViewportChange}
         onReady={(h) => (handlesRef.current = h)}
       />
+      {isDraggingOver && (
+        <div className="drag-drop-overlay">
+          <div className="drag-drop-card">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+              <circle cx="9" cy="9" r="2" />
+              <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+            </svg>
+            <span>Drop image or PDF to insert</span>
+          </div>
+        </div>
+      )}
       <header className="topbar">
         <button
           type="button"

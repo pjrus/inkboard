@@ -1685,3 +1685,36 @@ button {
   min-width: 32px;
   color: var(--text-muted);
 }
+
+/* ---- drag-and-drop overlay ------------------------------------------- */
+.drag-drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 100;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.drag-drop-card {
+  padding: 16px 24px;
+  background: var(--surface);
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.drag-drop-card svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}

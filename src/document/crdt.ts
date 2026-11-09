@@ -211,6 +211,20 @@ export class CanvasDocument {
     return obj;
   }
 
+  /** Add an image to the board as one undo step. */
+  addImage(
+    input: Omit<ImageObject, "id" | "type" | "createdAt"> & { id?: string; },
+  ): ImageObject {
+    const obj: ImageObject = {
+      ...input,
+      id: input.id ?? newId(),
+      type: "image",
+      createdAt: Date.now(),
+    };
+    this.transact(() => this.objects.set(obj.id, toYMap(obj)));
+    return obj;
+  }
+
   /** The live Y.Text behind a text object, for the inline editor to bind to. */
   getTextHandle(id: string): Y.Text | undefined {
     const m = this.objects.get(id);
