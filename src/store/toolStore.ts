@@ -111,9 +111,27 @@ interface ToolState extends ToolPreferences {
   setCanvasMode: (mode: CanvasMode) => void;
   toggleLassoFilter: (key: keyof LassoFilter) => void;
   setColor: (color: string) => void;
+  setPencilColor: (color: string) => void;
   setWidth: (width: number) => void;
   setHighlighterColor: (color: string) => void;
   setHighlighterWidth: (width: number) => void;
+  setColorProfile: (
+    tool: "pen" | "pencil" | "highlighter",
+    index: number,
+  ) => void;
+  updateColorProfile: (
+    tool: "pen" | "pencil" | "highlighter",
+    index: number,
+    color: string,
+  ) => void;
+  addColorProfile: (
+    tool: "pen" | "pencil" | "highlighter",
+    color: string,
+  ) => void;
+  removeColorProfile: (
+    tool: "pen" | "pencil" | "highlighter",
+    index: number,
+  ) => void;
   setThicknessProfile: (
     tool: "pen" | "pencil" | "highlighter",
     index: number,
@@ -165,16 +183,35 @@ export const useToolStore = create<ToolState>((set, get) => ({
       selectedObjectId: tool === "pan" ? s.selectedObjectId : null,
     };
     if (tool === "highlighter") {
-      const idx = s.highlighterThicknessIndex ?? 1;
-      const w = (s.highlighterThicknessProfiles ?? [2, 4, 8])[idx];
+      const tIdx = s.highlighterThicknessIndex ?? 1;
+      const w = (s.highlighterThicknessProfiles ?? [2, 4, 8])[tIdx];
       patch.highlighterWidth = w;
       patch.width = w;
+
+      const cIdx = s.highlighterColorIndex ?? 0;
+      const c =
+        (s.highlighterColorProfiles ?? ["#ffe838", "#51cf66", "#ff6b81"])[cIdx]
+          ?? "#ffe838";
+      patch.highlighterColor = c;
+      patch.color = c;
     } else if (tool === "pen") {
-      const idx = s.penThicknessIndex ?? 1;
-      patch.width = (s.penThicknessProfiles ?? [1.5, 3, 6])[idx];
+      const tIdx = s.penThicknessIndex ?? 1;
+      patch.width = (s.penThicknessProfiles ?? [1.5, 3, 6])[tIdx];
+
+      const cIdx = s.penColorIndex ?? 0;
+      const c = (s.penColorProfiles ?? ["#1b1b1f", "#2b6de9", "#d93025"])[cIdx]
+        ?? "#1b1b1f";
+      patch.color = c;
     } else if (tool === "pencil") {
-      const idx = s.pencilThicknessIndex ?? 1;
-      patch.width = (s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5])[idx];
+      const tIdx = s.pencilThicknessIndex ?? 1;
+      patch.width = (s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5])[tIdx];
+
+      const cIdx = s.pencilColorIndex ?? 0;
+      const c =
+        (s.pencilColorProfiles ?? ["#1b1b1f", "#5f6368", "#c62828"])[cIdx]
+          ?? (s.pencilColor ?? "#1b1b1f");
+      patch.pencilColor = c;
+      patch.color = c;
     }
     set(patch);
   },
@@ -198,11 +235,57 @@ export const useToolStore = create<ToolState>((set, get) => ({
     set({ lassoFilter: next });
   },
   setColor: (color) => {
-    if (get().tool === "highlighter") {
-      set({ color, colorExplicit: true, highlighterColor: color });
+    const s = get();
+    if (s.tool === "highlighter") {
+      const profiles = [
+        ...(s.highlighterColorProfiles ?? ["#ffe838", "#51cf66", "#ff6b81"]),
+      ];
+      const idx = s.highlighterColorIndex ?? 0;
+      if (profiles[idx]) profiles[idx] = color;
+      set({
+        color,
+        colorExplicit: true,
+        highlighterColor: color,
+        highlighterColorProfiles: profiles,
+      });
+    } else if (s.tool === "pencil") {
+      const profiles = [
+        ...(s.pencilColorProfiles ?? ["#1b1b1f", "#5f6368", "#c62828"]),
+      ];
+      const idx = s.pencilColorIndex ?? 0;
+      if (profiles[idx]) profiles[idx] = color;
+      set({
+        color,
+        colorExplicit: true,
+        pencilColor: color,
+        pencilColorProfiles: profiles,
+      });
     } else {
-      set({ color, colorExplicit: true });
+      const profiles = [
+        ...(s.penColorProfiles ?? ["#1b1b1f", "#2b6de9", "#d93025"]),
+      ];
+      const idx = s.penColorIndex ?? 0;
+      if (profiles[idx]) profiles[idx] = color;
+      set({
+        color,
+        colorExplicit: true,
+        penColorProfiles: profiles,
+      });
     }
+  },
+  setPencilColor: (pencilColor) => {
+    const s = get();
+    const profiles = [
+      ...(s.pencilColorProfiles ?? ["#1b1b1f", "#5f6368", "#c62828"]),
+    ];
+    const idx = s.pencilColorIndex ?? 0;
+    if (profiles[idx]) profiles[idx] = pencilColor;
+    set({
+      pencilColor,
+      color: pencilColor,
+      colorExplicit: true,
+      pencilColorProfiles: profiles,
+    });
   },
   setWidth: (width) => {
     if (get().tool === "highlighter") {
@@ -211,10 +294,191 @@ export const useToolStore = create<ToolState>((set, get) => ({
       set({ width });
     }
   },
-  setHighlighterColor: (highlighterColor) =>
-    set({ highlighterColor, color: highlighterColor }),
+  setHighlighterColor: (highlighterColor) => {
+    const s = get();
+    const profiles = [
+      ...(s.highlighterColorProfiles ?? ["#ffe838", "#51cf66", "#ff6b81"]),
+    ];
+    const idx = s.highlighterColorIndex ?? 0;
+    if (profiles[idx]) profiles[idx] = highlighterColor;
+    set({
+      highlighterColor,
+      color: highlighterColor,
+      highlighterColorProfiles: profiles,
+    });
+  },
   setHighlighterWidth: (highlighterWidth) =>
     set({ highlighterWidth, width: highlighterWidth }),
+  setColorProfile: (toolName, index) => {
+    const s = get();
+    if (toolName === "highlighter") {
+      const profiles = s.highlighterColorProfiles
+        ?? ["#ffe838", "#51cf66", "#ff6b81"];
+      const c = profiles[index] ?? profiles[0];
+      set({
+        highlighterColorIndex: index,
+        highlighterColor: c,
+        color: c,
+      });
+    } else if (toolName === "pencil") {
+      const profiles = s.pencilColorProfiles
+        ?? ["#1b1b1f", "#5f6368", "#c62828"];
+      const c = profiles[index] ?? profiles[0];
+      set({
+        pencilColorIndex: index,
+        pencilColor: c,
+        color: c,
+        colorExplicit: true,
+      });
+    } else {
+      const profiles = s.penColorProfiles ?? ["#1b1b1f", "#2b6de9", "#d93025"];
+      const c = profiles[index] ?? profiles[0];
+      set({
+        penColorIndex: index,
+        color: c,
+        colorExplicit: true,
+      });
+    }
+  },
+  updateColorProfile: (toolName, index, color) => {
+    const s = get();
+    if (toolName === "highlighter") {
+      const profiles = [
+        ...(s.highlighterColorProfiles ?? ["#ffe838", "#51cf66", "#ff6b81"]),
+      ];
+      profiles[index] = color;
+      set({
+        highlighterColorProfiles: profiles,
+        highlighterColorIndex: index,
+        highlighterColor: color,
+        color,
+      });
+    } else if (toolName === "pencil") {
+      const profiles = [
+        ...(s.pencilColorProfiles ?? ["#1b1b1f", "#5f6368", "#c62828"]),
+      ];
+      profiles[index] = color;
+      set({
+        pencilColorProfiles: profiles,
+        pencilColorIndex: index,
+        pencilColor: color,
+        color,
+        colorExplicit: true,
+      });
+    } else {
+      const profiles = [
+        ...(s.penColorProfiles ?? ["#1b1b1f", "#2b6de9", "#d93025"]),
+      ];
+      profiles[index] = color;
+      set({
+        penColorProfiles: profiles,
+        penColorIndex: index,
+        color,
+        colorExplicit: true,
+      });
+    }
+  },
+  addColorProfile: (toolName, color) => {
+    const s = get();
+    if (toolName === "highlighter") {
+      const profiles = [
+        ...(s.highlighterColorProfiles ?? ["#ffe838", "#51cf66", "#ff6b81"]),
+        color,
+      ];
+      const newIdx = profiles.length - 1;
+      set({
+        highlighterColorProfiles: profiles,
+        highlighterColorIndex: newIdx,
+        highlighterColor: color,
+        color,
+      });
+    } else if (toolName === "pencil") {
+      const profiles = [
+        ...(s.pencilColorProfiles ?? ["#1b1b1f", "#5f6368", "#c62828"]),
+        color,
+      ];
+      const newIdx = profiles.length - 1;
+      set({
+        pencilColorProfiles: profiles,
+        pencilColorIndex: newIdx,
+        pencilColor: color,
+        color,
+        colorExplicit: true,
+      });
+    } else {
+      const profiles = [
+        ...(s.penColorProfiles ?? ["#1b1b1f", "#2b6de9", "#d93025"]),
+        color,
+      ];
+      const newIdx = profiles.length - 1;
+      set({
+        penColorProfiles: profiles,
+        penColorIndex: newIdx,
+        color,
+        colorExplicit: true,
+      });
+    }
+  },
+  removeColorProfile: (toolName, index) => {
+    const s = get();
+    if (toolName === "highlighter") {
+      const profiles = [
+        ...(s.highlighterColorProfiles ?? ["#ffe838", "#51cf66", "#ff6b81"]),
+      ];
+      if (profiles.length <= 1) return;
+      profiles.splice(index, 1);
+      const curIdx = s.highlighterColorIndex ?? 0;
+      const nextIdx = curIdx >= profiles.length
+        ? profiles.length - 1
+        : (curIdx === index
+          ? Math.max(0, index - 1)
+          : (curIdx > index ? curIdx - 1 : curIdx));
+      const nextColor = profiles[nextIdx];
+      set({
+        highlighterColorProfiles: profiles,
+        highlighterColorIndex: nextIdx,
+        highlighterColor: nextColor,
+        color: nextColor,
+      });
+    } else if (toolName === "pencil") {
+      const profiles = [
+        ...(s.pencilColorProfiles ?? ["#1b1b1f", "#5f6368", "#c62828"]),
+      ];
+      if (profiles.length <= 1) return;
+      profiles.splice(index, 1);
+      const curIdx = s.pencilColorIndex ?? 0;
+      const nextIdx = curIdx >= profiles.length
+        ? profiles.length - 1
+        : (curIdx === index
+          ? Math.max(0, index - 1)
+          : (curIdx > index ? curIdx - 1 : curIdx));
+      const nextColor = profiles[nextIdx];
+      set({
+        pencilColorProfiles: profiles,
+        pencilColorIndex: nextIdx,
+        pencilColor: nextColor,
+        color: nextColor,
+      });
+    } else {
+      const profiles = [
+        ...(s.penColorProfiles ?? ["#1b1b1f", "#2b6de9", "#d93025"]),
+      ];
+      if (profiles.length <= 1) return;
+      profiles.splice(index, 1);
+      const curIdx = s.penColorIndex ?? 0;
+      const nextIdx = curIdx >= profiles.length
+        ? profiles.length - 1
+        : (curIdx === index
+          ? Math.max(0, index - 1)
+          : (curIdx > index ? curIdx - 1 : curIdx));
+      const nextColor = profiles[nextIdx];
+      set({
+        penColorProfiles: profiles,
+        penColorIndex: nextIdx,
+        color: nextColor,
+      });
+    }
+  },
   setThicknessProfile: (toolName, index) => {
     const s = get();
     if (toolName === "highlighter") {

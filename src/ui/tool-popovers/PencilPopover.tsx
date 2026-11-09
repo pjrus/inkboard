@@ -6,8 +6,8 @@ interface Props {
 }
 
 export function PencilPopover(_props: Props = {}) {
-  const color = useToolStore((s) => s.color);
-  const setColor = useToolStore((s) => s.setColor);
+  const color = useToolStore((s) => s.pencilColor ?? s.color);
+  const setPencilColor = useToolStore((s) => s.setPencilColor);
 
   return (
     <div className="tool-popover" role="dialog" aria-label="Pencil settings">
@@ -37,7 +37,7 @@ export function PencilPopover(_props: Props = {}) {
                 aria-label={p.name}
                 title={p.name}
                 className={"swatch-btn" + (isSelected ? " selected" : "")}
-                onClick={() => setColor(p.value)}
+                onClick={() => setPencilColor(p.value)}
               >
                 <span className="swatch" style={{ background: p.value }} />
               </button>
@@ -53,7 +53,7 @@ export function PencilPopover(_props: Props = {}) {
               aria-label="Pencil custom colour"
               value={color}
               onChange={(e) =>
-                setColor(e.target.value)}
+                setPencilColor(e.target.value)}
             />
           </div>
         </div>

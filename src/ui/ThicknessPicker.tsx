@@ -36,6 +36,7 @@ export function ThicknessPicker() {
   const updateThicknessProfile = useToolStore((s) => s.updateThicknessProfile);
 
   const penColor = useToolStore((s) => s.color);
+  const pencilColor = useToolStore((s) => s.pencilColor ?? s.color);
   const highlighterColor = useToolStore((s) => s.highlighterColor ?? s.color);
 
   const rawSelection = useToolStore((s) => s.selection);
@@ -65,6 +66,8 @@ export function ThicknessPicker() {
     ? (cSummary.value ?? "#1b1b1f")
     : isHighlighter
     ? highlighterColor
+    : isPencil
+    ? pencilColor
     : penColor;
 
   const handleSlotClick = (idx: number) => {

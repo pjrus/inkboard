@@ -59,9 +59,9 @@ export function CanvasViewport({
         getLassoFilter: () => store.getState().lassoFilter,
         getColor: () => {
           const s = store.getState();
-          return s.tool === "highlighter"
-            ? (s.highlighterColor ?? s.color)
-            : s.color;
+          if (s.tool === "highlighter") return s.highlighterColor ?? s.color;
+          if (s.tool === "pencil") return s.pencilColor ?? s.color;
+          return s.color;
         },
         getWidth: () => {
           const s = store.getState();

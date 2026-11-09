@@ -70,12 +70,19 @@ export interface ToolPreferences {
   lassoFilter: LassoFilter;
   highlighterColor?: string;
   highlighterWidth?: number;
+  pencilColor?: string;
   penThicknessProfiles?: [number, number, number];
   penThicknessIndex?: number;
   pencilThicknessProfiles?: [number, number, number];
   pencilThicknessIndex?: number;
   highlighterThicknessProfiles?: [number, number, number];
   highlighterThicknessIndex?: number;
+  penColorProfiles?: string[];
+  penColorIndex?: number;
+  pencilColorProfiles?: string[];
+  pencilColorIndex?: number;
+  highlighterColorProfiles?: string[];
+  highlighterColorIndex?: number;
 }
 
 export class InkboardDB extends Dexie {

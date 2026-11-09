@@ -29,6 +29,7 @@ import { LassoPopover } from "./tool-popovers/LassoPopover";
 import { PencilPopover } from "./tool-popovers/PencilPopover";
 import { PenPopover } from "./tool-popovers/PenPopover";
 import { TextPopover } from "./tool-popovers/TextPopover";
+import { ToolColorPicker } from "./ToolColorPicker";
 
 interface Props {
   onInsertPDF: (file: File) => void;
@@ -76,6 +77,7 @@ export function Toolbar({
 
   // Colors for tool icon tinting
   const penColor = useToolStore((s) => s.color);
+  const pencilColor = useToolStore((s) => s.pencilColor ?? s.color);
   const highlighterColor = useToolStore((s) => s.highlighterColor ?? s.color);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -160,7 +162,9 @@ export function Toolbar({
           const isPopoverOpen = openPopover === t.tool;
           const displayColor = t.tool === "highlighter"
             ? highlighterColor
-            : t.tool === "pen" || t.tool === "pencil"
+            : t.tool === "pencil"
+            ? pencilColor
+            : t.tool === "pen"
             ? penColor
             : undefined;
 
@@ -239,7 +243,8 @@ export function Toolbar({
         ? (
           <>
             <span className="tb-sep" />
-            <div className="tb-group" aria-label="Stroke thickness">
+            <div className="tb-group" aria-label="Stroke settings">
+              <ToolColorPicker />
               <ThicknessPicker />
             </div>
           </>
