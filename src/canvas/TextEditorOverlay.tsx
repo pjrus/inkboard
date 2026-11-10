@@ -139,6 +139,14 @@ export function TextEditorOverlay({
           lineHeight: TEXT_LINE_HEIGHT,
           color: object.color,
           textAlign: object.textAlign ?? "left",
+          backgroundColor:
+            object.backgroundColor && object.backgroundColor !== "transparent"
+              ? object.backgroundColor
+              : "transparent",
+          borderRadius:
+            object.backgroundColor && object.backgroundColor !== "transparent"
+              ? 4
+              : 0,
           // Chrome is used only to hint the editable region; the outline is
           // drawn at a constant screen width regardless of zoom.
           outlineWidth: Math.max(0.5, 1 / vp.scale),

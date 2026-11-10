@@ -253,13 +253,18 @@ export class CanvasDocument {
     this.transactGrouped(() => m.set("updatedAt", Date.now()));
   }
 
-  /** Apply text properties (font, size, colour, alignment, width) in one undo step. */
+  /** Apply text properties (font, size, colour, background, alignment, width) in one undo step. */
   setTextProperties(
     ids: string[],
     patch: Partial<
       Pick<
         TextObject,
-        "fontFamily" | "fontSize" | "color" | "textAlign" | "width"
+        | "fontFamily"
+        | "fontSize"
+        | "color"
+        | "backgroundColor"
+        | "textAlign"
+        | "width"
       >
     >,
   ): void {
@@ -270,7 +275,14 @@ export class CanvasDocument {
         const m = this.objects.get(id);
         if (!m || m.get("type") !== "text") continue;
         for (const [k, v] of Object.entries(patch)) {
-          if (v !== undefined) m.set(k, v);
+          if (
+            k === "backgroundColor"
+            && (v === undefined || v === "" || v === "transparent")
+          ) {
+            m.delete(k);
+          } else if (v !== undefined) {
+            m.set(k, v);
+          }
         }
         m.set("updatedAt", now);
       }

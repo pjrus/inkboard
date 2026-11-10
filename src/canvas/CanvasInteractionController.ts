@@ -108,6 +108,7 @@ export interface TextStyle {
   fontSize: number;
   color: string;
   textAlign: TextAlign;
+  backgroundColor?: string;
 }
 
 export interface ControllerHost {
@@ -264,6 +265,12 @@ export class CanvasInteractionController {
     this.doc.setTextProperties(this.selectedIdsOfType("text"), { textAlign });
   }
 
+  setSelectionTextBackground(backgroundColor?: string) {
+    this.doc.setTextProperties(this.selectedIdsOfType("text"), {
+      backgroundColor,
+    });
+  }
+
   /**
    * Rotate the whole selection about its shared centre, as one undo step.
    * Used by the contextual toolbar's quarter-turn buttons; the drag handle
@@ -350,6 +357,7 @@ export class CanvasInteractionController {
       fonts: [],
       fontSizes: [],
       aligns: [],
+      backgroundColors: [],
     };
     for (const id of this.selectedIds) {
       const o = this.selectable(id);
@@ -367,6 +375,7 @@ export class CanvasInteractionController {
         sel.fonts.push(o.fontFamily);
         sel.fontSizes.push(o.fontSize);
         sel.aligns.push(o.textAlign ?? "left");
+        sel.backgroundColors.push(o.backgroundColor ?? "transparent");
       }
     }
     this.host.onObjectSelectionChange(sel.ids.length ? sel : null);
@@ -390,6 +399,7 @@ export class CanvasInteractionController {
         fontSize: style.fontSize,
         color: style.color,
         textAlign: style.textAlign,
+        backgroundColor: style.backgroundColor,
       },
       true,
     );

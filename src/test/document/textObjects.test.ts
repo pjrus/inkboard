@@ -167,4 +167,36 @@ describe("text objects in the CRDT", () => {
     expect(seen).toEqual(["update", "update"]);
     expect(textOf(d, t.id)).toBe("typed");
   });
+
+  it("supports customizing, updating, clearing, and cloning text background color", () => {
+    const d = new CanvasDocument();
+    const t = d.addText(
+      textInput({ text: "sticky", backgroundColor: "#fff9c4" }),
+    );
+    expect((d.get(t.id) as TextObject).backgroundColor).toBe("#fff9c4");
+
+    // Update background color
+    d.setTextProperties([t.id], { backgroundColor: "#dcfce7" });
+    expect((d.get(t.id) as TextObject).backgroundColor).toBe("#dcfce7");
+
+    // Undo update
+    d.undo();
+    expect((d.get(t.id) as TextObject).backgroundColor).toBe("#fff9c4");
+
+    // Redo update
+    d.redo();
+    expect((d.get(t.id) as TextObject).backgroundColor).toBe("#dcfce7");
+
+    // Clone preserves background
+    const [cloneId] = d.cloneObjects([d.get(t.id)!], 50, 50);
+    expect((d.get(cloneId) as TextObject).backgroundColor).toBe("#dcfce7");
+
+    // Clear background back to transparent
+    d.setTextProperties([t.id], { backgroundColor: "transparent" });
+    expect((d.get(t.id) as TextObject).backgroundColor).toBeUndefined();
+
+    // Undo clear
+    d.undo();
+    expect((d.get(t.id) as TextObject).backgroundColor).toBe("#dcfce7");
+  });
 });

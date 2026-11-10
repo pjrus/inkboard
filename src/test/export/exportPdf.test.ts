@@ -278,6 +278,40 @@ describe("PDF export", () => {
     );
   });
 
+  it("exports text boxes with custom background colours successfully", async () => {
+    const doc = new CanvasDocument();
+    doc.addText({
+      x: 100,
+      y: 100,
+      width: 200,
+      text: "Highlighted sticky note",
+      fontFamily: "inter",
+      fontSize: 20,
+      color: "#1b1b1f",
+      backgroundColor: "#fff9c4",
+    });
+    doc.addText({
+      x: 100,
+      y: 300,
+      width: 200,
+      text: "Rotated sticky note",
+      fontFamily: "roboto",
+      fontSize: 24,
+      color: "#ffffff",
+      backgroundColor: "#1e293b",
+      rotation: Math.PI / 4,
+    });
+    const result = await exportToPDF({
+      objects: doc.getAll(),
+      boardName: "Sticky Notes",
+    });
+    expect(result.bytes.byteLength).toBeGreaterThan(0);
+    const pages = await readBack(result.bytes);
+    expect(pages).toHaveLength(1);
+    expect(pages[0].text).toContain("Highlighted sticky note");
+    expect(pages[0].text).toContain("Rotated sticky note");
+  });
+
   it("refuses to export an empty board with a readable message", async () => {
     await expect(
       exportToPDF({ objects: [], boardName: "Empty" }),

@@ -138,6 +138,8 @@ export interface TextObject {
   /** World-space, so text zooms with strokes and pages. */
   fontSize: number;
   color: string;
+  /** Optional background fill colour for the text box. */
+  backgroundColor?: string;
   textAlign?: TextAlign;
   /** Radians, clockwise on screen, about the box's centre. */
   rotation?: number;

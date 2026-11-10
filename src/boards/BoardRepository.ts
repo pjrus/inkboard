@@ -17,6 +17,7 @@ export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   textFont: DEFAULT_FONT_FAMILY,
   textFontSize: DEFAULT_FONT_SIZE,
   textAlign: "left",
+  textBackgroundColor: undefined,
   canvasMode: "edit",
   lassoFilter: DEFAULT_LASSO_FILTER,
   highlighterColor: "#ffe838",

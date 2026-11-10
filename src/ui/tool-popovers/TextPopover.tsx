@@ -1,5 +1,10 @@
-import type { FontFamilyId } from "../../document/schema";
-import { PALETTE, useToolStore } from "../../store/toolStore";
+import type { FontFamilyId, TextAlign } from "../../document/schema";
+import { summarise } from "../../document/strokeCommands";
+import {
+  PALETTE,
+  TEXT_BACKGROUND_PALETTE,
+  useToolStore,
+} from "../../store/toolStore";
 import {
   AlignCenterIcon,
   AlignLeftIcon,
@@ -29,6 +34,45 @@ export function TextPopover(_props: Props = {}) {
   const setColor = useToolStore((s) => s.setTextColor);
   const align = useToolStore((s) => s.textAlign);
   const setAlign = useToolStore((s) => s.setTextAlign);
+  const textBg = useToolStore((s) => s.textBackgroundColor);
+  const setTextBg = useToolStore((s) => s.setTextBackgroundColor);
+
+  const selection = useToolStore((s) => s.selection);
+  const commands = useToolStore((s) => s.selectionCommands);
+  const editingSelection = !!selection && selection.textIds.length > 0;
+
+  const summaryBg = editingSelection && selection.backgroundColors
+    ? summarise(selection.backgroundColors)
+    : null;
+  const currentBg = editingSelection && summaryBg && !summaryBg.mixed
+    ? (summaryBg.value ?? undefined)
+    : textBg;
+  const isTransparent = !currentBg || currentBg === "transparent";
+
+  const applyFont = (f: FontFamilyId) => {
+    if (editingSelection && commands) commands.setFont(f);
+    setFont(f);
+  };
+
+  const applySize = (sz: number) => {
+    if (editingSelection && commands) commands.setFontSize(sz);
+    setSize(sz);
+  };
+
+  const applyColor = (c: string) => {
+    if (editingSelection && commands) commands.setColor(c);
+    setColor(c);
+  };
+
+  const applyAlign = (a: TextAlign) => {
+    if (editingSelection && commands) commands.setAlign(a);
+    setAlign(a);
+  };
+
+  const applyBg = (bg?: string) => {
+    if (editingSelection && commands) commands.setTextBackground(bg);
+    setTextBg(bg);
+  };
 
   return (
     <div className="tool-popover" role="dialog" aria-label="Text settings">
@@ -53,7 +97,7 @@ export function TextPopover(_props: Props = {}) {
                 aria-checked={isSelected}
                 className={"font-pill font-" + f.id
                   + (isSelected ? " selected" : "")}
-                onClick={() => setFont(f.id)}
+                onClick={() => applyFont(f.id)}
               >
                 <span className="font-pill-name">{f.label}</span>
                 <span className="font-pill-sample">{f.sample}</span>
@@ -78,7 +122,7 @@ export function TextPopover(_props: Props = {}) {
                 role="radio"
                 aria-checked={isSelected}
                 className={"font-size-pill" + (isSelected ? " selected" : "")}
-                onClick={() => setSize(sz)}
+                onClick={() => applySize(sz)}
               >
                 {sz}
               </button>
@@ -105,7 +149,7 @@ export function TextPopover(_props: Props = {}) {
                 aria-label={p.name}
                 title={p.name}
                 className={"swatch-btn" + (isSelected ? " selected" : "")}
-                onClick={() => setColor(p.value)}
+                onClick={() => applyColor(p.value)}
               >
                 <span className="swatch" style={{ background: p.value }} />
               </button>
@@ -120,7 +164,60 @@ export function TextPopover(_props: Props = {}) {
               type="color"
               aria-label="Text custom colour"
               value={color}
-              onChange={(e) => setColor(e.target.value)}
+              onChange={(e) => applyColor(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="tool-popover-section">
+        <div className="tool-popover-label">
+          <span>Background Colour</span>
+          {editingSelection && summaryBg?.mixed && (
+            <span className="tool-popover-val">Mixed</span>
+          )}
+        </div>
+        <div
+          className="swatch-grid swatch-grid-row"
+          role="radiogroup"
+          aria-label="Text background colour"
+        >
+          {TEXT_BACKGROUND_PALETTE.map((p) => {
+            const isNone = p.value === "transparent";
+            const isSelected = !summaryBg?.mixed
+              && (isNone
+                ? isTransparent
+                : !isTransparent
+                  && currentBg?.toLowerCase() === p.value.toLowerCase());
+            return (
+              <button
+                key={p.value}
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={p.name}
+                title={p.name}
+                className={"swatch-btn" + (isSelected ? " selected" : "")}
+                onClick={() => applyBg(isNone ? undefined : p.value)}
+              >
+                {isNone
+                  ? <span className="swatch swatch-transparent" />
+                  : <span className="swatch" style={{ background: p.value }} />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="custom-colour">
+          <span>Custom colour</span>
+          <div className="custom-colour-row">
+            <span className="hex-display">
+              {isTransparent ? "None" : currentBg}
+            </span>
+            <input
+              type="color"
+              aria-label="Text custom background colour"
+              value={isTransparent ? "#ffffff" : currentBg}
+              onChange={(e) => applyBg(e.target.value)}
             />
           </div>
         </div>
@@ -139,7 +236,7 @@ export function TextPopover(_props: Props = {}) {
             aria-checked={align === "left"}
             aria-label="Align left"
             className={"seg-btn" + (align === "left" ? " active" : "")}
-            onClick={() => setAlign("left")}
+            onClick={() => applyAlign("left")}
           >
             <AlignLeftIcon />
             <span>Left</span>
@@ -150,7 +247,7 @@ export function TextPopover(_props: Props = {}) {
             aria-checked={align === "center"}
             aria-label="Align center"
             className={"seg-btn" + (align === "center" ? " active" : "")}
-            onClick={() => setAlign("center")}
+            onClick={() => applyAlign("center")}
           >
             <AlignCenterIcon />
             <span>Center</span>
@@ -161,7 +258,7 @@ export function TextPopover(_props: Props = {}) {
             aria-checked={align === "right"}
             aria-label="Align right"
             className={"seg-btn" + (align === "right" ? " active" : "")}
-            onClick={() => setAlign("right")}
+            onClick={() => applyAlign("right")}
           >
             <AlignRightIcon />
             <span>Right</span>

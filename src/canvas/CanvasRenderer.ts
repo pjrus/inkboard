@@ -694,6 +694,18 @@ export class CanvasRenderer {
     // untouched, so a rotated box reads exactly as it did upright.
     this.withRotation(ctx, text.rotation ?? 0, objectCenter(text), () => {
       const layout = measureText(text);
+      if (text.backgroundColor && text.backgroundColor !== "transparent") {
+        ctx.save();
+        ctx.fillStyle = text.backgroundColor;
+        ctx.beginPath();
+        if (typeof ctx.roundRect === "function") {
+          ctx.roundRect(text.x, text.y, text.width, layout.height, 4);
+        } else {
+          ctx.rect(text.x, text.y, text.width, layout.height);
+        }
+        ctx.fill();
+        ctx.restore();
+      }
       ctx.save();
       ctx.fillStyle = text.color;
       ctx.font = canvasFont(text.fontFamily, text.fontSize);

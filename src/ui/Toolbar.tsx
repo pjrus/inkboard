@@ -21,6 +21,7 @@ import {
 import { ModeSwitch } from "./ModeSwitch";
 import { Popover } from "./Popover";
 import { TextAlignmentControls } from "./TextAlignmentControls";
+import { TextBackgroundPicker } from "./TextBackgroundPicker";
 import { ThicknessPicker } from "./ThicknessPicker";
 import { EraserPopover } from "./tool-popovers/EraserPopover";
 import { HandPopover } from "./tool-popovers/HandPopover";
@@ -235,6 +236,7 @@ export function Toolbar({
               {showTextControls && <FontSelector />}
               {showTextControls && <FontSizeSelector />}
               {showTextControls && <TextAlignmentControls />}
+              {showTextControls && <TextBackgroundPicker />}
             </div>
           </>
         )

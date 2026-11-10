@@ -76,6 +76,7 @@ export function CanvasViewport({
             fontSize: s.textFontSize,
             color: s.textColor,
             textAlign: s.textAlign,
+            backgroundColor: s.textBackgroundColor,
           };
         },
         stylusSeen: () => store.getState().stylusSeen,
@@ -97,6 +98,7 @@ export function CanvasViewport({
       setFontSize: (n) => controller.setSelectionFontSize(n),
       adjustFontSize: (d) => controller.adjustSelectionFontSize(d),
       setAlign: (a) => controller.setSelectionAlign(a),
+      setTextBackground: (c) => controller.setSelectionTextBackground(c),
       rotate: (angle) => controller.rotateSelection(angle),
       editText: () => controller.editSelectedText(),
       remove: () => controller.deleteSelection(),

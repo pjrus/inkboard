@@ -230,6 +230,24 @@ async function drawText(
   // canvas draws it.
   const centre = objectCenter(text);
   const pivot = { x: contentX(g, centre.x), y: contentY(g, centre.y) };
+
+  if (text.backgroundColor && text.backgroundColor !== "transparent") {
+    const worldHeight = layout.height / g.scale;
+    const corner = rotatePoint(
+      { x: text.x, y: text.y + worldHeight },
+      centre,
+      angle,
+    );
+    const bottomLeft = toPdf(g, corner.x, corner.y);
+    page.drawRectangle({
+      x: bottomLeft.x,
+      y: bottomLeft.y,
+      width,
+      height: layout.height,
+      color: pdfColor(text.backgroundColor),
+      rotate: pdfRotation(angle),
+    });
+  }
   for (const line of layout.lines) {
     if (line.text === "") continue;
     const anchor = rotatePoint(

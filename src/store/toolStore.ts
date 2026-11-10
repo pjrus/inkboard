@@ -32,6 +32,18 @@ export const PALETTE = [
   { name: "White", value: "#f2f1ee" },
 ];
 
+export const TEXT_BACKGROUND_PALETTE = [
+  { name: "Transparent", value: "transparent" },
+  { name: "Yellow", value: "#fff9c4" },
+  { name: "Green", value: "#dcfce7" },
+  { name: "Blue", value: "#e0f2fe" },
+  { name: "Purple", value: "#f3e8ff" },
+  { name: "Pink", value: "#fce7f3" },
+  { name: "Orange", value: "#ffedd5" },
+  { name: "White", value: "#ffffff" },
+  { name: "Dark", value: "#1e293b" },
+];
+
 export const THICKNESS_PRESETS = [
   { name: "Extra thin", value: 1.5 },
   { name: "Thin", value: 2.5 },
@@ -64,6 +76,7 @@ export interface CanvasSelection {
   fonts: FontFamilyId[];
   fontSizes: number[];
   aligns: TextAlign[];
+  backgroundColors: string[];
 }
 
 /** Document-level commands for the current selection (set by the canvas). */
@@ -75,6 +88,7 @@ export interface SelectionCommands {
   setFontSize: (size: number) => void;
   adjustFontSize: (direction: 1 | -1) => void;
   setAlign: (align: TextAlign) => void;
+  setTextBackground: (color?: string) => void;
   /** Rotate the whole selection about its shared centre, in radians. */
   rotate: (angleDelta: number) => void;
   /** Enter inline editing on the single selected text box. */
@@ -136,6 +150,7 @@ interface ToolState extends ToolPreferences {
   setTextFont: (font: FontFamilyId) => void;
   setTextFontSize: (size: number) => void;
   setTextAlign: (align: TextAlign) => void;
+  setTextBackgroundColor: (color?: string) => void;
   setBackground: (background: string) => void;
   markStylusSeen: () => void;
   setSaveStatus: (s: SaveStatus) => void;
@@ -360,6 +375,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setTextFont: (textFont) => set({ textFont }),
   setTextFontSize: (textFontSize) => set({ textFontSize }),
   setTextAlign: (textAlign) => set({ textAlign }),
+  setTextBackgroundColor: (textBackgroundColor) => set({ textBackgroundColor }),
   /**
    * Following the background only ever moves colours the user has not
    * chosen. Explicit picks, and every colour already on the board, are left

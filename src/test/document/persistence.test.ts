@@ -80,6 +80,7 @@ describe("board persistence", () => {
       fontFamily: "open-sans",
       fontSize: 24,
       color: "#d93025",
+      backgroundColor: "#fff9c4",
       textAlign: "center",
     });
     for (const ch of "Typed on the canvas") {
@@ -99,6 +100,7 @@ describe("board persistence", () => {
       fontFamily: "open-sans",
       fontSize: 24,
       color: "#d93025",
+      backgroundColor: "#fff9c4",
       textAlign: "center",
     });
     // Still a Y.Text after a reload, so a later collaborator can splice it.
@@ -126,6 +128,7 @@ describe("board persistence", () => {
       colorExplicit: true,
       width: 7,
       textFontSize: 24,
+      textBackgroundColor: "#fff9c4",
     };
     await boardRepository.saveToolPreferences(prefs);
     expect(await boardRepository.getToolPreferences()).toEqual(prefs);

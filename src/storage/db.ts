@@ -64,6 +64,7 @@ export interface ToolPreferences {
   textFont: FontFamilyId;
   textFontSize: number;
   textAlign: TextAlign;
+  textBackgroundColor?: string;
   /** Edit or View. A local interface preference; never shared with peers. */
   canvasMode: CanvasMode;
   /** Which object types the lasso may pick up. Also local-only. */
