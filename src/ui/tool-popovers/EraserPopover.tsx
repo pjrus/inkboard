@@ -1,5 +1,5 @@
 import { useToolStore } from "../../store/toolStore";
-import { EraserIcon } from "../icons";
+import { EraserIcon, ObjectEraserIcon, PrecisionEraserIcon } from "../icons";
 
 interface Props {
   onClose?: () => void;
@@ -39,10 +39,15 @@ export function EraserPopover(_props: Props = {}) {
             onClick={() =>
               setTool("strokeEraser")}
           >
-            <span className="eraser-type-title">Object Eraser</span>
-            <span className="eraser-type-desc">
-              Erase whole stroke on touch
+            <span className="eraser-type-icon">
+              <ObjectEraserIcon />
             </span>
+            <div className="eraser-type-text">
+              <span className="eraser-type-title">Object Eraser</span>
+              <span className="eraser-type-desc">
+                Erase whole stroke on touch
+              </span>
+            </div>
           </button>
           <button
             type="button"
@@ -52,8 +57,13 @@ export function EraserPopover(_props: Props = {}) {
             onClick={() =>
               setTool("eraser")}
           >
-            <span className="eraser-type-title">Precision Eraser</span>
-            <span className="eraser-type-desc">Carve through ink paths</span>
+            <span className="eraser-type-icon">
+              <PrecisionEraserIcon />
+            </span>
+            <div className="eraser-type-text">
+              <span className="eraser-type-title">Precision Eraser</span>
+              <span className="eraser-type-desc">Carve through ink paths</span>
+            </div>
           </button>
         </div>
       </div>

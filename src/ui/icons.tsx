@@ -87,6 +87,23 @@ export const EraserIcon = () => (
     <path d="M9 9.5l5.5 5.5" />
   </svg>
 );
+export const ObjectEraserIcon = () => (
+  <svg {...base} aria-hidden="true">
+    <path d="M4.2 14.3l8.2-8.2a2 2 0 0 1 2.8 0l3.7 3.7a2 2 0 0 1 0 2.8l-4.9 4.9H9.6l-5.4-5.4a1 1 0 0 1 0-1.4z" />
+    <path d="M9 9.5l5.5 5.5" />
+    <path d="M2.5 19.5h19" strokeDasharray="2.5 2" />
+  </svg>
+);
+export const PrecisionEraserIcon = () => (
+  <svg {...base} aria-hidden="true">
+    <path d="M4.2 14.3l8.2-8.2a2 2 0 0 1 2.8 0l3.7 3.7a2 2 0 0 1 0 2.8l-4.9 4.9H9.6l-5.4-5.4a1 1 0 0 1 0-1.4z" />
+    <path d="M9 9.5l5.5 5.5" />
+    <path d="M2.5 19.5h4.5" />
+    <path d="M16 19.5h5.5" />
+    <path d="M7 17.8v3.4" strokeWidth={1.4} />
+    <path d="M16 17.8v3.4" strokeWidth={1.4} />
+  </svg>
+);
 export const PdfIcon = () => (
   <svg {...base} aria-hidden="true">
     <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z" />

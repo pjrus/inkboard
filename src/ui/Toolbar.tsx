@@ -11,6 +11,7 @@ import {
   HandIcon,
   HighlighterIcon,
   LassoIcon,
+  ObjectEraserIcon,
   PdfIcon,
   PencilIcon,
   PenIcon,
@@ -172,6 +173,10 @@ export function Toolbar({
             ? "Object Eraser"
             : t.label;
 
+          const ToolIcon = t.tool === "eraser" && tool === "strokeEraser"
+            ? ObjectEraserIcon
+            : t.icon;
+
           return (
             <div className="tb-anchor" key={t.tool}>
               <button
@@ -189,7 +194,7 @@ export function Toolbar({
                 className={"tb-tool-btn" + (active ? " active" : "")}
                 onClick={() => handleToolClick(t.tool)}
               >
-                <t.icon color={displayColor} />
+                <ToolIcon color={displayColor} />
                 {active && (
                   <span
                     className={"tb-tool-chevron"
