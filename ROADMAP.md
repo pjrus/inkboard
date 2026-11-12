@@ -55,7 +55,7 @@ Mostly UI on top of plumbing that already exists.
 
 - [ ] **Sticky notes.** A text box with a background fill and padding; mostly
       a render and export branch on `TextObject`.
-- [ ] **Clickable links.** Detect URLs in text boxes and open them on click in
+- [x] **Clickable links.** Detect URLs in text boxes and open them on click in
       View mode.
 - [ ] **Markdown-style shortcuts.** `- ` for bullets and `# ` for a larger
       heading line, as a cheap step before real rich text.
