@@ -13,6 +13,7 @@ import {
   pushGraphicsState,
   rgb,
 } from "pdf-lib";
+import { fullImageLocalRect } from "../canvas/imageCrop";
 import {
   hasVaryingPressure,
   strokeAlpha,
@@ -20,6 +21,7 @@ import {
 } from "../canvas/strokeGeometry";
 import {
   objectCenter,
+  objectCorners,
   rotatePoint,
   transformedBounds,
 } from "../canvas/transform";
@@ -156,22 +158,43 @@ async function drawImage(
   const image = await resources.image(obj.assetId);
   if (!image) return;
   const angle = obj.rotation ?? 0;
+  const center = objectCenter(obj);
+  const full = fullImageLocalRect(obj);
+  const cropped = Boolean(obj.crop);
+
+  if (cropped) {
+    const [c0, c1, c2, c3] = objectCorners(obj).map((c) => toPdf(g, c.x, c.y));
+    page.pushOperators(
+      pushGraphicsState(),
+      moveTo(c0.x, c0.y),
+      lineTo(c1.x, c1.y),
+      lineTo(c2.x, c2.y),
+      lineTo(c3.x, c3.y),
+      clip(),
+      endPath(),
+    );
+  }
+
   // drawImage anchors at the image's bottom-left corner and rotates about it,
   // so the corner is rotated into place first and the angle applied there.
-  // The stored bitmap is never re-rendered: rotation is purely a transform.
+  // The stored bitmap is never re-rendered: rotation and crop are transforms.
   const corner = rotatePoint(
-    { x: obj.x, y: obj.y + obj.height },
-    objectCenter(obj),
+    { x: full.x, y: full.y + full.height },
+    center,
     angle,
   );
   const bottomLeft = toPdf(g, corner.x, corner.y);
   page.drawImage(image, {
     x: bottomLeft.x,
     y: bottomLeft.y,
-    width: obj.width * g.scale,
-    height: obj.height * g.scale,
+    width: full.width * g.scale,
+    height: full.height * g.scale,
     rotate: pdfRotation(angle),
   });
+
+  if (cropped) {
+    page.pushOperators(popGraphicsState());
+  }
 }
 
 function drawStroke(page: PDFPage, stroke: StrokeObject, g: PageGeometry) {

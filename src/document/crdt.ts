@@ -6,6 +6,7 @@ import { DEFAULT_BACKGROUND, legacyBackground } from "../theme/canvasTheme";
 import { newId } from "./ids";
 import type {
   CanvasObject,
+  ImageCrop,
   ImageObject,
   PDFDocumentMetadata,
   PDFLayout,
@@ -451,6 +452,33 @@ export class CanvasDocument {
           m.set("rotation", ((m.get("rotation") as number) ?? 0) + angleDelta);
           if (obj.type === "text") m.set("updatedAt", now);
         }
+      }
+    });
+  }
+
+  /** Update an image or PDF page's cropped rectangle as one undo step. */
+  cropImage(
+    id: string,
+    next: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      crop?: ImageCrop;
+    },
+  ): void {
+    const m = this.objects.get(id);
+    const obj = this.get(id);
+    if (!m || !obj || obj.type !== "image") return;
+    this.transact(() => {
+      m.set("x", next.x);
+      m.set("y", next.y);
+      m.set("width", next.width);
+      m.set("height", next.height);
+      if (next.crop) {
+        m.set("crop", next.crop);
+      } else {
+        m.delete("crop");
       }
     });
   }

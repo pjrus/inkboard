@@ -30,6 +30,18 @@ import {
 } from "./coordinates";
 import { beginPinch, type PinchStart, updatePinch } from "./gestures";
 import {
+  commitCropSession,
+  type CropHandle,
+  cropHandleCursor,
+  type CropSession,
+  hitTestCropHandle,
+  isFullCrop,
+  pointInFullCropImage,
+  resetCropSession,
+  resizeCropSession,
+  startCropSession,
+} from "./imageCrop";
+import {
   computeBounds,
   HIGHLIGHTER_WIDTH_FACTOR,
   polygonBounds,
@@ -108,6 +120,11 @@ type State =
     id: string;
     startScreenX: number;
     startWidth: number;
+  }
+  | {
+    type: "croppingHandle";
+    pointerId: number;
+    handle: CropHandle;
   };
 
 export interface TextStyle {
@@ -138,6 +155,7 @@ export interface ControllerHost {
   onSelectionChange(id: string | null): void;
   onObjectSelectionChange(sel: CanvasSelection | null): void;
   onEditingTextChange(id: string | null): void;
+  onCroppingImageChange?: (id: string | null) => void;
 }
 
 const ERASER_RADIUS_PX = 12;
@@ -159,6 +177,8 @@ export class CanvasInteractionController {
   /** Local object selection; never enters the document. */
   private selectedIds = new Set<string>();
   private editingTextId: string | null = null;
+  private cropSession: CropSession | null = null;
+  private hoveredCropHandle: CropHandle | null = null;
   private hoveredLink: string | null = null;
   private lastTap: {
     t: number;
@@ -181,6 +201,9 @@ export class CanvasInteractionController {
         for (const c of changes) {
           if (c.kind === "remove" && c.id === this.editingTextId) {
             this.endTextEdit(false);
+          }
+          if (c.kind === "remove" && c.id === this.cropSession?.id) {
+            this.cancelCrop();
           }
         }
         if (this.selectedIds.size === 0) return;
@@ -238,6 +261,7 @@ export class CanvasInteractionController {
    */
   cancelInteractions() {
     if (this.editingTextId) this.endTextEdit();
+    if (this.cropSession) this.commitCrop();
     this.cancelCurrent();
     this.clearObjectSelection();
     this.setSelection(null);
@@ -550,6 +574,67 @@ export class CanvasInteractionController {
     this.host.onSelectionChange(id);
   }
 
+  /** Enter interactive crop mode on an image or PDF page. */
+  startCrop(id: string) {
+    if (!this.editable) return;
+    const obj = this.doc.get(id);
+    if (!obj || obj.type !== "image") return;
+    if (this.editingTextId) this.endTextEdit();
+    this.cropSession = startCropSession(obj);
+    this.hoveredCropHandle = null;
+    this.renderer.cropSession = this.cropSession;
+    this.renderer.invalidateStatic();
+    this.host.onCroppingImageChange?.(obj.id);
+    this.updateCursor();
+  }
+
+  /** Enter crop mode on the single image in the lasso selection, if any. */
+  startCropOnSelection() {
+    if (this.selectedIds.size !== 1) return;
+    const [id] = this.selectedIds;
+    this.startCrop(id);
+  }
+
+  /** Reset the active crop rectangle back to the full uncropped image. */
+  resetCrop() {
+    if (!this.cropSession) return;
+    this.cropSession = resetCropSession(this.cropSession);
+    this.renderer.cropSession = this.cropSession;
+    this.renderer.invalidateStatic();
+  }
+
+  /** Commit the active crop rectangle to the document and exit crop mode. */
+  commitCrop() {
+    const session = this.cropSession;
+    if (!session) return;
+    const next = commitCropSession(session);
+    this.cropSession = null;
+    this.hoveredCropHandle = null;
+    this.renderer.cropSession = null;
+    this.doc.cropImage(session.id, next);
+    this.renderer.invalidateStatic();
+    this.host.onCroppingImageChange?.(null);
+    this.updateCursor();
+  }
+
+  /** Discard uncommitted crop changes and exit crop mode. */
+  cancelCrop() {
+    if (!this.cropSession) return;
+    this.cropSession = null;
+    this.hoveredCropHandle = null;
+    this.renderer.cropSession = null;
+    if (this.state.type === "croppingHandle") {
+      this.state = { type: "idle" };
+    }
+    this.renderer.invalidateStatic();
+    this.host.onCroppingImageChange?.(null);
+    this.updateCursor();
+  }
+
+  isCropFull(): boolean {
+    return this.cropSession ? isFullCrop(this.cropSession) : true;
+  }
+
   updateCursor() {
     const tool = this.host.getTool();
     let cursor = "default";
@@ -566,10 +651,19 @@ export class CanvasInteractionController {
       cursor = "move";
     } else if (this.state.type === "rotatingSelection") cursor = "grabbing";
     else if (this.state.type === "resizingText") cursor = "ew-resize";
-    // In View mode the canvas is one big pannable surface, whatever the tool.
+    else if (this.state.type === "croppingHandle") {
+      cursor = cropHandleCursor(
+        this.state.handle,
+        this.cropSession?.rotation ?? 0,
+      );
+    } // In View mode the canvas is one big pannable surface, whatever the tool.
     else if (!this.editable) cursor = this.hoveredLink ? "pointer" : "grab";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
-    else if (tool === "text") cursor = "text";
+    else if (this.cropSession) {
+      cursor = this.hoveredCropHandle
+        ? cropHandleCursor(this.hoveredCropHandle, this.cropSession.rotation)
+        : "default";
+    } else if (tool === "text") cursor = "text";
     else if (
       tool === "pen" || tool === "pencil" || tool === "highlighter"
       || tool === "lasso"
@@ -713,6 +807,28 @@ export class CanvasInteractionController {
         pendingLink,
       };
       this.updateCursor();
+      return;
+    }
+
+    if (this.cropSession) {
+      if (e.button === 1 || this.spaceDown || fingerNavigates) {
+        this.state = { type: "panning", pointerId: e.pointerId, last: sp };
+        this.updateCursor();
+        return;
+      }
+      const handle = hitTestCropHandle(
+        this.cropSession,
+        wp,
+        screenLengthToWorld(14, this.viewport),
+      );
+      if (handle) {
+        this.state = { type: "croppingHandle", pointerId: e.pointerId, handle };
+        this.updateCursor();
+        return;
+      }
+      if (!pointInFullCropImage(this.cropSession, wp)) {
+        this.commitCrop();
+      }
       return;
     }
 
@@ -925,6 +1041,18 @@ export class CanvasInteractionController {
           this.hoveredLink = null;
           this.updateCursor();
         }
+        if (this.cropSession) {
+          const hit = hitTestCropHandle(
+            this.cropSession,
+            screenToWorld(sp, this.viewport),
+            screenLengthToWorld(14, this.viewport),
+          );
+          if (hit !== this.hoveredCropHandle) {
+            this.hoveredCropHandle = hit;
+            this.updateCursor();
+          }
+          return;
+        }
         if (this.isEraser()) {
           this.showEraserCursor(screenToWorld(sp, this.viewport));
         }
@@ -1060,6 +1188,14 @@ export class CanvasInteractionController {
         this.renderer.invalidateStatic();
         return;
       }
+      case "croppingHandle": {
+        if (e.pointerId !== s.pointerId || !this.cropSession) return;
+        const wp = screenToWorld(sp, this.viewport);
+        this.cropSession = resizeCropSession(this.cropSession, s.handle, wp);
+        this.renderer.cropSession = this.cropSession;
+        this.renderer.invalidateStatic();
+        return;
+      }
       case "pinching":
         return;
     }
@@ -1137,6 +1273,8 @@ export class CanvasInteractionController {
         this.renderer.invalidateStatic();
         break;
       }
+      case "croppingHandle":
+        break;
       case "panning":
         if (e.type === "pointerup" && s.pendingLink && !s.moved) {
           window.open(s.pendingLink, "_blank", "noopener,noreferrer");

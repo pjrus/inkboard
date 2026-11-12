@@ -27,6 +27,7 @@ import {
   visibleWorldBounds,
 } from "./coordinates";
 import { ImageCache } from "./ImageCache";
+import type { CropSession } from "./imageCrop";
 import { pencilFill } from "./pencilGrain";
 import {
   hasVaryingPressure,
@@ -135,6 +136,8 @@ export class CanvasRenderer {
   editingTextId: string | null = null;
   /** Temporary lasso outline in world space while the user drags. */
   lassoPath: XY[] | null = null;
+  /** Active interactive crop session for an image or PDF page, if any. */
+  cropSession: CropSession | null = null;
   /** Pages whose asset is still being rasterised (for placeholder text). */
   pendingAssets = new Set<string>();
 
@@ -475,6 +478,22 @@ export class CanvasRenderer {
 
     // Layer 10: PDF pages
     for (const page of this.pages) {
+      if (this.cropSession && this.cropSession.id === page.id) {
+        const f = this.cropSession.fullRect;
+        this.withRotation(
+          ctx,
+          this.cropSession.rotation,
+          this.cropSession.pivot,
+          () =>
+            this.drawPageUpright(ctx, { ...page, crop: undefined }, {
+              minX: f.x,
+              minY: f.y,
+              maxX: f.x + f.width,
+              maxY: f.y + f.height,
+            }),
+        );
+        continue;
+      }
       const selected = hasSelection && this.selectedIds.has(page.id);
       if (!selected && !boundsIntersect(transformedBounds(page), visible)) {
         continue;
@@ -504,16 +523,20 @@ export class CanvasRenderer {
     }
 
     // Layer 100: selection affordances
-    if (hasSelection) this.drawSelectionChrome(ctx);
-    if (this.selectedId) {
-      const page = this.pages.find((p) => p.id === this.selectedId);
-      if (page) {
-        const b = pageBounds(page, this.dragPreview);
-        this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () => {
-          ctx.strokeStyle = theme.accent;
-          ctx.lineWidth = 2 / viewport.scale;
-          ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
-        });
+    if (this.cropSession) {
+      this.drawCropOverlay(ctx, this.cropSession);
+    } else {
+      if (hasSelection) this.drawSelectionChrome(ctx);
+      if (this.selectedId) {
+        const page = this.pages.find((p) => p.id === this.selectedId);
+        if (page) {
+          const b = pageBounds(page, this.dragPreview);
+          this.withRotation(ctx, page.rotation ?? 0, boundsCenter(b), () => {
+            ctx.strokeStyle = theme.accent;
+            ctx.lineWidth = 2 / viewport.scale;
+            ctx.strokeRect(b.minX, b.minY, b.maxX - b.minX, b.maxY - b.minY);
+          });
+        }
       }
     }
   }
@@ -588,6 +611,86 @@ export class CanvasRenderer {
     }
   }
 
+  private drawCropOverlay(
+    ctx: CanvasRenderingContext2D,
+    session: CropSession,
+  ) {
+    const { scale } = this.viewport;
+    const { theme } = this;
+    const { fullRect: f, cropRect: c } = session;
+    this.withRotation(ctx, session.rotation, session.pivot, () => {
+      // Dim the cropped-out region of the full image.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(f.x, f.y, f.width, f.height);
+      ctx.rect(c.x, c.y, c.width, c.height);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fill("evenodd");
+      ctx.restore();
+
+      // Subtle rule-of-thirds guides inside the crop box.
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = 1 / scale;
+      ctx.beginPath();
+      for (const frac of [1 / 3, 2 / 3]) {
+        const gx = c.x + c.width * frac;
+        ctx.moveTo(gx, c.y);
+        ctx.lineTo(gx, c.y + c.height);
+        const gy = c.y + c.height * frac;
+        ctx.moveTo(c.x, gy);
+        ctx.lineTo(c.x + c.width, gy);
+      }
+      ctx.stroke();
+
+      // Crisp crop border.
+      ctx.strokeStyle = theme.accent;
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeRect(c.x, c.y, c.width, c.height);
+
+      // 8 handles: 4 corners + 4 edge midpoints.
+      const cornerSize = 10 / scale;
+      const edgeLen = 16 / scale;
+      const edgeThick = 5 / scale;
+      const mx = c.x + c.width / 2;
+      const my = c.y + c.height / 2;
+      const rx = c.x + c.width;
+      const by = c.y + c.height;
+
+      const drawHandleRect = (
+        hx: number,
+        hy: number,
+        hw: number,
+        hh: number,
+      ) => {
+        ctx.beginPath();
+        ctx.roundRect(hx - hw / 2, hy - hh / 2, hw, hh, 2 / scale);
+        ctx.fillStyle = theme.handleFill;
+        ctx.fill();
+        ctx.strokeStyle = theme.handleStroke;
+        ctx.lineWidth = 1.5 / scale;
+        ctx.stroke();
+      };
+
+      // Corner handles
+      drawHandleRect(c.x, c.y, cornerSize, cornerSize);
+      drawHandleRect(rx, c.y, cornerSize, cornerSize);
+      drawHandleRect(rx, by, cornerSize, cornerSize);
+      drawHandleRect(c.x, by, cornerSize, cornerSize);
+
+      // Edge midpoint handles (only if edge is long enough to avoid overlap)
+      if (c.width > cornerSize * 3) {
+        drawHandleRect(mx, c.y, Math.min(edgeLen, c.width * 0.4), edgeThick);
+        drawHandleRect(mx, by, Math.min(edgeLen, c.width * 0.4), edgeThick);
+      }
+      if (c.height > cornerSize * 3) {
+        drawHandleRect(c.x, my, edgeThick, Math.min(edgeLen, c.height * 0.4));
+        drawHandleRect(rx, my, edgeThick, Math.min(edgeLen, c.height * 0.4));
+      }
+      ctx.restore();
+    });
+  }
+
   /**
    * Draw a rotated object's contents in its own upright frame.
    *
@@ -648,7 +751,22 @@ export class CanvasRenderer {
       ctx.imageSmoothingQuality = scale < 1 ? "high" : "medium";
       // Imported pages are drawn exactly as rasterised: never inverted or
       // recoloured, in either theme.
-      ctx.drawImage(bitmap, b.minX, b.minY, w, h);
+      const crop = page.crop;
+      if (crop) {
+        ctx.drawImage(
+          bitmap,
+          crop.x * bitmap.width,
+          crop.y * bitmap.height,
+          crop.width * bitmap.width,
+          crop.height * bitmap.height,
+          b.minX,
+          b.minY,
+          w,
+          h,
+        );
+      } else {
+        ctx.drawImage(bitmap, b.minX, b.minY, w, h);
+      }
     } else {
       const pending = this.pendingAssets.has(page.assetId)
         || !this.imageCache.isMissing(page.assetId);

@@ -312,6 +312,46 @@ describe("PDF export", () => {
     expect(pages[0].text).toContain("Rotated sticky note");
   });
 
+  it("exports cropped and rotated-cropped images without error", async () => {
+    const doc = new CanvasDocument();
+    await getDB().assets.put({
+      id: "crop-img",
+      boardId: "board",
+      mimeType: "image/png",
+      blob: pngBlob(),
+      width: 1,
+      height: 1,
+      size: 100,
+      createdAt: 1,
+    });
+    doc.addImage({
+      assetId: "crop-img",
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 150,
+      crop: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+      rotation: 0,
+    });
+    doc.addImage({
+      assetId: "crop-img",
+      x: 350,
+      y: 50,
+      width: 180,
+      height: 120,
+      crop: { x: 0.1, y: 0.2, width: 0.6, height: 0.5 },
+      rotation: Math.PI / 6,
+    });
+    const result = await exportToPDF({
+      objects: doc.getAll(),
+      boardName: "Cropped Images",
+    });
+    expect(result.bytes.byteLength).toBeGreaterThan(0);
+    const pages = await readBack(result.bytes);
+    expect(pages).toHaveLength(1);
+    expect(pages[0].opCount).toBeGreaterThan(0);
+  });
+
   it("refuses to export an empty board with a readable message", async () => {
     await expect(
       exportToPDF({ objects: [], boardName: "Empty" }),

@@ -21,7 +21,8 @@ export function SelectionBar() {
   const selection = useToolStore((s) => s.selection);
   const commands = useToolStore((s) => s.selectionCommands);
   const editing = useToolStore((s) => s.editingTextId);
-  if (!selection || !commands || editing) return null;
+  const cropping = useToolStore((s) => s.croppingImageId);
+  if (!selection || !commands || editing || cropping) return null;
 
   const { value, mixed } = summarise(selection.widths);
   const n = selection.ids.length;
@@ -95,6 +96,15 @@ export function SelectionBar() {
           onClick={() => commands.editText()}
         >
           Edit text
+        </button>
+      )}
+      {images === 1 && strokes === 0 && texts === 0 && (
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={() => commands.cropImage()}
+        >
+          Crop
         </button>
       )}
       <button

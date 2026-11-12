@@ -93,6 +93,8 @@ export interface SelectionCommands {
   rotate: (angleDelta: number) => void;
   /** Enter inline editing on the single selected text box. */
   editText: () => void;
+  /** Enter interactive crop mode on the single selected image or page. */
+  cropImage: () => void;
   remove: () => void;
   clear: () => void;
 }
@@ -105,6 +107,9 @@ interface ToolState extends ToolPreferences {
   /** Id of the text box with the inline editor open, if any. */
   editingTextId: string | null;
   setEditingTextId: (id: string | null) => void;
+  /** Id of the image or PDF page currently being cropped, if any. */
+  croppingImageId: string | null;
+  setCroppingImageId: (id: string | null) => void;
 
   /**
    * The open board's background colour, mirrored from its document so the
@@ -170,6 +175,8 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setSelectionCommands: (selectionCommands) => set({ selectionCommands }),
   editingTextId: null,
   setEditingTextId: (editingTextId) => set({ editingTextId }),
+  croppingImageId: null,
+  setCroppingImageId: (croppingImageId) => set({ croppingImageId }),
 
   ...DEFAULT_TOOL_PREFS,
   background: DEFAULT_BACKGROUND,
