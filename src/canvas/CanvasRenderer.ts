@@ -12,6 +12,7 @@ import {
 import { canvasFont } from "../text/fonts";
 import {
   measureText,
+  measureTextLinks,
   onTextMeasurementsInvalidated,
   textBounds,
 } from "../text/textMeasure";
@@ -249,6 +250,29 @@ export class CanvasRenderer {
       }
     }
     return undefined;
+  }
+
+  /** Return the URL under world point `p` in the topmost text box, if any. */
+  hitTestLink(p: { x: number; y: number; }): string | null {
+    for (let i = this.texts.length - 1; i >= 0; i--) {
+      const t = this.effectiveText(this.texts[i]);
+      if (!rectContains(t, p)) continue;
+      const spans = measureTextLinks(t);
+      if (spans.length === 0) continue;
+      const angle = t.rotation ?? 0;
+      const local = angle === 0 ? p : rotatePoint(p, objectCenter(t), -angle);
+      const rx = local.x - t.x;
+      const ry = local.y - t.y;
+      for (const span of spans) {
+        if (
+          rx >= span.x && rx <= span.x + span.width
+          && ry >= span.y && ry <= span.y + span.height
+        ) {
+          return span.url;
+        }
+      }
+    }
+    return null;
   }
 
   getStrokes(): StrokeObject[] {
@@ -714,6 +738,19 @@ export class CanvasRenderer {
       for (const line of layout.lines) {
         if (line.text !== "") {
           ctx.fillText(line.text, text.x + line.x, text.y + line.baseline);
+        }
+      }
+      const links = measureTextLinks(text);
+      if (links.length > 0) {
+        ctx.strokeStyle = text.color;
+        ctx.lineWidth = Math.max(1, text.fontSize * 0.06);
+        const underlineOffset = Math.max(1, text.fontSize * 0.1);
+        for (const span of links) {
+          const y = text.y + span.baseline + underlineOffset;
+          ctx.beginPath();
+          ctx.moveTo(text.x + span.x, y);
+          ctx.lineTo(text.x + span.x + span.width, y);
+          ctx.stroke();
         }
       }
       ctx.restore();

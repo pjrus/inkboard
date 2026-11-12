@@ -65,7 +65,14 @@ type State =
     hasPressure: boolean;
   }
   | { type: "erasing"; pointerId: number; last: Point; }
-  | { type: "panning"; pointerId: number; last: Point; }
+  | {
+    type: "panning";
+    pointerId: number;
+    last: Point;
+    start?: Point;
+    moved?: boolean;
+    pendingLink?: string;
+  }
   | { type: "pinching"; pinch: PinchStart; }
   | {
     type: "movingObject";
@@ -152,6 +159,7 @@ export class CanvasInteractionController {
   /** Local object selection; never enters the document. */
   private selectedIds = new Set<string>();
   private editingTextId: string | null = null;
+  private hoveredLink: string | null = null;
   private lastTap: {
     t: number;
     x: number;
@@ -545,7 +553,11 @@ export class CanvasInteractionController {
   updateCursor() {
     const tool = this.host.getTool();
     let cursor = "default";
-    if (this.state.type === "panning" || this.state.type === "pinching") {
+    if (this.state.type === "panning") {
+      cursor = this.state.pendingLink && !this.state.moved
+        ? "pointer"
+        : "grabbing";
+    } else if (this.state.type === "pinching") {
       cursor = "grabbing";
     } else if (
       this.state.type === "movingObject"
@@ -555,7 +567,7 @@ export class CanvasInteractionController {
     } else if (this.state.type === "rotatingSelection") cursor = "grabbing";
     else if (this.state.type === "resizingText") cursor = "ew-resize";
     // In View mode the canvas is one big pannable surface, whatever the tool.
-    else if (!this.editable) cursor = "grab";
+    else if (!this.editable) cursor = this.hoveredLink ? "pointer" : "grab";
     else if (this.spaceDown || tool === "pan") cursor = "grab";
     else if (tool === "text") cursor = "text";
     else if (
@@ -688,10 +700,18 @@ export class CanvasInteractionController {
       // Some browsers throw if the pointer is already gone; drawing still works.
     }
 
-    // View mode: every press navigates, including a stylus drag. No drawing,
-    // no erasing, no lasso, no moving a page by accident.
+    // View mode: every press navigates, including a stylus drag, except a
+    // clean tap/click on a link inside a text box.
     if (!this.editable) {
-      this.state = { type: "panning", pointerId: e.pointerId, last: sp };
+      const pendingLink = this.renderer.hitTestLink(wp) ?? undefined;
+      this.state = {
+        type: "panning",
+        pointerId: e.pointerId,
+        last: sp,
+        start: sp,
+        moved: false,
+        pendingLink,
+      };
       this.updateCursor();
       return;
     }
@@ -891,6 +911,20 @@ export class CanvasInteractionController {
     const s = this.state;
     switch (s.type) {
       case "idle":
+        if (!this.editable) {
+          const hit = this.renderer.hitTestLink(
+            screenToWorld(sp, this.viewport),
+          );
+          if (hit !== this.hoveredLink) {
+            this.hoveredLink = hit;
+            this.updateCursor();
+          }
+          return;
+        }
+        if (this.hoveredLink) {
+          this.hoveredLink = null;
+          this.updateCursor();
+        }
         if (this.isEraser()) {
           this.showEraserCursor(screenToWorld(sp, this.viewport));
         }
@@ -943,6 +977,15 @@ export class CanvasInteractionController {
       }
       case "panning": {
         if (e.pointerId !== s.pointerId) return;
+        if (s.pendingLink && !s.moved && s.start) {
+          if (
+            Math.hypot(sp.x - s.start.x, sp.y - s.start.y) < DRAG_THRESHOLD_PX
+          ) {
+            return;
+          }
+          s.moved = true;
+          this.updateCursor();
+        }
         this.setViewport(pan(this.viewport, sp.x - s.last.x, sp.y - s.last.y));
         s.last = sp;
         return;
@@ -1095,6 +1138,9 @@ export class CanvasInteractionController {
         break;
       }
       case "panning":
+        if (e.type === "pointerup" && s.pendingLink && !s.moved) {
+          window.open(s.pendingLink, "_blank", "noopener,noreferrer");
+        }
         break;
     }
     this.state = { type: "idle" };
