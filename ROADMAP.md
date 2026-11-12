@@ -53,8 +53,6 @@ Mostly UI on top of plumbing that already exists.
 
 ## Text
 
-- [ ] **Sticky notes.** A text box with a background fill and padding; mostly
-      a render and export branch on `TextObject`.
 - [x] **Clickable links.** Detect URLs in text boxes and open them on click in
       View mode.
 - [ ] **Markdown-style shortcuts.** `- ` for bullets and `# ` for a larger
@@ -77,8 +75,6 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Blank and template pages.** Insert an empty, lined, grid or dotted
       A4 page for notebook-style use, exported like an imported page.
 - [ ] **Rotate pages 90°.** `ImageObject.rotation` already exists.
-- [ ] **Select and copy PDF text** from imported pages via the PDF.js text
-      layer, extracted at import time.
 - [ ] **Crop images and pages.**
 
 ## Organising
