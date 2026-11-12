@@ -1,6 +1,6 @@
 # Inkboard
 
-A local-first infinite canvas for handwriting, typed notes and PDF annotation.
+A local-first infinite whiteboard for handwriting, typed notes and PDF annotation.
 Everything lives in your browser's IndexedDB. No account, no server, works offline — including fonts and PDF export.
 
 ![Inkboard canvas](docs/canvas-dark.png)
