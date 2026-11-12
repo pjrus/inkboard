@@ -1,8 +1,8 @@
 # Roadmap
 
-Ideas for what comes next. Within each section, items are roughly ordered by
-payoff per unit of effort. Nothing here is committed to; it is a list to pick
-from.
+Inkboard is meant to be an infinite whiteboard. Within each section, items are
+roughly ordered by payoff per unit of effort. Nothing here is committed to; it
+is a list to pick from.
 
 **Suggested order:** persistent storage → backup/restore → clipboard → images
 → highlighter. Data safety first, then the things every annotation user
@@ -164,6 +164,4 @@ Mostly UI on top of plumbing that already exists.
       syncing assets such as PDF page JPEGs, not strokes.
 - [ ] **Presentation mode.** Step through frames or saved viewports in View
       mode, with the laser pointer.
-- [ ] **Notebook mode.** A paged, fixed-size layout as an alternative to the
-      infinite canvas, for people who think in pages.
 - [ ] **Math.** LaTeX in text boxes (KaTeX), rendered to both canvas and PDF.
