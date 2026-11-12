@@ -1,6 +1,7 @@
 import type { Bounds, TextObject } from "../document/schema";
 import { onFontsReady } from "./fontLoader";
 import { canvasFont } from "./fonts";
+import { layoutLinks, type LinkSpan, mayContainUrl } from "./links";
 import { layoutText, type Measure, type TextLayoutResult } from "./textLayout";
 
 /**
@@ -83,6 +84,16 @@ export function measureText(o: LayoutInput): TextLayoutResult {
   if (layouts.size > MAX_LAYOUTS) layouts.clear();
   layouts.set(key, result);
   return result;
+}
+
+/** Link spans in text-box coordinates, computed from the shared layout. */
+export function measureTextLinks(o: LayoutInput): LinkSpan[] {
+  if (!mayContainUrl(o.text)) return [];
+  return layoutLinks(
+    o.text,
+    measureText(o),
+    measurer(o.fontFamily, o.fontSize),
+  );
 }
 
 /** Height a text box occupies once wrapped. */
