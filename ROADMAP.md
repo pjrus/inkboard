@@ -62,8 +62,6 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Rich text** (bold, italic, lists). `Y.Text` already supports
       formatting attributes; the work is in `textLayout.ts`, the renderer and
       the PDF exporter.
-- [ ] **Spell check toggle.** The editor textarea sets `spellCheck={false}`;
-      make it a preference.
 
 ## PDF and images
 
@@ -79,8 +77,6 @@ Mostly UI on top of plumbing that already exists.
 - [ ] **Blank and template pages.** Insert an empty, lined, grid or dotted
       A4 page for notebook-style use, exported like an imported page.
 - [ ] **Rotate pages 90°.** `ImageObject.rotation` already exists.
-- [ ] **Page navigator.** A sidebar of page thumbnails for a document; click to
-      jump. Most useful for long PDFs.
 - [ ] **Select and copy PDF text** from imported pages via the PDF.js text
       layer, extracted at import time.
 - [ ] **Crop images and pages.**
