@@ -17,6 +17,7 @@ import type {
 import { type ExportChoice, ExportDialog } from "../export/ExportDialog";
 import { importPDF, type InspectedPDF, inspectPDF } from "../pdf/PDFImporter";
 import { useToolStore } from "../store/toolStore";
+import { CropBar } from "../ui/CropBar";
 import { ImportPDFDialog } from "../ui/ImportPDFDialog";
 import { ImportProgressToast } from "../ui/ImportProgressToast";
 import { PageSelectionBar } from "../ui/PageSelectionBar";
@@ -56,6 +57,7 @@ export function BoardView({ boardId, onBack }: Props) {
   const handlesRef = useRef<CanvasHandles | null>(null);
   const sessionRef = useRef<BoardSession | null>(null);
   const selectedId = useToolStore((s) => s.selectedObjectId);
+  const croppingImageId = useToolStore((s) => s.croppingImageId);
   const setImportProgress = useToolStore((s) => s.setImportProgress);
   const [docVersion, setDocVersion] = useState(0);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -136,6 +138,19 @@ export function BoardView({ boardId, onBack }: Props) {
       const store = useToolStore.getState();
       const h = handlesRef.current;
       if (store.editingTextId) return;
+      if (store.croppingImageId && !mod) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          h?.controller.commitCrop();
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          h?.controller.cancelCrop();
+          return;
+        }
+        return;
+      }
       const viewing = store.canvasMode === "view";
       if (mod && e.key.toLowerCase() === "z" && !viewing) {
         e.preventDefault();
@@ -510,6 +525,9 @@ export function BoardView({ boardId, onBack }: Props) {
   const selectedPage = selectedId
     ? (session.doc.get(selectedId) as ImageObject | undefined)
     : undefined;
+  const croppingImage = croppingImageId
+    ? (session.doc.get(croppingImageId) as ImageObject | undefined)
+    : undefined;
   void docVersion; // re-render trigger for selection bar contents
 
   let exportObjects: CanvasObject[] = [];
@@ -672,10 +690,20 @@ export function BoardView({ boardId, onBack }: Props) {
           }}
         />
         <SelectionBar />
-        {selectedPage?.type === "image" && (
+        {croppingImage?.type === "image" && (
+          <CropBar
+            image={croppingImage}
+            onReset={() => handlesRef.current?.controller.resetCrop()}
+            onCancel={() => handlesRef.current?.controller.cancelCrop()}
+            onDone={() => handlesRef.current?.controller.commitCrop()}
+          />
+        )}
+        {!croppingImageId && selectedPage?.type === "image" && (
           <PageSelectionBar
             doc={session.doc}
             page={selectedPage}
+            onCrop={() =>
+              handlesRef.current?.controller.startCrop(selectedPage.id)}
             onDeselect={() => handlesRef.current?.controller.setSelection(null)}
           />
         )}

@@ -45,7 +45,10 @@ function measureAt(fontFamily: string, text: string): number {
   if (hit !== undefined) return hit;
   c.font = canvasFont(fontFamily, REFERENCE_SIZE);
   const w = c.measureText(text).width;
-  if (widths.size > MAX_MEASUREMENTS) widths.clear();
+  if (widths.size >= MAX_MEASUREMENTS) {
+    const oldest = widths.keys().next().value;
+    if (oldest !== undefined) widths.delete(oldest);
+  }
   widths.set(key, w);
   return w;
 }
@@ -81,7 +84,10 @@ export function measureText(o: LayoutInput): TextLayoutResult {
     },
     measurer(o.fontFamily, o.fontSize),
   );
-  if (layouts.size > MAX_LAYOUTS) layouts.clear();
+  if (layouts.size >= MAX_LAYOUTS) {
+    const oldest = layouts.keys().next().value;
+    if (oldest !== undefined) layouts.delete(oldest);
+  }
   layouts.set(key, result);
   return result;
 }

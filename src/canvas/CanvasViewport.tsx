@@ -88,6 +88,7 @@ export function CanvasViewport({
         onSelectionChange: (id) => store.getState().setSelectedObjectId(id),
         onObjectSelectionChange: (sel) => store.getState().setSelection(sel),
         onEditingTextChange: (id) => store.getState().setEditingTextId(id),
+        onCroppingImageChange: (id) => store.getState().setCroppingImageId(id),
       },
     );
     store.getState().setSelectionCommands({
@@ -101,6 +102,7 @@ export function CanvasViewport({
       setTextBackground: (c) => controller.setSelectionTextBackground(c),
       rotate: (angle) => controller.rotateSelection(angle),
       editText: () => controller.editSelectedText(),
+      cropImage: () => controller.startCropOnSelection(),
       remove: () => controller.deleteSelection(),
       clear: () => controller.clearObjectSelection(),
     });
@@ -131,6 +133,7 @@ export function CanvasViewport({
       store.getState().setSelectionCommands(null);
       store.getState().setSelection(null);
       store.getState().setEditingTextId(null);
+      store.getState().setCroppingImageId(null);
       onReady(null);
       handlesRef.current = null;
       ro.disconnect();
@@ -157,6 +160,7 @@ export function CanvasViewport({
 
   useEffect(() => {
     const controller = handlesRef.current?.controller;
+    controller?.commitCrop();
     controller?.updateCursor();
     if (tool !== "pan") controller?.setSelection(null);
     // Selections belong to the tools that can act on them.

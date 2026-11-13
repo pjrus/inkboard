@@ -5,15 +5,16 @@ import { layoutPages } from "../pdf/PDFLayoutEngine";
 interface Props {
   doc: CanvasDocument;
   page: ImageObject;
+  onCrop: () => void;
   onDeselect: () => void;
 }
 
 /**
  * Small contextual bar shown while an image is selected with the hand tool.
  * The PDF controls appear only for pages still attached to their import;
- * copies are plain images and only get Delete.
+ * copies are plain images and only get Crop and Delete.
  */
-export function PageSelectionBar({ doc, page, onDeselect }: Props) {
+export function PageSelectionBar({ doc, page, onCrop, onDeselect }: Props) {
   const pdfId = page.pdfDocumentId;
   const meta = pdfId ? doc.getPDFDocument(pdfId) : undefined;
   const layout = meta?.layout ?? "vertical";
@@ -72,6 +73,13 @@ export function PageSelectionBar({ doc, page, onDeselect }: Props) {
           </button>
         </div>
       )}
+      <button
+        type="button"
+        className="btn btn-sm"
+        onClick={onCrop}
+      >
+        Crop
+      </button>
       <button
         type="button"
         className="btn btn-sm"

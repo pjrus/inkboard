@@ -70,6 +70,17 @@ export interface StrokeObject {
 }
 
 /**
+ * Normalized [0..1] sub-rectangle of the source bitmap to display.
+ * When omitted, the full bitmap ({ x: 0, y: 0, width: 1, height: 1 }) is drawn.
+ */
+export interface ImageCrop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
  * A bitmap on the board. Imported PDF pages are images: once rasterised they
  * are ordinary canvas content, and nothing but the import's own layout and
  * remove controls cares where they came from.
@@ -92,6 +103,8 @@ export interface ImageObject {
   y: number;
   width: number;
   height: number;
+  /** Normalized source-bitmap sub-rectangle when cropped; omitted when full. */
+  crop?: ImageCrop;
   /** Radians, clockwise on screen, about the page's centre. */
   rotation: number;
   createdAt: number;
