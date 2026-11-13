@@ -168,6 +168,39 @@ interface ToolState extends ToolPreferences {
 
 const PREF_KEYS = Object.keys(DEFAULT_TOOL_PREFS) as (keyof ToolPreferences)[];
 
+const TOOL_STYLE_CONFIG = {
+  pen: {
+    customColorsKey: "customPenColors",
+    defaultCustomColors: ["#2e9e5b", "#8e44ad", "#f2994a"],
+    colorKey: "color",
+    setsExplicit: true,
+    profilesKey: "penThicknessProfiles",
+    defaultProfiles: [1.5, 3, 6] as [number, number, number],
+    profileIndexKey: "penThicknessIndex",
+    widthKey: null,
+  },
+  pencil: {
+    customColorsKey: "customPencilColors",
+    defaultCustomColors: ["#2b6de9", "#2e9e5b", "#e67e22"],
+    colorKey: "pencilColor",
+    setsExplicit: true,
+    profilesKey: "pencilThicknessProfiles",
+    defaultProfiles: [1.5, 2.5, 4.5] as [number, number, number],
+    profileIndexKey: "pencilThicknessIndex",
+    widthKey: null,
+  },
+  highlighter: {
+    customColorsKey: "customHighlighterColors",
+    defaultCustomColors: ["#74c0fc", "#b197fc", "#ffa94d"],
+    colorKey: "highlighterColor",
+    setsExplicit: false,
+    profilesKey: "highlighterThicknessProfiles",
+    defaultProfiles: [2, 4, 8] as [number, number, number],
+    profileIndexKey: "highlighterThicknessIndex",
+    widthKey: "highlighterWidth",
+  },
+} as const;
+
 export const useToolStore = create<ToolState>((set, get) => ({
   selection: null,
   selectionCommands: null,
@@ -266,117 +299,51 @@ export const useToolStore = create<ToolState>((set, get) => ({
   addCustomColor: (toolName, color) => {
     const s = get();
     const hex = color.toLowerCase();
-    if (toolName === "highlighter") {
-      const current = s.customHighlighterColors
-        ?? ["#74c0fc", "#b197fc", "#ffa94d"];
-      const updated = current.some((c) => c.toLowerCase() === hex)
-        ? current
-        : [...current, hex];
-      set({
-        customHighlighterColors: updated,
-        highlighterColor: hex,
-        color: hex,
-      });
-    } else if (toolName === "pencil") {
-      const current = s.customPencilColors
-        ?? ["#2b6de9", "#2e9e5b", "#e67e22"];
-      const updated = current.some((c) => c.toLowerCase() === hex)
-        ? current
-        : [...current, hex];
-      set({
-        customPencilColors: updated,
-        pencilColor: hex,
-        color: hex,
-        colorExplicit: true,
-      });
-    } else {
-      const current = s.customPenColors ?? ["#2e9e5b", "#8e44ad", "#f2994a"];
-      const updated = current.some((c) => c.toLowerCase() === hex)
-        ? current
-        : [...current, hex];
-      set({
-        customPenColors: updated,
-        color: hex,
-        colorExplicit: true,
-      });
-    }
+    const cfg = TOOL_STYLE_CONFIG[toolName];
+    const current = s[cfg.customColorsKey] ?? cfg.defaultCustomColors;
+    const updated = current.some((c) => c.toLowerCase() === hex)
+      ? current
+      : [...current, hex];
+    set({
+      [cfg.customColorsKey]: updated,
+      [cfg.colorKey]: hex,
+      color: hex,
+      ...(cfg.setsExplicit ? { colorExplicit: true } : {}),
+    });
   },
   removeCustomColor: (toolName, color) => {
     const s = get();
     const hex = color.toLowerCase();
-    if (toolName === "highlighter") {
-      const current = s.customHighlighterColors
-        ?? ["#74c0fc", "#b197fc", "#ffa94d"];
-      set({
-        customHighlighterColors: current.filter((c) => c.toLowerCase() !== hex),
-      });
-    } else if (toolName === "pencil") {
-      const current = s.customPencilColors
-        ?? ["#2b6de9", "#2e9e5b", "#e67e22"];
-      set({
-        customPencilColors: current.filter((c) => c.toLowerCase() !== hex),
-      });
-    } else {
-      const current = s.customPenColors ?? ["#2e9e5b", "#8e44ad", "#f2994a"];
-      set({
-        customPenColors: current.filter((c) => c.toLowerCase() !== hex),
-      });
-    }
+    const cfg = TOOL_STYLE_CONFIG[toolName];
+    const current = s[cfg.customColorsKey] ?? cfg.defaultCustomColors;
+    set({
+      [cfg.customColorsKey]: current.filter((c) => c.toLowerCase() !== hex),
+    });
   },
   setThicknessProfile: (toolName, index) => {
     const s = get();
-    if (toolName === "highlighter") {
-      const profiles = s.highlighterThicknessProfiles ?? [2, 4, 8];
-      const w = profiles[index];
-      set({
-        highlighterThicknessIndex: index,
-        highlighterWidth: w,
-        width: w,
-      });
-    } else if (toolName === "pencil") {
-      const profiles = s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5];
-      const w = profiles[index];
-      set({ pencilThicknessIndex: index, width: w });
-    } else {
-      const profiles = s.penThicknessProfiles ?? [1.5, 3, 6];
-      const w = profiles[index];
-      set({ penThicknessIndex: index, width: w });
-    }
+    const cfg = TOOL_STYLE_CONFIG[toolName];
+    const profiles = s[cfg.profilesKey] ?? cfg.defaultProfiles;
+    const w = profiles[index];
+    set({
+      [cfg.profileIndexKey]: index,
+      ...(cfg.widthKey ? { [cfg.widthKey]: w } : {}),
+      width: w,
+    });
   },
   updateThicknessProfile: (toolName, index, value) => {
     const s = get();
-    if (toolName === "highlighter") {
-      const profiles = [
-        ...(s.highlighterThicknessProfiles ?? [2, 4, 8]),
-      ] as [number, number, number];
-      profiles[index] = value;
-      set({
-        highlighterThicknessProfiles: profiles,
-        highlighterThicknessIndex: index,
-        highlighterWidth: value,
-        width: value,
-      });
-    } else if (toolName === "pencil") {
-      const profiles = [
-        ...(s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5]),
-      ] as [number, number, number];
-      profiles[index] = value;
-      set({
-        pencilThicknessProfiles: profiles,
-        pencilThicknessIndex: index,
-        width: value,
-      });
-    } else {
-      const profiles = [
-        ...(s.penThicknessProfiles ?? [1.5, 3, 6]),
-      ] as [number, number, number];
-      profiles[index] = value;
-      set({
-        penThicknessProfiles: profiles,
-        penThicknessIndex: index,
-        width: value,
-      });
-    }
+    const cfg = TOOL_STYLE_CONFIG[toolName];
+    const profiles = [
+      ...(s[cfg.profilesKey] ?? cfg.defaultProfiles),
+    ] as [number, number, number];
+    profiles[index] = value;
+    set({
+      [cfg.profilesKey]: profiles,
+      [cfg.profileIndexKey]: index,
+      ...(cfg.widthKey ? { [cfg.widthKey]: value } : {}),
+      width: value,
+    });
   },
   setTextColor: (textColor) => set({ textColor, textColorExplicit: true }),
   setTextFont: (textFont) => set({ textFont }),

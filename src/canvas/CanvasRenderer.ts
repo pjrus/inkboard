@@ -477,6 +477,7 @@ export class CanvasRenderer {
     };
 
     // Layer 10: PDF pages
+    this.imageCache.beginPass();
     for (const page of this.pages) {
       if (this.cropSession && this.cropSession.id === page.id) {
         const f = this.cropSession.fullRect;

@@ -329,6 +329,10 @@ export class CanvasInteractionController {
       const o = this.selectable(id);
       if (o) out.push(o);
     }
+    if (out.length === 0 && this.renderer.selectedId) {
+      const o = this.doc.get(this.renderer.selectedId);
+      if (o) out.push(o);
+    }
     return out;
   }
 
@@ -347,6 +351,7 @@ export class CanvasInteractionController {
     if (!this.editable || objs.length === 0) return [];
     const d = screenLengthToWorld(PASTE_OFFSET_PX, this.viewport);
     const ids = this.doc.cloneObjects(objs, d, d);
+    this.setSelection(null);
     this.selectedIds = new Set(ids);
     this.publishSelection();
     return ids.map((id) => this.doc.get(id)!);
