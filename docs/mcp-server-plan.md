@@ -46,28 +46,23 @@ whiteboard content.
 
 ## 3. Architecture & Data Access Model
 
-Because Inkboard currently runs entirely in the browser with IndexedDB storage,
-the MCP server needs a clear way to reach board data. Choose (or phase) one of
-the following integration models:
+Because Inkboard currently runs in the browser with IndexedDB storage, the MCP
+server connects directly to the running Inkboard session via a **Local Live
+Bridge** as the primary data access model:
 
-- **Option A — File-Based (`.inkboard` Backup / Export):**
-  - The MCP server reads and writes `.inkboard` archive files (and/or exported
-    JSON/PDFs) on disk.
-  - _Pros:_ Zero changes to the browser app; works offline; deterministic and
-    easy to test.
-  - _Cons:_ Not live; requires manual export/import or File System Access API
-    auto-backup (see `ROADMAP.md`).
-- **Option B — Local Live Bridge (WebSocket / HTTP):**
-  - A lightweight local relay connects the running Inkboard browser tab to the
-    MCP server, exchanging Yjs updates (`Y.encodeStateAsUpdate` /
-    `Y.applyUpdate`) and binary assets.
+- **Primary Architecture — Local Live Bridge (WebSocket / Yjs):**
+  - A lightweight local relay on `127.0.0.1` connects the running Inkboard
+    browser tab to the MCP server, exchanging Yjs updates
+    (`Y.encodeStateAsUpdate` / `Y.applyUpdate`), board metadata, and binary
+    assets on demand.
   - _Pros:_ Live edits appear immediately on the canvas with full Yjs undo/CRDT
-    safety.
+    safety; no manual export/import loop.
   - _Cons:_ Requires the browser app to be open and opt-in to the bridge; needs
     pairing/origin checks.
-- **Recommended Phasing:** Start with **Option A** (`.inkboard` file backend)
-  for Phase 1, behind a `BoardBackend` interface so **Option B** (live Yjs
-  bridge) can be plugged in during Phase 2.
+- **Secondary / Optional — File-Based (`.inkboard` Backup):**
+  - An optional `.inkboard` archive backend can sit behind the same
+    `BoardBackend` interface for headless/offline workflows when no browser tab
+    is open.
 
 ```text
 +------------------+       stdio / HTTP        +----------------------+
@@ -78,10 +73,15 @@ the following integration models:
                                                +----------------------+
                                                |    BoardBackend      |
                                                +----------------------+
-                                                /                    \
-                                               v                      v
-                                    [Phase 1: .inkboard]   [Phase 2: Live Yjs]
-                                    [  archive files   ]   [ WebSocket bridge ]
+                                                          |
+                                             WebSocket / Yjs Bridge
+                                               (127.0.0.1 + token)
+                                                          |
+                                                          v
+                                               +----------------------+
+                                               | Inkboard Browser App |
+                                               | (Yjs CRDT + Dexie)   |
+                                               +----------------------+
 ```
 
 ## 4. MCP Primitives
@@ -144,50 +144,54 @@ the following integration models:
 
 ## 6. Implementation Plan (Phased Milestones)
 
-### Phase 1: Foundation & Read-Only `.inkboard` Backend
+### Phase 1: Local Live Bridge & Read-Only MCP Server
 
-- [ ] Define `BoardBackend` interface and `.inkboard` archive reader/writer
-      reusing `src/boards/backup.ts` and `src/document/crdt.ts`.
+- [ ] Define `BoardBackend` interface and build the local WebSocket/Yjs bridge
+      (`127.0.0.1` + session token + origin check) between the Inkboard web app
+      and the MCP server.
+- [ ] Add an opt-in bridge client in the Inkboard browser app to sync active
+      `CanvasDocument` Yjs state and board metadata over the local relay.
 - [ ] Scaffold MCP server with `@modelcontextprotocol/sdk` (`stdio` transport).
 - [ ] Implement read-only resources (`inkboard://boards`,
       `inkboard://boards/{boardId}`) and tools (`list_boards`,
       `get_board_summary`, `query_objects`).
-- [ ] Add unit tests for schema validation, bounds querying, and archive
-      round-trips.
+- [ ] Add unit and integration tests for schema validation, bounds querying, and
+      Yjs bridge sync.
 
-### Phase 2: CRDT Mutations & Export
+### Phase 2: Live CRDT Mutations, Prompts & Export
 
 - [ ] Implement write tools (`create_board`, `add_text_box`, `update_text_box`,
-      `add_stroke`, `delete_objects`) behind `--read-only` guard.
-- [ ] Wire `export_board_pdf` using existing export modules where Node-compatible.
+      `add_stroke`, `delete_objects`) behind `--read-only` guard, syncing live
+      to the open canvas.
+- [ ] Wire `export_board_pdf` using existing export modules where Node-compatible
+      (or via the connected browser session).
 - [ ] Add MCP prompts (`summarize_board`, `diagram_to_board`).
-
-### Phase 3: Live Browser Bridge (Optional / Follow-Up)
-
-- [ ] Design WebSocket/Yjs sync bridge between the Inkboard web app and the
-      local MCP server.
-- [ ] Support live board discovery and real-time updates without manual
-      `.inkboard` export/import.
 - [ ] Add end-to-end tests covering browser <-> MCP round-trip edits.
+
+### Phase 3: Offline `.inkboard` File Backend (Optional)
+
+- [ ] Add a `.inkboard` archive `BoardBackend` reusing `src/boards/backup.ts`
+      for headless/offline use when no browser session is running.
 
 ## 7. Open Questions & Decisions Needed
 
 - [ ] **Package layout:** Should the MCP server live in-repo (e.g. `mcp/` or a
       npm workspace) or in a separate repository?
-- [ ] **Primary data source:** Is Phase 1 `.inkboard` file-based sufficient to
-      start, or do we need the live browser bridge from day one?
+- [ ] **Bridge UX & pairing:** How should the browser app opt in to the local
+      bridge (e.g. dev/settings toggle + one-time pairing token) and handle
+      multiple open tabs?
 - [ ] **Stroke representation:** Should `get_board_summary` omit raw stroke
       point arrays by default (returning bounds + metadata) to keep token usage
       low?
-- [ ] **Rendering dependency:** Does `export_board_pdf` / PNG preview in Node
-      require `@napi-rs/canvas` or Playwright, or should Phase 1 stick to
-      `pdf-lib` + structured JSON?
+- [ ] **Rendering dependency:** Should `export_board_pdf` / PNG preview delegate
+      to the connected browser tab over the bridge, or render in Node via
+      `pdf-lib` / `@napi-rs/canvas`?
 
 ## 8. Verification & Test Plan
 
 - [ ] Schema & Zod input validation unit tests (`npm test`).
-- [ ] `.inkboard` read/write round-trip tests verifying CRDT integrity and
-      asset references.
+- [ ] Live WebSocket/Yjs bridge round-trip tests verifying CRDT integrity and
+      concurrent browser + MCP edits.
 - [ ] Smoke test with MCP Inspector (`npx @modelcontextprotocol/inspector`) over
       `stdio`.
 - [ ] `npm run typecheck`, `npm run format:check`, and `npm run build`.
