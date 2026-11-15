@@ -53,17 +53,17 @@ the following integration models:
 - **Option A — File-Based (`.inkboard` Backup / Export):**
   - The MCP server reads and writes `.inkboard` archive files (and/or exported
     JSON/PDFs) on disk.
-  - *Pros:* Zero changes to the browser app; works offline; deterministic and
+  - _Pros:_ Zero changes to the browser app; works offline; deterministic and
     easy to test.
-  - *Cons:* Not live; requires manual export/import or File System Access API
+  - _Cons:_ Not live; requires manual export/import or File System Access API
     auto-backup (see `ROADMAP.md`).
 - **Option B — Local Live Bridge (WebSocket / HTTP):**
   - A lightweight local relay connects the running Inkboard browser tab to the
     MCP server, exchanging Yjs updates (`Y.encodeStateAsUpdate` /
     `Y.applyUpdate`) and binary assets.
-  - *Pros:* Live edits appear immediately on the canvas with full Yjs undo/CRDT
+  - _Pros:_ Live edits appear immediately on the canvas with full Yjs undo/CRDT
     safety.
-  - *Cons:* Requires the browser app to be open and opt-in to the bridge; needs
+  - _Cons:_ Requires the browser app to be open and opt-in to the bridge; needs
     pairing/origin checks.
 - **Recommended Phasing:** Start with **Option A** (`.inkboard` file backend)
   for Phase 1, behind a `BoardBackend` interface so **Option B** (live Yjs
@@ -88,12 +88,12 @@ the following integration models:
 
 ### 4.1 Resources (Read-Only Context)
 
-| URI Template | MIME Type | Description |
-| --- | --- | --- |
-| `inkboard://boards` | `application/json` | List of available boards (id, title, updatedAt, object counts). |
-| `inkboard://boards/{boardId}` | `application/json` | Full board summary: settings, content bounds, text boxes, PDFs. |
+| URI Template                                     | MIME Type          | Description                                                            |
+| ------------------------------------------------ | ------------------ | ---------------------------------------------------------------------- |
+| `inkboard://boards`                              | `application/json` | List of available boards (id, title, updatedAt, object counts).        |
+| `inkboard://boards/{boardId}`                    | `application/json` | Full board summary: settings, content bounds, text boxes, PDFs.        |
 | `inkboard://boards/{boardId}/objects/{objectId}` | `application/json` | Detailed JSON for a single `CanvasObject` (`stroke`, `image`, `text`). |
-| `inkboard://boards/{boardId}/preview` | `image/png` | Rasterized viewport/content preview (optional/Phase 2). |
+| `inkboard://boards/{boardId}/preview`            | `image/png`        | Rasterized viewport/content preview (optional/Phase 2).                |
 
 ### 4.2 Tools (Actions)
 
