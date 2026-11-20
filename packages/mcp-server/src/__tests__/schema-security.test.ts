@@ -158,12 +158,27 @@ describe("Security helpers", () => {
       resolveSandboxedPath(root, "bad\0path.pdf"),
     ).rejects.toThrow(/null byte/);
 
-    // Symlink pointing outside root must be rejected
+    // Symlink pointing outside root must be rejected (1 level, nested non-existent subdir, and symlinked file)
     await writeFile(path.join(outside, "secret.txt"), "hi");
     const linkDir = path.join(root, "escape-link");
     await symlink(outside, linkDir);
     await expect(
       resolveSandboxedPath(root, "escape-link/out.pdf"),
+    ).rejects.toThrow(/resolves outside/);
+    await expect(
+      resolveSandboxedPath(root, "escape-link/missing-sub/out.pdf"),
+    ).rejects.toThrow(/resolves outside/);
+
+    const linkFile = path.join(root, "escape-file.pdf");
+    await symlink(path.join(outside, "secret.txt"), linkFile);
+    await expect(
+      resolveSandboxedPath(root, "escape-file.pdf"),
+    ).rejects.toThrow(/resolves outside/);
+
+    const danglingLink = path.join(root, "dangling.pdf");
+    await symlink(path.join(outside, "does-not-exist.pdf"), danglingLink);
+    await expect(
+      resolveSandboxedPath(root, "dangling.pdf"),
     ).rejects.toThrow(/resolves outside/);
   });
 

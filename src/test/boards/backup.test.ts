@@ -116,6 +116,27 @@ describe("backup", () => {
     await expect(
       restoreBoards(file.slice(0, file.size - 1)),
     ).rejects.toThrow("incomplete");
+
+    // Negative segment sizes must be rejected before slicing.
+    const badHeader = new TextEncoder().encode(
+      JSON.stringify({
+        version: 1,
+        boards: [{
+          name: "Bad",
+          createdAt: 1,
+          updatedAt: 1,
+          updateSize: -10,
+          assets: [],
+        }],
+      }),
+    );
+    const preamble = new Uint8Array(12);
+    preamble.set(new TextEncoder().encode("INKBOARD"));
+    new DataView(preamble.buffer).setUint32(8, badHeader.byteLength, true);
+    await expect(
+      restoreBoards(new Blob([preamble, badHeader, new Uint8Array(32)])),
+    ).rejects.toThrow("invalid");
+
     expect(await getDB().boards.count()).toBe(before);
   });
 

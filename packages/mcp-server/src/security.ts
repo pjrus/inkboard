@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 
 export const DEFAULT_MAX_ASSET_BYTES = 4 * 1024 * 1024; // 4 MiB
@@ -67,18 +67,58 @@ export async function resolveSandboxedPath(
     );
   }
 
-  // Also check realpath of nearest existing ancestor to block symlink escapes.
-  const parentDir = path.dirname(candidate);
+  // Check the target itself first (including symlinks / dangling symlinks).
   try {
-    const realParent = await realpath(parentDir);
-    if (!isWithinDirectory(resolvedRoot, realParent)) {
-      throw new Error(
-        `Path "${targetPath}" resolves outside configured directory "${resolvedRoot}".`,
-      );
+    const st = await lstat(candidate);
+    if (st.isSymbolicLink()) {
+      const realTarget = await realpath(candidate);
+      if (!isWithinDirectory(resolvedRoot, realTarget)) {
+        throw new Error(
+          `Path "${targetPath}" resolves outside configured directory "${resolvedRoot}".`,
+        );
+      }
     }
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") {
+      // Either target doesn't exist yet or is a dangling symlink (reject the latter).
+      const linkSt = await lstat(candidate).catch(() => null);
+      if (linkSt?.isSymbolicLink()) {
+        throw new Error(
+          `Path "${targetPath}" resolves outside configured directory "${resolvedRoot}".`,
+        );
+      }
+    } else {
       throw err;
+    }
+  }
+
+  // Walk up ancestors until an existing directory is found to block symlink escapes
+  // even when intermediate subdirectories do not exist yet.
+  let cur = path.dirname(candidate);
+  while (true) {
+    try {
+      const realParent = await realpath(cur);
+      if (!isWithinDirectory(resolvedRoot, realParent)) {
+        throw new Error(
+          `Path "${targetPath}" resolves outside configured directory "${resolvedRoot}".`,
+        );
+      }
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw err;
+      }
+      const linkSt = await lstat(cur).catch(() => null);
+      if (linkSt?.isSymbolicLink()) {
+        throw new Error(
+          `Path "${targetPath}" resolves outside configured directory "${resolvedRoot}".`,
+        );
+      }
+      if (cur === resolvedRoot) break;
+      const parent = path.dirname(cur);
+      if (parent === cur) break;
+      cur = parent;
     }
   }
 

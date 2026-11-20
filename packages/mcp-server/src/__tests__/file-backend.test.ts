@@ -75,4 +75,52 @@ describe("InkboardFileBackend (.inkboard offline archives)", () => {
       reloaded.addTextBox("backup.inkboard#0", { x: 0, y: 0, text: "Blocked" }),
     ).rejects.toThrow(/--read-only/);
   });
+
+  it("serializes concurrent mutations and rejects negative archive sizes", async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), "inkboard-concurrent-"));
+    dirs.push(dir);
+    const archivePath = path.join(dir, "concurrent.inkboard");
+    await writeSampleArchive(archivePath);
+
+    const backend = new InkboardFileBackend({ rootPath: dir });
+    await Promise.all([
+      backend.addTextBox("concurrent.inkboard#0", { x: 10, y: 10, text: "A" }),
+      backend.addTextBox("concurrent.inkboard#0", { x: 20, y: 20, text: "B" }),
+      backend.addTextBox("concurrent.inkboard#0", { x: 30, y: 30, text: "C" }),
+    ]);
+
+    const summary = await backend.getBoardSummary("concurrent.inkboard#0");
+    expect(summary.textBoxes.map((t) => t.text).sort()).toEqual([
+      "A",
+      "B",
+      "C",
+      "Offline Note",
+    ]);
+
+    // Malformed archive with negative updateSize must be rejected.
+    const badPath = path.join(dir, "bad.inkboard");
+    const badHeader = Buffer.from(
+      JSON.stringify({
+        version: 1,
+        boards: [{
+          name: "Bad",
+          createdAt: 1,
+          updatedAt: 1,
+          updateSize: -5,
+          assets: [],
+        }],
+      }),
+      "utf8",
+    );
+    const preamble = Buffer.alloc(12);
+    preamble.write("INKBOARD", 0, "ascii");
+    preamble.writeUInt32LE(badHeader.byteLength, 8);
+    await writeFile(
+      badPath,
+      Buffer.concat([preamble, badHeader, Buffer.alloc(16)]),
+    );
+    await expect(backend.listBoards()).rejects.toThrow(
+      /invalid archive header/,
+    );
+  });
 });
