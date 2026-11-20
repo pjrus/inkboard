@@ -111,6 +111,23 @@ export class CanvasDocument {
       ?? DEFAULT_BACKGROUND;
   }
 
+  getObjectCounts(): {
+    total: number;
+    strokes: number;
+    text: number;
+    images: number;
+  } {
+    let strokes = 0;
+    let text = 0;
+    let images = 0;
+    for (const o of this.cache.values()) {
+      if (o.type === "stroke") strokes++;
+      else if (o.type === "text") text++;
+      else if (o.type === "image") images++;
+    }
+    return { total: strokes + text + images, strokes, text, images };
+  }
+
   onChange(listener: ObjectListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

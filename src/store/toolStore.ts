@@ -45,14 +45,6 @@ export const TEXT_BACKGROUND_PALETTE = [
   { name: "Dark", value: "#1e293b" },
 ];
 
-export const THICKNESS_PRESETS = [
-  { name: "Extra thin", value: 1.5 },
-  { name: "Thin", value: 2.5 },
-  { name: "Medium", value: 4 },
-  { name: "Thick", value: 7 },
-  { name: "Extra thick", value: 12 },
-];
-
 export interface ImportProgress {
   fileName: string;
   done: number;

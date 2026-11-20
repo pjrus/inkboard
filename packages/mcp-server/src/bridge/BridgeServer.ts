@@ -34,11 +34,6 @@ interface PendingRequest {
   timer: ReturnType<typeof setTimeout>;
 }
 
-export type BoardUpdateListener = (
-  boardId: string,
-  update: Uint8Array,
-) => void;
-
 export class BridgeServer {
   private readonly token: string;
   private readonly requestedPort: number;
@@ -50,7 +45,6 @@ export class BridgeServer {
   private wss: WebSocketServer | null = null;
   private tabs = new Map<string, ConnectedTab>();
   private pending = new Map<string, PendingRequest>();
-  private updateListeners = new Set<BoardUpdateListener>();
   private _port: number | null = null;
 
   constructor(options: BridgeServerOptions) {
@@ -70,11 +64,6 @@ export class BridgeServer {
 
   get connectedTabCount(): number {
     return this.tabs.size;
-  }
-
-  onBoardUpdate(listener: BoardUpdateListener): () => void {
-    this.updateListeners.add(listener);
-    return () => this.updateListeners.delete(listener);
   }
 
   async start(): Promise<number> {
@@ -277,14 +266,6 @@ export class BridgeServer {
 
       if (msg.type === "active_board_changed") {
         if (tab) tab.activeBoardId = msg.activeBoardId ?? null;
-        return;
-      }
-
-      if (msg.type === "board_update") {
-        const bytes = new Uint8Array(Buffer.from(msg.updateBase64, "base64"));
-        for (const listener of this.updateListeners) {
-          listener(msg.boardId, bytes);
-        }
         return;
       }
 

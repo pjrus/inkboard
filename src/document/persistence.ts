@@ -108,7 +108,11 @@ export class DocumentPersistence {
             update: merged,
             createdAt: Date.now(),
           });
-          await db.boards.update(this.boardId, { updatedAt: Date.now() });
+          await db.boards.update(this.boardId, {
+            updatedAt: Date.now(),
+            background: this.doc.getBackground(),
+            objectCounts: this.doc.getObjectCounts(),
+          });
         });
         if (this.queue.length === 0) this.setStatus("saved");
         const count = await db.updates

@@ -204,7 +204,7 @@ function drawText(ctx: CanvasRenderingContext2D, text: TextObject): void {
   ctx.restore();
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
+export function bytesToBase64(bytes: Uint8Array): string {
   const chunkSize = 0x8000;
   const parts: string[] = [];
   for (let i = 0; i < bytes.length; i += chunkSize) {

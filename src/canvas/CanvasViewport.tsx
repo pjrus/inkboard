@@ -121,11 +121,6 @@ export function CanvasViewport({
     window.addEventListener("resize", resize);
 
     handlesRef.current = { renderer, controller };
-    (window as unknown as Record<string, unknown>).__debug = {
-      renderer,
-      controller,
-      doc,
-    };
     onReady(handlesRef.current);
     store.getState().setZoom(initialViewport.scale);
 

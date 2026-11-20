@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import { boardRepository } from "../boards/BoardRepository";
 import type { BoardSession } from "../boards/BoardSession";
-import { CanvasDocument, MCP_ORIGIN } from "../document/crdt";
+import { CanvasDocument } from "../document/crdt";
 import { newId } from "../document/ids";
 import { DocumentPersistence } from "../document/persistence";
 import { getDB } from "../storage/db";
@@ -12,13 +12,12 @@ import {
   loadBridgeSettings,
   saveBridgeSettings,
 } from "./bridgeSettings";
-import { renderBoardPreview } from "./previewRenderer";
+import { bytesToBase64, renderBoardPreview } from "./previewRenderer";
 import {
   BRIDGE_PROTOCOL_VERSION,
   type BridgeBoardMeta,
   type BridgeMethod,
   type BridgeMethodMap,
-  type BridgeObjectCounts,
   type BridgeRequestMessage,
   type BridgeResponseMessage,
   type BridgeServerMessage,
@@ -42,15 +41,6 @@ export interface BridgeUIState {
 
 export type BridgeStateListener = (state: BridgeUIState) => void;
 
-function bytesToBase64(bytes: Uint8Array): string {
-  const chunkSize = 0x8000;
-  const parts: string[] = [];
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    parts.push(String.fromCharCode(...bytes.subarray(i, i + chunkSize)));
-  }
-  return btoa(parts.join(""));
-}
-
 function base64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -58,18 +48,6 @@ function base64ToBytes(b64: string): Uint8Array {
     out[i] = bin.charCodeAt(i);
   }
   return out;
-}
-
-function countObjects(doc: CanvasDocument): BridgeObjectCounts {
-  let strokes = 0;
-  let text = 0;
-  let images = 0;
-  for (const o of doc.getAll()) {
-    if (o.type === "stroke") strokes++;
-    else if (o.type === "text") text++;
-    else if (o.type === "image") images++;
-  }
-  return { total: strokes + text + images, strokes, text, images };
 }
 
 export class McpBridgeClient {
@@ -82,7 +60,6 @@ export class McpBridgeClient {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
   private activeSession: BoardSession | null = null;
-  private unbindSessionDoc: (() => void) | null = null;
 
   private listeners = new Set<BridgeStateListener>();
   private boardsChangedListeners = new Set<() => void>();
@@ -156,23 +133,7 @@ export class McpBridgeClient {
 
   setActiveSession(session: BoardSession | null): void {
     if (this.activeSession === session) return;
-    this.unbindSessionDoc?.();
-    this.unbindSessionDoc = null;
     this.activeSession = session;
-
-    if (session) {
-      const boardId = session.board.id;
-      const onUpdate = (update: Uint8Array, origin: unknown) => {
-        if (origin === "persistence" || origin === MCP_ORIGIN) return;
-        this.sendJson({
-          type: "board_update",
-          boardId,
-          updateBase64: bytesToBase64(update),
-        });
-      };
-      session.doc.ydoc.on("update", onUpdate);
-      this.unbindSessionDoc = () => session.doc.ydoc.off("update", onUpdate);
-    }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.sendJson({
@@ -353,21 +314,36 @@ export class McpBridgeClient {
               updatedAt: rec.updatedAt,
               isActive: true,
               background: this.activeSession.doc.getBackground(),
-              objectCounts: countObjects(this.activeSession.doc),
+              objectCounts: this.activeSession.doc.getObjectCounts(),
+            });
+          } else if (
+            rec.background !== undefined && rec.objectCounts !== undefined
+          ) {
+            boards.push({
+              id: rec.id,
+              name: rec.name,
+              createdAt: rec.createdAt,
+              updatedAt: rec.updatedAt,
+              isActive: false,
+              background: rec.background,
+              objectCounts: rec.objectCounts,
             });
           } else {
             const doc = new CanvasDocument();
             try {
               await new DocumentPersistence(rec.id, doc).load();
               doc.ensureBackground();
+              const background = doc.getBackground();
+              const objectCounts = doc.getObjectCounts();
+              await getDB().boards.update(rec.id, { background, objectCounts });
               boards.push({
                 id: rec.id,
                 name: rec.name,
                 createdAt: rec.createdAt,
                 updatedAt: rec.updatedAt,
                 isActive: false,
-                background: doc.getBackground(),
-                objectCounts: countObjects(doc),
+                background,
+                objectCounts,
               });
             } finally {
               doc.destroy();
@@ -418,7 +394,7 @@ export class McpBridgeClient {
             updatedAt: board.updatedAt,
             isActive: false,
             background: doc.getBackground(),
-            objectCounts: countObjects(doc),
+            objectCounts: doc.getObjectCounts(),
           };
           this.notifyBoardsChanged();
           return { board: result } as BridgeMethodMap[M]["result"];
@@ -454,7 +430,11 @@ export class McpBridgeClient {
           doc.applyMcpUpdate(update);
           await persistence.flush();
           const updatedAt = Date.now();
-          await getDB().boards.update(boardId, { updatedAt });
+          await getDB().boards.update(boardId, {
+            updatedAt,
+            background: doc.getBackground(),
+            objectCounts: doc.getObjectCounts(),
+          });
           this.notifyBoardsChanged();
           return {
             stateUpdateBase64: bytesToBase64(Y.encodeStateAsUpdate(doc.ydoc)),

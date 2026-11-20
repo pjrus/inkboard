@@ -18,12 +18,21 @@ import type {
  *  preferences  small key/value store for tool and appearance preferences
  */
 
+export interface BoardObjectCounts {
+  total: number;
+  strokes: number;
+  text: number;
+  images: number;
+}
+
 export interface BoardRecord {
   id: string;
   name: string;
   createdAt: number;
   updatedAt: number;
   viewport?: Viewport;
+  background?: string;
+  objectCounts?: BoardObjectCounts;
 }
 
 export interface UpdateRecord {

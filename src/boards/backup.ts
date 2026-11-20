@@ -146,6 +146,8 @@ export async function restoreBoards(
       update: Y.encodeStateAsUpdate(doc.ydoc),
       createdAt: now,
     });
+    const background = doc.getBackground();
+    const objectCounts = doc.getObjectCounts();
     doc.destroy();
     for (const a of b.assets) {
       const blob = next(a.size, a.mimeType);
@@ -157,6 +159,8 @@ export async function restoreBoards(
       name: rename(String(b.name)),
       createdAt: Number(b.createdAt) || now,
       updatedAt: Number(b.updatedAt) || now,
+      background,
+      objectCounts,
     });
   }
 

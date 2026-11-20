@@ -84,12 +84,6 @@ export interface BridgeActiveBoardChangedMessage {
   activeBoardId: string | null;
 }
 
-export interface BridgeBoardUpdateMessage {
-  type: "board_update";
-  boardId: string;
-  updateBase64: string;
-}
-
 export interface BridgeRequestMessage<M extends BridgeMethod = BridgeMethod> {
   type: "request";
   requestId: string;
@@ -114,7 +108,6 @@ export type BridgeResponseMessage<M extends BridgeMethod = BridgeMethod> =
 export type BridgeClientMessage =
   | BridgeHelloMessage
   | BridgeActiveBoardChangedMessage
-  | BridgeBoardUpdateMessage
   | BridgeResponseMessage;
 
 export type BridgeServerMessage =
