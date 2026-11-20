@@ -1,5 +1,10 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import {
+  Client,
+  InMemoryTransport,
+  ProtocolError,
+  ProtocolErrorCode,
+} from "@modelcontextprotocol/client";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -270,15 +275,23 @@ describe("MCP Server + Local Live Bridge integration", () => {
       bridge,
       exportDir,
     });
-    const mcpServer = createInkboardMcpServer({ backend });
-    const client = new Client({ name: "test-client", version: "1.0.0" });
+    const client = new Client(
+      { name: "test-client", version: "1.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } },
+    );
     const [clientTransport, serverTransport] = InMemoryTransport
       .createLinkedPair();
-    await mcpServer.connect(serverTransport);
+    const serverHandle = serveStdio(
+      () => createInkboardMcpServer({ backend }),
+      {
+        transport: serverTransport,
+        legacy: "reject",
+      },
+    );
     await client.connect(clientTransport);
     cleanups.push(async () => {
       await client.close();
-      await mcpServer.close();
+      await serverHandle.close();
     });
 
     // Tools list includes read & write tools.
@@ -384,6 +397,20 @@ describe("MCP Server + Local Live Bridge integration", () => {
     });
     expect(badExport.isError).toBe(true);
 
+    // Missing resource raises a structured ProtocolError rather than a stringly error.
+    let resourceErr: unknown;
+    try {
+      await client.readResource({
+        uri: "inkboard://boards/b-seed/objects/does-not-exist",
+      });
+    } catch (err) {
+      resourceErr = err;
+    }
+    expect(resourceErr).toBeInstanceOf(ProtocolError);
+    expect((resourceErr as ProtocolError).code).toBe(
+      ProtocolErrorCode.InvalidParams,
+    );
+
     // Prompts work.
     const promptRes = await client.getPrompt({
       name: "summarize_board",
@@ -404,15 +431,23 @@ describe("MCP Server + Local Live Bridge integration", () => {
     cleanups.push(() => bridge.close());
 
     const backend = new LiveBridgeBackend({ bridge, readOnly: true });
-    const mcpServer = createInkboardMcpServer({ backend, readOnly: true });
-    const client = new Client({ name: "ro-client", version: "1.0.0" });
+    const client = new Client(
+      { name: "ro-client", version: "1.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } },
+    );
     const [clientTransport, serverTransport] = InMemoryTransport
       .createLinkedPair();
-    await mcpServer.connect(serverTransport);
+    const serverHandle = serveStdio(
+      () => createInkboardMcpServer({ backend, readOnly: true }),
+      {
+        transport: serverTransport,
+        legacy: "reject",
+      },
+    );
     await client.connect(clientTransport);
     cleanups.push(async () => {
       await client.close();
-      await mcpServer.close();
+      await serverHandle.close();
     });
 
     const tools = await client.listTools();

@@ -18,12 +18,11 @@ whiteboard content.
 
 ### In Scope
 
-- **MCP Server Package / Entrypoint:** Standalone TypeScript/Node package (e.g.
-  `packages/mcp-server` or `mcp/`) implementing the official
-  `@modelcontextprotocol/sdk`.
-- **Transport:** `stdio` (primary, for local desktop clients such as Claude
-  Desktop, Cursor, and VS Code) and optional Streamable HTTP / SSE for remote or
-  browser-bridged setups.
+- **MCP Server Package / Entrypoint:** Standalone TypeScript/Node package
+  (`packages/mcp-server`) implementing the MCP v2 (`2026-07-28`) TypeScript SDK
+  (`@modelcontextprotocol/server`, `@modelcontextprotocol/node`).
+- **Transport:** Stateless `stdio` (`serveStdio`) and stateless Streamable HTTP
+  (`createMcpHandler` on `127.0.0.1` via `--http-port`) with `legacy: "reject"`.
 - **Core Capabilities:**
   - Listing and inspecting boards (metadata, bounds, object counts, background
     settings).

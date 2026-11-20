@@ -1,7 +1,11 @@
 import {
+  createMcpHandler,
+  type McpHttpHandler,
   McpServer,
+  ProtocolError,
+  ResourceNotFoundError,
   ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+} from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { BoardBackend } from "./backend/BoardBackend.js";
 import {
@@ -20,6 +24,22 @@ export interface InkboardMcpServerOptions {
   backend: BoardBackend;
   readOnly?: boolean;
   version?: string;
+}
+
+const PRIVATE_STATIC_CACHE = {
+  ttlMs: 300_000,
+  cacheScope: "private" as const,
+};
+
+const PRIVATE_DYNAMIC_CACHE = {
+  ttlMs: 0,
+  cacheScope: "private" as const,
+};
+
+function toResourceProtocolError(uri: URL, err: unknown): ProtocolError {
+  if (err instanceof ProtocolError) return err;
+  const message = err instanceof Error ? err.message : String(err);
+  return new ResourceNotFoundError(uri.href, message);
 }
 
 function jsonContent(data: unknown) {
@@ -58,6 +78,21 @@ export function createInkboardMcpServer(
         tools: {},
         prompts: {},
       },
+      instructions: [
+        "Inkboard MCP server for inspecting and editing local whiteboards.",
+        "Start with `list_boards` or `inkboard://boards` to discover board IDs, then call `get_board_summary` (with includeStrokePoints=false) before creating or editing objects.",
+        readOnly
+          ? "Running in read-only mode: write tools are disabled."
+          : "Write tools mutate the board via CRDT transactions so Cmd/Ctrl+Z undoes edits cleanly.",
+      ].join(" "),
+      cacheHints: {
+        "server/discover": PRIVATE_STATIC_CACHE,
+        "tools/list": PRIVATE_STATIC_CACHE,
+        "prompts/list": PRIVATE_STATIC_CACHE,
+        "resources/list": PRIVATE_DYNAMIC_CACHE,
+        "resources/templates/list": PRIVATE_STATIC_CACHE,
+        "resources/read": PRIVATE_DYNAMIC_CACHE,
+      },
     },
   );
 
@@ -71,6 +106,7 @@ export function createInkboardMcpServer(
       description:
         "List of available Inkboard whiteboards with object counts and metadata.",
       mimeType: "application/json",
+      cacheHint: PRIVATE_DYNAMIC_CACHE,
     },
     async (uri) => {
       const boards = await backend.listBoards();
@@ -111,19 +147,24 @@ export function createInkboardMcpServer(
       description:
         "Full board summary including background, content bounds, text boxes, PDFs, and stroke summaries.",
       mimeType: "application/json",
+      cacheHint: PRIVATE_DYNAMIC_CACHE,
     },
     async (uri, variables) => {
       const boardId = decodeURIComponent(String(variables.boardId ?? ""));
-      const summary = await backend.getBoardSummary(boardId);
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "application/json",
-            text: JSON.stringify(summary, null, 2),
-          },
-        ],
-      };
+      try {
+        const summary = await backend.getBoardSummary(boardId);
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "application/json",
+              text: JSON.stringify(summary, null, 2),
+            },
+          ],
+        };
+      } catch (err) {
+        throw toResourceProtocolError(uri, err);
+      }
     },
   );
 
@@ -137,13 +178,20 @@ export function createInkboardMcpServer(
       description:
         "Detailed JSON for a single CanvasObject (stroke, image, or text).",
       mimeType: "application/json",
+      cacheHint: PRIVATE_DYNAMIC_CACHE,
     },
     async (uri, variables) => {
       const boardId = decodeURIComponent(String(variables.boardId ?? ""));
       const objectId = decodeURIComponent(String(variables.objectId ?? ""));
-      const object = await backend.getObject(boardId, objectId);
+      let object;
+      try {
+        object = await backend.getObject(boardId, objectId);
+      } catch (err) {
+        throw toResourceProtocolError(uri, err);
+      }
       if (!object) {
-        throw new Error(
+        throw new ResourceNotFoundError(
+          uri.href,
           `Object "${objectId}" not found on board "${boardId}".`,
         );
       }
@@ -168,19 +216,24 @@ export function createInkboardMcpServer(
       title: "Inkboard Board Preview",
       description: "Rasterized PNG preview of the board content bounds.",
       mimeType: "image/png",
+      cacheHint: PRIVATE_DYNAMIC_CACHE,
     },
     async (uri, variables) => {
       const boardId = decodeURIComponent(String(variables.boardId ?? ""));
-      const preview = await backend.exportBoardPreview(boardId);
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: "image/png",
-            blob: preview.dataBase64,
-          },
-        ],
-      };
+      try {
+        const preview = await backend.exportBoardPreview(boardId);
+        return {
+          contents: [
+            {
+              uri: uri.href,
+              mimeType: "image/png",
+              blob: preview.dataBase64,
+            },
+          ],
+        };
+      } catch (err) {
+        throw toResourceProtocolError(uri, err);
+      }
     },
   );
 
@@ -394,12 +447,12 @@ export function createInkboardMcpServer(
       title: "Summarize Board",
       description:
         "Gather all text boxes and spatial layout from an Inkboard board and produce a structured summary and action items.",
-      argsSchema: {
+      argsSchema: z.object({
         boardId: z.string().describe("Target board ID"),
         focus: z.string().optional().describe(
           "Optional topic or angle to emphasize",
         ),
-      },
+      }),
     },
     async ({ boardId, focus }) => ({
       messages: [
@@ -430,12 +483,12 @@ export function createInkboardMcpServer(
       title: "Organize Notes",
       description:
         "Analyze scattered text boxes on a board and group or clean them up into a tidy spatial layout.",
-      argsSchema: {
+      argsSchema: z.object({
         boardId: z.string().describe("Target board ID"),
         goal: z.string().optional().describe(
           "Optional grouping structure (e.g. columns or themes)",
         ),
-      },
+      }),
     },
     async ({ boardId, goal }) => ({
       messages: [
@@ -466,14 +519,14 @@ export function createInkboardMcpServer(
       title: "Diagram to Board",
       description:
         "Convert an architecture description or outline into positioned TextObjects and connecting StrokeObjects on an Inkboard board.",
-      argsSchema: {
+      argsSchema: z.object({
         description: z.string().describe(
           "System, flow, or concept outline to diagram",
         ),
         boardId: z.string().optional().describe(
           "Existing board ID; if omitted, create a new board",
         ),
-      },
+      }),
     },
     async ({ description, boardId }) => ({
       messages: [
@@ -498,4 +551,19 @@ export function createInkboardMcpServer(
   );
 
   return server;
+}
+
+/**
+ * Create a stateless MCP v2 (2026-07-28) Streamable HTTP handler.
+ * Rejects legacy 2025-era handshake / `Mcp-Session-Id` traffic and enforces
+ * `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, `_meta` envelopes, and
+ * `server/discover`.
+ */
+export function createInkboardHttpHandler(
+  options: InkboardMcpServerOptions,
+): McpHttpHandler {
+  return createMcpHandler(() => createInkboardMcpServer(options), {
+    legacy: "reject",
+    responseMode: "json",
+  });
 }

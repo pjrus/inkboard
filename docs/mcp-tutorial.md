@@ -167,18 +167,13 @@ Use the same `"command"` + `"args"` configuration shown for Claude Desktop (or
 
 ### ChatGPT (Web & Desktop)
 
-`inkboard-mcp` currently implements **`stdio` transport** only. Unlike Claude
-Desktop, Claude Code, Cursor, and VS Code, **ChatGPT does not spawn local `stdio`
-subprocesses directly**—its MCP Apps / Connectors (Settings → Apps & Connectors
-→ Developer Mode) require a **remote HTTPS Streamable HTTP or SSE endpoint**.
+Unlike Claude Desktop, Claude Code, Cursor, and VS Code, **ChatGPT does not spawn local `stdio` subprocesses directly**—its MCP Apps / Connectors (Settings → Apps & Connectors → Developer Mode) require a **remote HTTPS Streamable HTTP endpoint**.
 
-To connect ChatGPT to your local `inkboard-mcp` server today:
+To connect ChatGPT to your local `inkboard-mcp` server:
 
-1. **Bridge `stdio` to local HTTP/SSE** using an MCP proxy such as `mcp-proxy` or
-   `supergateway` (for example, wrapping
-   `node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js --token <SESSION_TOKEN> --read-only`).
-2. **Expose an HTTPS URL** to that proxy with a tunnel such as `cloudflared` or
-   `ngrok`.
+1. **Start the stateless Streamable HTTP listener** locally on loopback (`127.0.0.1:<port>/mcp`), for example:
+   `node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js --http-port 4198 --token <SESSION_TOKEN> --read-only`
+2. **Expose an HTTPS URL** to `http://127.0.0.1:4198/mcp` with a tunnel such as `cloudflared` or `ngrok`.
 3. **Add the HTTPS connector URL** in ChatGPT under **Settings → Connectors /
    Developer Mode**.
 
