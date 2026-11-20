@@ -1,15 +1,17 @@
 # Local Inkboard MCP Tutorial
 
-> **Status:** Draft / Pre-Implementation Guide (aligned with
-> [`docs/mcp-server-plan.md`](mcp-server-plan.md))
+> **Status:** Implemented — aligned with
+> [`docs/mcp-server-plan.md`](mcp-server-plan.md)
 
-This guide explains how different users can connect local AI assistants (such as
-Claude Desktop, Cursor, or VS Code) to Inkboard running on their own machine via
-the planned **Inkboard MCP Server** and **Local Live Bridge**.
+This guide explains how to test the **Inkboard MCP Server** (`packages/mcp-server`)
+and connect AI assistants (such as **Claude Desktop**, **Claude Code**,
+**Cursor**, **VS Code**, and **ChatGPT** via an HTTP/HTTPS bridge) to Inkboard
+running on your own machine via the **Local Live Bridge** or offline
+`.inkboard` backups.
 
-Everything stays on your machine: Inkboard stores your boards in browser
-IndexedDB, and the MCP server talks only to `127.0.0.1` over an opt-in local
-bridge.
+Everything stays local by default: Inkboard stores your boards in browser
+IndexedDB, and the MCP bridge binds strictly to `127.0.0.1` (`ws://127.0.0.1:4197`)
+with a per-session pairing token.
 
 ---
 
@@ -26,53 +28,165 @@ bridge.
    `Yjs` CRDT documents.
 2. **Local Live Bridge** (opt-in) connects the active browser tab to the local
    MCP server using a per-session pairing token on `127.0.0.1`.
-3. **Local MCP Client** launches the MCP server over `stdio`, reads board
-   context via MCP **Resources** and **Tools**, and optionally applies live
-   CRDT-safe edits that appear immediately on your canvas (with standard
+3. **Local MCP Client** launches `inkboard-mcp` over `stdio`, reads board context
+   via MCP **Resources** and **Tools**, and optionally applies live CRDT-safe
+   edits that appear immediately on your canvas (with standard `Cmd+Z` / `Ctrl+Z`
    undo/redo support).
 
 ---
 
-## Quick Local Setup (Planned Workflow)
+## Quick Local Setup
 
-### 1. Start Inkboard and Enable the Bridge
+### 1. Build the Workspace and Start Inkboard
+
+From the repository root:
 
 ```bash
 npm install
+npm run build
 npm run dev   # http://localhost:5173
 ```
 
-Open a board in your browser, enable the **Local MCP Bridge** toggle in
-Inkboard's settings/menu, and copy the session pairing token.
+> **Optional (`inkboard-mcp` on PATH):** Run `npm link --workspace=packages/mcp-server`
+> if you want to invoke `inkboard-mcp` directly instead of passing
+> `node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js`.
 
-### 2. Register the MCP Server in Your Local Client
+### 2. Enable the Local MCP Bridge in Inkboard
 
-Add an entry to your MCP client configuration (for example, Claude Desktop,
-Cursor, or VS Code MCP settings):
+1. Open Inkboard in your browser (`http://localhost:5173`).
+2. Open a board and click the **Board menu (`⋮`) → Local MCP Bridge...** (or click
+   **Local MCP Bridge...** in the footer of **My Boards**).
+3. Toggle **Enable Local MCP Bridge** ON.
+4. Copy your **Session pairing token** (the dialog status will show
+   `Waiting for MCP server on 127.0.0.1:4197…` until your MCP client spawns the
+   server).
+
+---
+
+## How to Test MCP
+
+### Option A: Automated Unit & Integration Tests
+
+Run the full test suite (browser CRDT/bridge tests + MCP server Zod, security,
+file-backend, live bridge, and `stdio` CLI tests):
+
+```bash
+npm test
+```
+
+### Option B: Interactive Testing with MCP Inspector (Live Browser Bridge)
+
+With `npm run dev` running and **Local MCP Bridge** enabled in your browser tab:
+
+```bash
+npx @modelcontextprotocol/inspector node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js --token <SESSION_TOKEN>
+```
+
+In the MCP Inspector UI:
+
+1. Click **Connect**. The browser dialog status will switch to **Connected**.
+2. Open the **Tools** tab and test:
+   - `list_boards` — lists your IndexedDB boards and object counts.
+   - `get_board_summary` — pass a `boardId` to inspect text boxes, bounds, and stroke summaries.
+   - `add_text_box` / `add_stroke` — watch objects appear live on your canvas; press `Cmd+Z` / `Ctrl+Z` in Inkboard to undo.
+   - `export_board_pdf` — pass `--export-dir ~/Downloads` to the CLI to test sandboxed PDF output on disk.
+3. Open the **Resources** tab and read `inkboard://boards`,
+   `inkboard://boards/{boardId}`, or `inkboard://boards/{boardId}/preview`.
+
+### Option C: Interactive Testing in Offline `.inkboard` Archive Mode
+
+You can test the MCP server without opening a browser by pointing it at an
+exported `.inkboard` backup file or folder:
+
+```bash
+npx @modelcontextprotocol/inspector node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js --inkboard-file /path/to/inkboard-backup.inkboard
+```
+
+> **Tip (`--read-only`):** Add `--read-only` to any command above to disable all
+> write tools (`create_board`, `add_text_box`, `update_text_box`, `add_stroke`,
+> `delete_objects`).
+
+---
+
+## Connecting AI Clients
+
+### Claude Desktop
+
+Edit your Claude Desktop config file:
+
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add the `inkboard` entry using the absolute path to `node` and the built CLI
+(GUI apps on macOS often do not load `nvm`/Homebrew `PATH`, so using the full
+`which node` path such as `/opt/homebrew/bin/node` avoids spawn errors):
 
 ```json
 {
   "mcpServers": {
     "inkboard": {
-      "command": "npx",
-      "args": ["inkboard-mcp", "--token", "<SESSION_TOKEN>"]
+      "command": "/opt/homebrew/bin/node",
+      "args": [
+        "/ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js",
+        "--token",
+        "<SESSION_TOKEN>",
+        "--export-dir",
+        "/ABS/PATH/TO/exports"
+      ]
     }
   }
 }
 ```
 
-> **Tip (`--read-only`):** Add `"--read-only"` to `"args"` if you want the AI
-> to summarize, search, or export boards without any permission to create,
-> edit, or delete objects.
+Restart Claude Desktop, keep Inkboard open with **Local MCP Bridge** enabled,
+and ask Claude: _"List my Inkboard boards and summarize the active board."_
 
-### 3. Smoke Test Locally (Optional)
+### Claude Code (CLI)
 
-You can inspect exposed resources, tools, and prompts over `stdio` using the
-official MCP Inspector:
+Register `inkboard` over `stdio` with `claude mcp add`:
 
 ```bash
-npx @modelcontextprotocol/inspector npx inkboard-mcp --token <SESSION_TOKEN>
+claude mcp add inkboard --scope user -- node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js --token <SESSION_TOKEN>
 ```
+
+Verify registration:
+
+```bash
+claude mcp list
+```
+
+### Cursor & VS Code
+
+- **Cursor:** `~/.cursor/mcp.json` (or `.cursor/mcp.json` in a workspace)
+- **VS Code:** `~/Library/Application Support/Code/User/mcp.json` on macOS,
+  `%APPDATA%\Code\User\mcp.json` on Windows, `~/.config/Code/User/mcp.json` on
+  Linux (or `.vscode/mcp.json` per workspace)
+
+Use the same `"command"` + `"args"` configuration shown for Claude Desktop (or
+`"command": "inkboard-mcp"` if you ran `npm link --workspace=packages/mcp-server`).
+
+### ChatGPT (Web & Desktop)
+
+`inkboard-mcp` currently implements **`stdio` transport** only. Unlike Claude
+Desktop, Claude Code, Cursor, and VS Code, **ChatGPT does not spawn local `stdio`
+subprocesses directly**—its MCP Apps / Connectors (Settings → Apps & Connectors
+→ Developer Mode) require a **remote HTTPS Streamable HTTP or SSE endpoint**.
+
+To connect ChatGPT to your local `inkboard-mcp` server today:
+
+1. **Bridge `stdio` to local HTTP/SSE** using an MCP proxy such as `mcp-proxy` or
+   `supergateway` (for example, wrapping
+   `node /ABS/PATH/TO/inkboard/packages/mcp-server/dist/cli.js --token <SESSION_TOKEN> --read-only`).
+2. **Expose an HTTPS URL** to that proxy with a tunnel such as `cloudflared` or
+   `ngrok`.
+3. **Add the HTTPS connector URL** in ChatGPT under **Settings → Connectors /
+   Developer Mode**.
+
+> **Security warning for ChatGPT / remote tunnels:** Because a tunnel exposes an
+> HTTPS endpoint reachable from OpenAI's servers, start with `--read-only` and
+> do not pass `--export-dir` unless you intentionally trust the remote session.
+> Keep Inkboard's pairing token secret and rotate it from the **Local MCP Bridge**
+> dialog when finished.
 
 ---
 

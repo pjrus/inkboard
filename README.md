@@ -60,6 +60,10 @@ The app theme (Light, Dark or System) restyles only the toolbar, menus and board
 
 ![Light theme](docs/canvas-light.png)
 
+### MCP Server & Local Live Bridge
+
+Connect local AI assistants (Claude Desktop, Claude Code, Cursor, VS Code) to your live Inkboard canvas over an opt-in `127.0.0.1` WebSocket bridge, or query `.inkboard` backups offline. See [docs/mcp-tutorial.md](docs/mcp-tutorial.md) for setup, testing with MCP Inspector, and client configuration, and [docs/mcp-server-plan.md](docs/mcp-server-plan.md) for the architecture.
+
 ## Licence
 
 MIT — see [LICENSE.md](LICENSE.md).

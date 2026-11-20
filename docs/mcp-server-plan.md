@@ -1,7 +1,7 @@
-# MCP Server Plan (Template)
+# MCP Server Plan
 
-> **Status:** Draft / Planning Template
-> **Target:** Inkboard Model Context Protocol (MCP) Server
+> **Status:** Implemented (Phases 1–3)
+> **Target:** Inkboard Model Context Protocol (MCP) Server (`packages/mcp-server`)
 
 ## 1. Overview & Problem Statement
 
@@ -146,52 +146,53 @@ Bridge** as the primary data access model:
 
 ### Phase 1: Local Live Bridge & Read-Only MCP Server
 
-- [ ] Define `BoardBackend` interface and build the local WebSocket/Yjs bridge
+- [x] Define `BoardBackend` interface and build the local WebSocket/Yjs bridge
       (`127.0.0.1` + session token + origin check) between the Inkboard web app
       and the MCP server.
-- [ ] Add an opt-in bridge client in the Inkboard browser app to sync active
+- [x] Add an opt-in bridge client in the Inkboard browser app to sync active
       `CanvasDocument` Yjs state and board metadata over the local relay.
-- [ ] Scaffold MCP server with `@modelcontextprotocol/sdk` (`stdio` transport).
-- [ ] Implement read-only resources (`inkboard://boards`,
+- [x] Scaffold MCP server with `@modelcontextprotocol/sdk` (`stdio` transport).
+- [x] Implement read-only resources (`inkboard://boards`,
       `inkboard://boards/{boardId}`) and tools (`list_boards`,
       `get_board_summary`, `query_objects`).
-- [ ] Add unit and integration tests for schema validation, bounds querying, and
+- [x] Add unit and integration tests for schema validation, bounds querying, and
       Yjs bridge sync.
 
 ### Phase 2: Live CRDT Mutations, Prompts & Export
 
-- [ ] Implement write tools (`create_board`, `add_text_box`, `update_text_box`,
+- [x] Implement write tools (`create_board`, `add_text_box`, `update_text_box`,
       `add_stroke`, `delete_objects`) behind `--read-only` guard, syncing live
       to the open canvas.
-- [ ] Wire `export_board_pdf` using existing export modules where Node-compatible
-      (or via the connected browser session).
-- [ ] Add MCP prompts (`summarize_board`, `diagram_to_board`).
-- [ ] Add end-to-end tests covering browser <-> MCP round-trip edits.
+- [x] Wire `export_board_pdf` using existing export modules where Node-compatible
+      (via the connected browser session).
+- [x] Add MCP prompts (`summarize_board`, `organize_notes`, `diagram_to_board`).
+- [x] Add end-to-end tests covering browser <-> MCP round-trip edits.
 
 ### Phase 3: Offline `.inkboard` File Backend (Optional)
 
-- [ ] Add a `.inkboard` archive `BoardBackend` reusing `src/boards/backup.ts`
-      for headless/offline use when no browser session is running.
+- [x] Add a `.inkboard` archive `BoardBackend` (`InkboardFileBackend`)
+      compatible with `src/boards/backup.ts` for headless/offline use when no
+      browser session is running.
 
-## 7. Open Questions & Decisions Needed
+## 7. Resolved Architectural Decisions
 
-- [ ] **Package layout:** Should the MCP server live in-repo (e.g. `mcp/` or a
-      npm workspace) or in a separate repository?
-- [ ] **Bridge UX & pairing:** How should the browser app opt in to the local
-      bridge (e.g. dev/settings toggle + one-time pairing token) and handle
-      multiple open tabs?
-- [ ] **Stroke representation:** Should `get_board_summary` omit raw stroke
-      point arrays by default (returning bounds + metadata) to keep token usage
-      low?
-- [ ] **Rendering dependency:** Should `export_board_pdf` / PNG preview delegate
-      to the connected browser tab over the bridge, or render in Node via
-      `pdf-lib` / `@napi-rs/canvas`?
+- [x] **Package layout:** In-repo npm workspace `packages/mcp-server`
+      (`inkboard-mcp`).
+- [x] **Bridge UX & pairing:** Opt-in **Local MCP Bridge** modal in `AppMenu`
+      and `BoardList` footer, storing `{ enabled, port, token }` locally in
+      `localStorage`; multi-tab routing prefers the tab with the target
+      `boardId` active.
+- [x] **Stroke representation:** `get_board_summary` and `query_objects` omit
+      raw stroke `points` arrays by default (`includeStrokePoints: false`) to
+      keep token usage low.
+- [x] **Rendering dependency:** `export_board_pdf` and `inkboard://boards/{boardId}/preview`
+      delegate to the connected browser tab over the bridge, reusing Inkboard's
+      exact PDF/canvas rendering and IndexedDB assets.
 
 ## 8. Verification & Test Plan
 
-- [ ] Schema & Zod input validation unit tests (`npm test`).
-- [ ] Live WebSocket/Yjs bridge round-trip tests verifying CRDT integrity and
-      concurrent browser + MCP edits.
-- [ ] Smoke test with MCP Inspector (`npx @modelcontextprotocol/inspector`) over
-      `stdio`.
-- [ ] `npm run typecheck`, `npm run format:check`, and `npm run build`.
+- [x] Schema & Zod input validation unit tests (`npm test`).
+- [x] Live WebSocket/Yjs bridge round-trip tests verifying CRDT integrity and
+      MCP `UndoManager` integration.
+- [x] CLI `stdio` integration test and live browser + MCP Inspector smoke test.
+- [x] `npm run typecheck`, `npm run format:check`, and `npm run build`.
