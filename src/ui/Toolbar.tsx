@@ -37,6 +37,7 @@ interface Props {
   onUndo: () => void;
   onRedo: () => void;
   onExportPDF: () => void;
+  onOpenMcpBridge: () => void;
   onBackground: (colour: string) => void;
 }
 
@@ -67,6 +68,7 @@ export function Toolbar({
   onUndo,
   onRedo,
   onExportPDF,
+  onOpenMcpBridge,
   onBackground,
 }: Props) {
   const tool = useToolStore((s) => s.tool);
@@ -98,7 +100,10 @@ export function Toolbar({
         </span>
         <span className="tb-sep" />
         <div className="tb-group">
-          <AppMenu onExportPDF={onExportPDF} />
+          <AppMenu
+            onExportPDF={onExportPDF}
+            onOpenMcpBridge={onOpenMcpBridge}
+          />
         </div>
       </div>
     );
@@ -306,7 +311,11 @@ export function Toolbar({
             e.target.value = "";
           }}
         />
-        <AppMenu onExportPDF={onExportPDF} onBackground={onBackground} />
+        <AppMenu
+          onExportPDF={onExportPDF}
+          onOpenMcpBridge={onOpenMcpBridge}
+          onBackground={onBackground}
+        />
       </div>
     </div>
   );

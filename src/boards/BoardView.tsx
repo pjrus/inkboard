@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mcpBridge } from "../bridge/McpBridgeClient";
 import { isTypingTarget } from "../canvas/CanvasInteractionController";
 import { type CanvasHandles, CanvasViewport } from "../canvas/CanvasViewport";
 import {
@@ -20,6 +21,7 @@ import { useToolStore } from "../store/toolStore";
 import { CropBar } from "../ui/CropBar";
 import { ImportPDFDialog } from "../ui/ImportPDFDialog";
 import { ImportProgressToast } from "../ui/ImportProgressToast";
+import { McpBridgeDialog } from "../ui/McpBridgeDialog";
 import { PageSelectionBar } from "../ui/PageSelectionBar";
 import { SelectionBar } from "../ui/SelectionBar";
 import { StatusChip } from "../ui/StatusChip";
@@ -50,6 +52,7 @@ export function BoardView({ boardId, onBack }: Props) {
     } | null
   >(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
   const [exportState, setExportState] = useState<ExportState>({
     busy: null,
     error: null,
@@ -101,6 +104,7 @@ export function BoardView({ boardId, onBack }: Props) {
   // ---- wire document events into the UI store -------------------------
   useEffect(() => {
     if (!session) return;
+    mcpBridge.setActiveSession(session);
     const store = useToolStore.getState();
     const offStatus = session.persistence.onStatus((st) =>
       useToolStore.getState().setSaveStatus(st)
@@ -119,6 +123,7 @@ export function BoardView({ boardId, onBack }: Props) {
     syncHistory();
     const offDoc = session.doc.onChange(() => setDocVersion((v) => v + 1));
     return () => {
+      mcpBridge.setActiveSession(null);
       offStatus();
       um.off("stack-item-added", syncHistory);
       um.off("stack-item-popped", syncHistory);
@@ -688,6 +693,7 @@ export function BoardView({ boardId, onBack }: Props) {
             setExportState({ busy: null, error: null });
             setExportOpen(true);
           }}
+          onOpenMcpBridge={() => setMcpOpen(true)}
         />
         <SelectionBar />
         {croppingImage?.type === "image" && (
@@ -735,6 +741,7 @@ export function BoardView({ boardId, onBack }: Props) {
           onExport={runExport}
         />
       )}
+      {mcpOpen && <McpBridgeDialog onClose={() => setMcpOpen(false)} />}
     </div>
   );
 }

@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { mcpBridge } from "../bridge/McpBridgeClient";
 import { useToolStore } from "../store/toolStore";
 import { BACKGROUNDS } from "../theme/canvasTheme";
-import { ExportIcon, MenuIcon } from "./icons";
+import { BridgeIcon, ExportIcon, MenuIcon } from "./icons";
 import { Popover } from "./Popover";
 import { ThemeSelector } from "./ThemeSelector";
 
 interface Props {
   onExportPDF: () => void;
+  onOpenMcpBridge: () => void;
   /** Absent in View mode, where the board cannot be changed. */
   onBackground?: (colour: string) => void;
 }
@@ -15,9 +17,21 @@ interface Props {
  * Overflow menu for board-level actions and preferences. Appearance lives
  * here rather than on the drawing toolbar: it is set once, not per stroke.
  */
-export function AppMenu({ onExportPDF, onBackground }: Props) {
+export function AppMenu({
+  onExportPDF,
+  onOpenMcpBridge,
+  onBackground,
+}: Props) {
   const [open, setOpen] = useState(false);
+  const [bridgeStatus, setBridgeStatus] = useState(
+    () => mcpBridge.getState().status,
+  );
   const background = useToolStore((s) => s.background);
+
+  useEffect(() => {
+    return mcpBridge.subscribe((s) => setBridgeStatus(s.status));
+  }, []);
+
   return (
     <div className="tb-anchor">
       <button
@@ -43,6 +57,23 @@ export function AppMenu({ onExportPDF, onBackground }: Props) {
           >
             <ExportIcon />
             <span>Export PDF...</span>
+          </button>
+          <button
+            type="button"
+            className="menu-item"
+            onClick={() => {
+              setOpen(false);
+              onOpenMcpBridge();
+            }}
+          >
+            <BridgeIcon />
+            <span>Local MCP Bridge...</span>
+            {bridgeStatus !== "off" && (
+              <span
+                className={`mcp-menu-dot mcp-status-${bridgeStatus}`}
+                aria-hidden="true"
+              />
+            )}
           </button>
           <hr className="menu-divider" />
           {onBackground && (

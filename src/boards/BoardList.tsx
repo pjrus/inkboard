@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { mcpBridge } from "../bridge/McpBridgeClient";
 import { downloadBlob } from "../export/download";
 import type { BoardRecord } from "../storage/db";
+import { McpBridgeDialog } from "../ui/McpBridgeDialog";
 import { backupBoards, duplicateBoard, restoreBoards } from "./backup";
 import { boardRepository } from "./BoardRepository";
 
@@ -11,6 +13,10 @@ interface Props {
 export function BoardList({ onOpen }: Props) {
   const [boards, setBoards] = useState<BoardRecord[] | null>(null);
   const [used, setUsed] = useState<number | null>(null);
+  const [mcpOpen, setMcpOpen] = useState(false);
+  const [bridgeStatus, setBridgeStatus] = useState(
+    () => mcpBridge.getState().status,
+  );
   const fileRef = useRef<HTMLInputElement>(null);
 
   const refresh = async () => {
@@ -20,6 +26,12 @@ export function BoardList({ onOpen }: Props) {
 
   useEffect(() => {
     void refresh();
+    const offBoards = mcpBridge.onBoardsChanged(() => void refresh());
+    const offBridge = mcpBridge.subscribe((s) => setBridgeStatus(s.status));
+    return () => {
+      offBoards();
+      offBridge();
+    };
   }, []);
 
   const create = async () => {
@@ -140,6 +152,19 @@ export function BoardList({ onOpen }: Props) {
           >
             Restore from backup
           </button>
+          <button
+            type="button"
+            className="btn btn-sm mcp-footer-btn"
+            onClick={() => setMcpOpen(true)}
+          >
+            {bridgeStatus !== "off" && (
+              <span
+                className={`mcp-menu-dot mcp-status-${bridgeStatus}`}
+                aria-hidden="true"
+              />
+            )}
+            Local MCP Bridge...
+          </button>
           {/* No `accept`: iOS greys out unknown extensions like .inkboard. */}
           <input
             ref={fileRef}
@@ -153,6 +178,7 @@ export function BoardList({ onOpen }: Props) {
           />
         </div>
       </footer>
+      {mcpOpen && <McpBridgeDialog onClose={() => setMcpOpen(false)} />}
     </div>
   );
 }

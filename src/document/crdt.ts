@@ -36,6 +36,7 @@ import { nextWidthStep } from "./strokeCommands";
  */
 
 export const LOCAL_ORIGIN = Symbol("local");
+export const MCP_ORIGIN = Symbol("mcp");
 
 export type ObjectChange =
   | { kind: "add"; id: string; object: CanvasObject; }
@@ -66,7 +67,7 @@ export class CanvasDocument {
     this.undoManager = new Y.UndoManager(
       [this.objects, this.pdfDocuments, this.settings],
       {
-        trackedOrigins: new Set([LOCAL_ORIGIN]),
+        trackedOrigins: new Set([LOCAL_ORIGIN, MCP_ORIGIN]),
         // Every logical user action calls stopCapturing() first, so a long
         // timeout here just lets multi-step actions (e.g. an import) coalesce.
         captureTimeout: 1000,
@@ -556,6 +557,16 @@ export class CanvasDocument {
 
   applyUpdate(update: Uint8Array, origin: unknown = "remote"): void {
     Y.applyUpdate(this.ydoc, update, origin);
+  }
+
+  /**
+   * Apply a Yjs update originating from the local MCP bridge as one discrete
+   * undoable step so Cmd/Ctrl+Z reverts AI edits cleanly.
+   */
+  applyMcpUpdate(update: Uint8Array): void {
+    this.undoManager.stopCapturing();
+    Y.applyUpdate(this.ydoc, update, MCP_ORIGIN);
+    this.undoManager.stopCapturing();
   }
 
   destroy(): void {

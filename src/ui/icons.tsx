@@ -221,3 +221,11 @@ export const PlusIcon = () => (
     <path d="M12 5v14" />
   </svg>
 );
+export const BridgeIcon = () => (
+  <svg {...base} width={16} height={16} aria-hidden="true">
+    <path d="M12 22v-5" />
+    <path d="M9 8V2" />
+    <path d="M15 8V2" />
+    <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" />
+  </svg>
+);
