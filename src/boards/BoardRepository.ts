@@ -23,6 +23,7 @@ export const DEFAULT_TOOL_PREFS: ToolPreferences = {
   highlighterColor: "#ffe838",
   highlighterWidth: 4,
   pencilColor: "#1b1b1f",
+  penColor: "#1b1b1f",
   penThicknessProfiles: [1.5, 3, 6],
   penThicknessIndex: 1,
   pencilThicknessProfiles: [1.5, 2.5, 4.5],

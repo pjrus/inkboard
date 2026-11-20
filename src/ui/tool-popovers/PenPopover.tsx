@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function PenPopover(_props: Props = {}) {
-  const color = useToolStore((s) => s.color);
+  const color = useToolStore((s) => s.penColor ?? s.color);
   const setColor = useToolStore((s) => s.setColor);
   const customColors = useToolStore((s) => s.customPenColors ?? []);
   const addCustomColor = useToolStore((s) => s.addCustomColor);

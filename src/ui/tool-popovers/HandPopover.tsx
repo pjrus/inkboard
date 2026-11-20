@@ -3,11 +3,17 @@ import { HandIcon } from "../icons";
 
 interface Props {
   onClose?: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onResetZoom?: () => void;
 }
 
-export function HandPopover(_props: Props = {}) {
+export function HandPopover({
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
+}: Props = {}) {
   const zoom = useToolStore((s) => s.zoom);
-  const setZoom = useToolStore((s) => s.setZoom);
   const stylusSeen = useToolStore((s) => s.stylusSeen);
 
   const zoomPercent = Math.round(zoom * 100);
@@ -33,7 +39,7 @@ export function HandPopover(_props: Props = {}) {
             className="tb-btn"
             title="Zoom out"
             onClick={() =>
-              setZoom(Math.max(0.2, zoom * 0.8))}
+              onZoomOut?.()}
           >
             &minus;
           </button>
@@ -42,7 +48,7 @@ export function HandPopover(_props: Props = {}) {
             className="tb-btn tb-btn-text"
             title="Reset to 100%"
             onClick={() =>
-              setZoom(1)}
+              onResetZoom?.()}
           >
             Reset (100%)
           </button>
@@ -51,7 +57,7 @@ export function HandPopover(_props: Props = {}) {
             className="tb-btn"
             title="Zoom in"
             onClick={() =>
-              setZoom(Math.min(5, zoom * 1.25))}
+              onZoomIn?.()}
           >
             +
           </button>

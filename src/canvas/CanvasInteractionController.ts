@@ -390,6 +390,7 @@ export class CanvasInteractionController {
       textIds: [],
       imageIds: [],
       widths: [],
+      strokeTools: [],
       colors: [],
       fonts: [],
       fontSizes: [],
@@ -405,6 +406,7 @@ export class CanvasInteractionController {
       } else if (o.type === "stroke") {
         sel.strokeIds.push(id);
         sel.widths.push(o.width);
+        sel.strokeTools.push(o.tool);
         sel.colors.push(o.color);
       } else if (o.type === "text") {
         sel.textIds.push(id);

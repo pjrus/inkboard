@@ -72,6 +72,7 @@ export interface ToolPreferences {
   highlighterColor?: string;
   highlighterWidth?: number;
   pencilColor?: string;
+  penColor?: string;
   penThicknessProfiles?: [number, number, number];
   penThicknessIndex?: number;
   pencilThicknessProfiles?: [number, number, number];

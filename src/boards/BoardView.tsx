@@ -694,6 +694,9 @@ export function BoardView({ boardId, onBack }: Props) {
             setExportOpen(true);
           }}
           onOpenMcpBridge={() => setMcpOpen(true)}
+          onZoomIn={() => handlesRef.current?.controller.zoomAtCenter(1.2)}
+          onZoomOut={() => handlesRef.current?.controller.zoomAtCenter(1 / 1.2)}
+          onResetZoom={resetZoom}
         />
         <SelectionBar />
         {croppingImage?.type === "image" && (

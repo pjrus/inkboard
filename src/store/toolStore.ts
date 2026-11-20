@@ -5,6 +5,7 @@ import type {
   CanvasMode,
   FontFamilyId,
   LassoFilter,
+  PenTool,
   TextAlign,
   Tool,
 } from "../document/schema";
@@ -71,6 +72,8 @@ export interface CanvasSelection {
   imageIds: string[];
   /** Widths of the selected strokes only. */
   widths: number[];
+  /** Pen/pencil/highlighter tool of each selected stroke. */
+  strokeTools: PenTool[];
   /** Colours of every selected object (strokes and text both have one). */
   colors: string[];
   fonts: FontFamilyId[];
@@ -172,7 +175,7 @@ const TOOL_STYLE_CONFIG = {
   pen: {
     customColorsKey: "customPenColors",
     defaultCustomColors: ["#2e9e5b", "#8e44ad", "#f2994a"],
-    colorKey: "color",
+    colorKey: "penColor",
     setsExplicit: true,
     profilesKey: "penThicknessProfiles",
     defaultProfiles: [1.5, 3, 6] as [number, number, number],
@@ -183,7 +186,7 @@ const TOOL_STYLE_CONFIG = {
     customColorsKey: "customPencilColors",
     defaultCustomColors: ["#2b6de9", "#2e9e5b", "#e67e22"],
     colorKey: "pencilColor",
-    setsExplicit: true,
+    setsExplicit: false,
     profilesKey: "pencilThicknessProfiles",
     defaultProfiles: [1.5, 2.5, 4.5] as [number, number, number],
     profileIndexKey: "pencilThicknessIndex",
@@ -237,7 +240,7 @@ export const useToolStore = create<ToolState>((set, get) => ({
     } else if (tool === "pen") {
       const idx = s.penThicknessIndex ?? 1;
       patch.width = (s.penThicknessProfiles ?? [1.5, 3, 6])[idx];
-      patch.color = s.color;
+      patch.color = s.penColor ?? s.color;
     } else if (tool === "pencil") {
       const idx = s.pencilThicknessIndex ?? 1;
       patch.width = (s.pencilThicknessProfiles ?? [1.5, 2.5, 4.5])[idx];
@@ -267,18 +270,17 @@ export const useToolStore = create<ToolState>((set, get) => ({
   setColor: (color) => {
     const s = get();
     if (s.tool === "highlighter") {
-      set({ color, colorExplicit: true, highlighterColor: color });
+      set({ color, highlighterColor: color });
     } else if (s.tool === "pencil") {
-      set({ color, colorExplicit: true, pencilColor: color });
+      set({ color, pencilColor: color });
     } else {
-      set({ color, colorExplicit: true });
+      set({ color, penColor: color, colorExplicit: true });
     }
   },
   setPencilColor: (pencilColor) => {
     set({
       pencilColor,
       color: pencilColor,
-      colorExplicit: true,
     });
   },
   setWidth: (width) => {
@@ -360,7 +362,12 @@ export const useToolStore = create<ToolState>((set, get) => ({
     if (s.background === background) return;
     const ink = canvasTheme(background).defaultInk;
     const patch: Partial<ToolState> = { background };
-    if (!s.colorExplicit) patch.color = ink;
+    if (!s.colorExplicit) {
+      patch.penColor = ink;
+      if (s.tool !== "highlighter" && s.tool !== "pencil") {
+        patch.color = ink;
+      }
+    }
     if (!s.textColorExplicit) patch.textColor = ink;
     set(patch);
   },
@@ -382,9 +389,18 @@ export const useToolStore = create<ToolState>((set, get) => ({
   hydrate: async () => {
     const prefs = await boardRepository.getToolPreferences();
     const ink = canvasTheme(get().background).defaultInk;
+    const penColor = prefs.colorExplicit
+      ? (prefs.penColor ?? prefs.color)
+      : ink;
+    const color = prefs.tool === "highlighter"
+      ? (prefs.highlighterColor ?? "#ffe838")
+      : prefs.tool === "pencil"
+      ? (prefs.pencilColor ?? "#1b1b1f")
+      : penColor;
     set({
       ...prefs,
-      color: prefs.colorExplicit ? prefs.color : ink,
+      penColor,
+      color,
       textColor: prefs.textColorExplicit ? prefs.textColor : ink,
     });
   },
