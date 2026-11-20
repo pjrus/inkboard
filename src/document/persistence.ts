@@ -59,7 +59,11 @@ export class DocumentPersistence {
         console.error("Skipping corrupt CRDT update row", row.id, err);
       }
     }
-    if (rows.length > COMPACT_THRESHOLD) void this.compact();
+    if (rows.length > COMPACT_THRESHOLD) {
+      void this.compact().catch((err) =>
+        console.error("Failed to compact CRDT updates on load", err)
+      );
+    }
     return { updateCount: applied };
   }
 
@@ -85,7 +89,7 @@ export class DocumentPersistence {
 
   /** Write everything queued so far. Safe to call at any time. */
   async flush(): Promise<void> {
-    if (this.flushing) {
+    while (this.flushing) {
       await this.flushing;
     }
     if (this.queue.length === 0) {

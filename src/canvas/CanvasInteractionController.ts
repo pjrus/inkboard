@@ -729,15 +729,27 @@ export class CanvasInteractionController {
     };
     const blur = () => {
       this.spaceDown = false;
+      this.touches.clear();
+      if (this.state.type === "pinching") {
+        this.state = { type: "idle" };
+      }
       this.updateCursor();
+    };
+    const windowTouchEnd = (e: PointerEvent) => {
+      if (e.pointerType !== "touch" || !this.touches.has(e.pointerId)) return;
+      this.onPointerUp(e);
     };
     window.addEventListener("keydown", keydown);
     window.addEventListener("keyup", keyup);
     window.addEventListener("blur", blur);
+    window.addEventListener("pointerup", windowTouchEnd);
+    window.addEventListener("pointercancel", windowTouchEnd);
     this.disposers.push(() => {
       window.removeEventListener("keydown", keydown);
       window.removeEventListener("keyup", keyup);
       window.removeEventListener("blur", blur);
+      window.removeEventListener("pointerup", windowTouchEnd);
+      window.removeEventListener("pointercancel", windowTouchEnd);
     });
   }
 
@@ -767,6 +779,11 @@ export class CanvasInteractionController {
     if (e.pointerType === "pen") this.host.onStylusSeen();
 
     if (e.pointerType === "touch") {
+      try {
+        this.el.setPointerCapture(e.pointerId);
+      } catch {
+        // Ignore if pointer capture is unavailable in this environment.
+      }
       this.touches.set(e.pointerId, sp);
       if (this.touches.size === 2) {
         this.cancelCurrent();
@@ -1388,7 +1405,7 @@ export class CanvasInteractionController {
   }
 
   private eraseAlong(from: Point, to: Point) {
-    const partial = this.host.getTool() === "strokeEraser";
+    const partial = this.host.getTool() === "eraser";
     const radius = this.eraserRadiusWorld();
     const sweep = {
       minX: Math.min(from.x, to.x) - radius,

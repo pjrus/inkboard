@@ -55,6 +55,7 @@ export interface ImportOptions {
   /** World-space top-left of the first page. */
   origin: { x: number; y: number; };
   keepSource?: boolean;
+  signal?: AbortSignal;
   onProgress?: (done: number, total: number) => void;
   onPageReady?: (assetId: string) => void;
   /** Called once with every page asset id, before rasterisation begins. */
@@ -86,6 +87,7 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
     inspected,
     layout,
     origin,
+    signal,
     onProgress,
     onPageReady,
     onPagesPlanned,
@@ -108,79 +110,100 @@ export async function importPDF(opts: ImportOptions): Promise<ImportResult> {
     createdAt: now,
   }));
 
-  let sourceAssetId: string | undefined;
-  if (opts.keepSource !== false) {
-    sourceAssetId = `${pdfDocumentId}-src`;
-    try {
-      await getDB().assets.put({
-        id: sourceAssetId,
-        boardId,
-        mimeType: "application/pdf",
-        blob: file,
-        size: file.size,
-        createdAt: now,
-      });
-    } catch (err) {
-      console.warn("Could not retain source PDF (continuing without it)", err);
-      sourceAssetId = undefined;
-    }
-  }
-
-  const meta: PDFDocumentMetadata = {
-    id: pdfDocumentId,
-    fileName: file.name,
-    pageCount: inspected.pageCount,
-    layout,
-    sourceAssetId,
-    createdAt: now,
-  };
-  onPagesPlanned?.(pages.map((p) => p.assetId));
-  doc.addPDFDocument(meta, pages);
-
   const failedPages: number[] = [];
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", { alpha: false })!;
 
-  for (let i = 0; i < pages.length; i++) {
-    const pageObj = pages[i];
-    try {
-      const page = await inspected.pdf.getPage(i + 1);
-      const base = page.getViewport({ scale: 1 });
-      const scale = Math.min(
-        RASTER_SCALE,
-        MAX_RASTER_DIMENSION / Math.max(base.width, base.height),
-      );
-      const vp = page.getViewport({ scale });
-      canvas.width = Math.ceil(vp.width);
-      canvas.height = Math.ceil(vp.height);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      page.cleanup();
-      const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
-      await getDB().assets.put({
-        id: pageObj.assetId,
-        boardId,
-        mimeType: blob.type,
-        blob,
-        width: canvas.width,
-        height: canvas.height,
-        size: blob.size,
-        createdAt: Date.now(),
-      });
-      onPageReady?.(pageObj.assetId);
-    } catch (err) {
-      console.error(`Failed to render page ${i + 1}`, err);
-      failedPages.push(i + 1);
+  try {
+    if (signal?.aborted) {
+      return { pdfDocumentId, pages: [], failedPages };
     }
-    onProgress?.(i + 1, pages.length);
-    // Yield to the event loop between pages so input stays responsive.
-    await new Promise((r) => setTimeout(r, 0));
-  }
 
-  canvas.width = canvas.height = 0;
-  await inspected.pdf.destroy();
-  return { pdfDocumentId, pages, failedPages };
+    let sourceAssetId: string | undefined;
+    if (opts.keepSource !== false) {
+      sourceAssetId = `${pdfDocumentId}-src`;
+      try {
+        await getDB().assets.put({
+          id: sourceAssetId,
+          boardId,
+          mimeType: "application/pdf",
+          blob: file,
+          size: file.size,
+          createdAt: now,
+        });
+      } catch (err) {
+        console.warn(
+          "Could not retain source PDF (continuing without it)",
+          err,
+        );
+        sourceAssetId = undefined;
+      }
+    }
+
+    if (signal?.aborted) {
+      return { pdfDocumentId, pages: [], failedPages };
+    }
+
+    const meta: PDFDocumentMetadata = {
+      id: pdfDocumentId,
+      fileName: file.name,
+      pageCount: inspected.pageCount,
+      layout,
+      sourceAssetId,
+      createdAt: now,
+    };
+    onPagesPlanned?.(pages.map((p) => p.assetId));
+    doc.addPDFDocument(meta, pages);
+
+    for (let i = 0; i < pages.length; i++) {
+      if (signal?.aborted) break;
+      const pageObj = pages[i];
+      try {
+        const page = await inspected.pdf.getPage(i + 1);
+        if (signal?.aborted) {
+          page.cleanup();
+          break;
+        }
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.min(
+          RASTER_SCALE,
+          MAX_RASTER_DIMENSION / Math.max(base.width, base.height),
+        );
+        const vp = page.getViewport({ scale });
+        canvas.width = Math.ceil(vp.width);
+        canvas.height = Math.ceil(vp.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        page.cleanup();
+        if (signal?.aborted) break;
+        const blob = await canvasToBlob(canvas, "image/jpeg", JPEG_QUALITY);
+        if (signal?.aborted) break;
+        await getDB().assets.put({
+          id: pageObj.assetId,
+          boardId,
+          mimeType: blob.type,
+          blob,
+          width: canvas.width,
+          height: canvas.height,
+          size: blob.size,
+          createdAt: Date.now(),
+        });
+        onPageReady?.(pageObj.assetId);
+      } catch (err) {
+        console.error(`Failed to render page ${i + 1}`, err);
+        failedPages.push(i + 1);
+      }
+      onProgress?.(i + 1, pages.length);
+      // Yield to the event loop between pages so input stays responsive.
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    return { pdfDocumentId, pages, failedPages };
+  } finally {
+    canvas.width = canvas.height = 0;
+    await inspected.pdf.destroy();
+  }
 }
 
 function canvasToBlob(
