@@ -37,7 +37,11 @@ interface Props {
   onUndo: () => void;
   onRedo: () => void;
   onExportPDF: () => void;
+  onOpenMcpBridge: () => void;
   onBackground: (colour: string) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onResetZoom: () => void;
 }
 
 interface ToolDefinition {
@@ -67,7 +71,11 @@ export function Toolbar({
   onUndo,
   onRedo,
   onExportPDF,
+  onOpenMcpBridge,
   onBackground,
+  onZoomIn,
+  onZoomOut,
+  onResetZoom,
 }: Props) {
   const tool = useToolStore((s) => s.tool);
   const setTool = useToolStore((s) => s.setTool);
@@ -77,7 +85,7 @@ export function Toolbar({
   const selection = useToolStore((s) => s.selection);
 
   // Colors for tool icon tinting
-  const penColor = useToolStore((s) => s.color);
+  const penColor = useToolStore((s) => s.penColor ?? s.color);
   const pencilColor = useToolStore((s) => s.pencilColor ?? s.color);
   const highlighterColor = useToolStore((s) => s.highlighterColor ?? s.color);
 
@@ -98,7 +106,10 @@ export function Toolbar({
         </span>
         <span className="tb-sep" />
         <div className="tb-group">
-          <AppMenu onExportPDF={onExportPDF} />
+          <AppMenu
+            onExportPDF={onExportPDF}
+            onOpenMcpBridge={onOpenMcpBridge}
+          />
         </div>
       </div>
     );
@@ -145,7 +156,14 @@ export function Toolbar({
       case "text":
         return <TextPopover onClose={close} />;
       case "pan":
-        return <HandPopover onClose={close} />;
+        return (
+          <HandPopover
+            onClose={close}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onResetZoom={onResetZoom}
+          />
+        );
       default:
         return null;
     }
@@ -306,7 +324,11 @@ export function Toolbar({
             e.target.value = "";
           }}
         />
-        <AppMenu onExportPDF={onExportPDF} onBackground={onBackground} />
+        <AppMenu
+          onExportPDF={onExportPDF}
+          onOpenMcpBridge={onOpenMcpBridge}
+          onBackground={onBackground}
+        />
       </div>
     </div>
   );

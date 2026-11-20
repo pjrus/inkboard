@@ -1,0 +1,32 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-11-20T00:23:25.880Z",
+        "reason": "pre-existing codebase design: FontSelector preview pill for bundled canvas font in src/text/fonts.ts"
+      },
+      {
+        "rule": "overused-font",
+        "value": "roboto",
+        "createdAt": "2026-11-20T00:23:25.907Z",
+        "reason": "pre-existing codebase design: FontSelector preview pill for bundled canvas font in src/text/fonts.ts"
+      },
+      {
+        "rule": "overused-font",
+        "value": "open sans",
+        "createdAt": "2026-11-20T00:23:25.929Z",
+        "reason": "pre-existing codebase design: FontSelector preview pill for bundled canvas font in src/text/fonts.ts"
+      },
+      {
+        "rule": "overused-font",
+        "value": "lato",
+        "createdAt": "2026-11-20T00:23:25.952Z",
+        "reason": "pre-existing codebase design: FontSelector preview pill for bundled canvas font in src/text/fonts.ts"
+      }
+    ]
+  }
+}

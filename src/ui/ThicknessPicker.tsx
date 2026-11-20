@@ -9,8 +9,19 @@ const HIGHLIGHTER_PRESETS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16];
 
 export function ThicknessPicker() {
   const tool = useToolStore((s) => s.tool);
-  const isHighlighter = tool === "highlighter";
-  const isPencil = tool === "pencil";
+  const rawSelection = useToolStore((s) => s.selection);
+  const commands = useToolStore((s) => s.selectionCommands);
+  const selection = rawSelection && rawSelection.strokeIds.length > 0
+    ? rawSelection
+    : null;
+  const selectedToolSummary = selection
+    ? summarise(selection.strokeTools)
+    : null;
+  const effectiveTool = selection && selectedToolSummary?.value
+    ? selectedToolSummary.value
+    : tool;
+  const isHighlighter = effectiveTool === "highlighter";
+  const isPencil = effectiveTool === "pencil";
   const toolKind: "pen" | "pencil" | "highlighter" = isHighlighter
     ? "highlighter"
     : isPencil
@@ -35,18 +46,14 @@ export function ThicknessPicker() {
   const setThicknessProfile = useToolStore((s) => s.setThicknessProfile);
   const updateThicknessProfile = useToolStore((s) => s.updateThicknessProfile);
 
-  const penColor = useToolStore((s) => s.color);
+  const penColor = useToolStore((s) => s.penColor ?? s.color);
   const pencilColor = useToolStore((s) => s.pencilColor ?? s.color);
   const highlighterColor = useToolStore((s) => s.highlighterColor ?? s.color);
 
-  const rawSelection = useToolStore((s) => s.selection);
-  const commands = useToolStore((s) => s.selectionCommands);
-  const selection = rawSelection && rawSelection.strokeIds.length > 0
-    ? rawSelection
-    : null;
   const wSummary = selection ? summarise(selection.widths) : null;
   const cSummary = selection ? summarise(selection.colors) : null;
   const mixed = wSummary?.mixed ?? false;
+  const widthFactor = isHighlighter ? HIGHLIGHTER_WIDTH_FACTOR : 1;
 
   const [editingSlot, setEditingSlot] = useState<number | null>(null);
 
@@ -72,7 +79,7 @@ export function ThicknessPicker() {
 
   const handleSlotClick = (idx: number) => {
     if (selection && commands) {
-      commands.setWidth(profiles[idx]);
+      commands.setWidth(profiles[idx] * widthFactor);
       setThicknessProfile(toolKind, idx);
       return;
     }
@@ -101,7 +108,10 @@ export function ThicknessPicker() {
     >
       <div className="tb-thickness-pills">
         {profiles.map((val, idx) => {
-          const isSelected = !mixed && activeIndex === idx;
+          const isSelected = selection
+            ? !mixed && wSummary?.value !== null
+              && Math.abs((wSummary?.value ?? 0) - val * widthFactor) < 0.05
+            : !mixed && activeIndex === idx;
           const displayPx = isHighlighter
             ? Math.round(val * HIGHLIGHTER_WIDTH_FACTOR)
             : val;
@@ -193,7 +203,9 @@ export function ThicknessPicker() {
                             Number((currentEditingVal - step).toFixed(1)),
                           );
                           updateThicknessProfile(toolKind, idx, next);
-                          if (selection && commands) commands.setWidth(next);
+                          if (selection && commands) {
+                            commands.setWidth(next * widthFactor);
+                          }
                         }}
                       >
                         &minus;
@@ -210,7 +222,9 @@ export function ThicknessPicker() {
                         onChange={(e) => {
                           const next = parseFloat(e.target.value);
                           updateThicknessProfile(toolKind, idx, next);
-                          if (selection && commands) commands.setWidth(next);
+                          if (selection && commands) {
+                            commands.setWidth(next * widthFactor);
+                          }
                         }}
                       />
 
@@ -224,7 +238,9 @@ export function ThicknessPicker() {
                             Number((currentEditingVal + step).toFixed(1)),
                           );
                           updateThicknessProfile(toolKind, idx, next);
-                          if (selection && commands) commands.setWidth(next);
+                          if (selection && commands) {
+                            commands.setWidth(next * widthFactor);
+                          }
                         }}
                       >
                         +
@@ -246,7 +262,7 @@ export function ThicknessPicker() {
                               onClick={() => {
                                 updateThicknessProfile(toolKind, idx, p);
                                 if (selection && commands) {
-                                  commands.setWidth(p);
+                                  commands.setWidth(p * widthFactor);
                                 }
                               }}
                             >

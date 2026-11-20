@@ -93,13 +93,25 @@ export async function restoreBoards(
   const header = JSON.parse(
     await file.slice(PREAMBLE, offset).text(),
   ) as BackupHeader;
-  if (header.version !== VERSION) {
+  if (header.version !== VERSION || !Array.isArray(header.boards)) {
     throw new Error(`Unsupported backup version ${header.version}`);
   }
   let end = offset;
   for (const b of header.boards) {
+    if (
+      !Number.isSafeInteger(b.updateSize)
+      || b.updateSize < 0
+      || !Array.isArray(b.assets)
+    ) {
+      throw new Error("Backup header is invalid");
+    }
     end += b.updateSize;
-    for (const a of b.assets) end += a.size;
+    for (const a of b.assets) {
+      if (!Number.isSafeInteger(a.size) || a.size < 0) {
+        throw new Error("Backup header is invalid");
+      }
+      end += a.size;
+    }
   }
   // Negated so a malformed size (NaN) is rejected too.
   if (!(end <= file.size)) throw new Error("Backup file is incomplete");
@@ -134,6 +146,8 @@ export async function restoreBoards(
       update: Y.encodeStateAsUpdate(doc.ydoc),
       createdAt: now,
     });
+    const background = doc.getBackground();
+    const objectCounts = doc.getObjectCounts();
     doc.destroy();
     for (const a of b.assets) {
       const blob = next(a.size, a.mimeType);
@@ -145,6 +159,8 @@ export async function restoreBoards(
       name: rename(String(b.name)),
       createdAt: Number(b.createdAt) || now,
       updatedAt: Number(b.updatedAt) || now,
+      background,
+      objectCounts,
     });
   }
 

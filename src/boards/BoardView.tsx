@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { mcpBridge } from "../bridge/McpBridgeClient";
 import { isTypingTarget } from "../canvas/CanvasInteractionController";
 import { type CanvasHandles, CanvasViewport } from "../canvas/CanvasViewport";
 import {
@@ -20,6 +21,7 @@ import { useToolStore } from "../store/toolStore";
 import { CropBar } from "../ui/CropBar";
 import { ImportPDFDialog } from "../ui/ImportPDFDialog";
 import { ImportProgressToast } from "../ui/ImportProgressToast";
+import { McpBridgeDialog } from "../ui/McpBridgeDialog";
 import { PageSelectionBar } from "../ui/PageSelectionBar";
 import { SelectionBar } from "../ui/SelectionBar";
 import { StatusChip } from "../ui/StatusChip";
@@ -50,6 +52,7 @@ export function BoardView({ boardId, onBack }: Props) {
     } | null
   >(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [mcpOpen, setMcpOpen] = useState(false);
   const [exportState, setExportState] = useState<ExportState>({
     busy: null,
     error: null,
@@ -64,6 +67,9 @@ export function BoardView({ boardId, onBack }: Props) {
   const dragCountRef = useRef(0);
   const lastPasteTimeRef = useRef(0);
   const pasteCountRef = useRef(0);
+  const importAbortRef = useRef<AbortController | null>(null);
+  const pendingImportRef = useRef(pendingImport);
+  pendingImportRef.current = pendingImport;
 
   // ---- open / close the board session ----------------------------------
   useEffect(() => {
@@ -82,13 +88,22 @@ export function BoardView({ boardId, onBack }: Props) {
         setSession(s);
       } catch (err) {
         console.error(err);
-        setError(
-          err instanceof Error ? err.message : "Could not open this board.",
-        );
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Could not open this board.",
+          );
+        }
       }
     })();
     return () => {
       cancelled = true;
+      importAbortRef.current?.abort();
+      importAbortRef.current = null;
+      if (pendingImportRef.current) {
+        void pendingImportRef.current.inspected.pdf.destroy();
+        pendingImportRef.current = null;
+      }
+      setImportProgress(null);
       const current = sessionRef.current;
       sessionRef.current = null;
       setSession(null);
@@ -96,11 +111,12 @@ export function BoardView({ boardId, onBack }: Props) {
         void current.close(handlesRef.current?.renderer.getViewport());
       }
     };
-  }, [boardId]);
+  }, [boardId, setImportProgress]);
 
   // ---- wire document events into the UI store -------------------------
   useEffect(() => {
     if (!session) return;
+    mcpBridge.setActiveSession(session);
     const store = useToolStore.getState();
     const offStatus = session.persistence.onStatus((st) =>
       useToolStore.getState().setSaveStatus(st)
@@ -119,6 +135,7 @@ export function BoardView({ boardId, onBack }: Props) {
     syncHistory();
     const offDoc = session.doc.onChange(() => setDocVersion((v) => v + 1));
     return () => {
+      mcpBridge.setActiveSession(null);
       offStatus();
       um.off("stack-item-added", syncHistory);
       um.off("stack-item-popped", syncHistory);
@@ -394,6 +411,10 @@ export function BoardView({ boardId, onBack }: Props) {
   const onInsertPDF = async (file: File) => {
     try {
       const inspected = await inspectPDF(file);
+      if (!sessionRef.current) {
+        void inspected.pdf.destroy();
+        return;
+      }
       setPendingImport({ file, inspected });
     } catch (err) {
       console.error(err);
@@ -412,6 +433,9 @@ export function BoardView({ boardId, onBack }: Props) {
     const h = handlesRef.current;
     if (!pending || !session || !h) return;
     setPendingImport(null);
+    importAbortRef.current?.abort();
+    const ac = new AbortController();
+    importAbortRef.current = ac;
     const { width } = h.renderer.getSize();
     const vp = h.renderer.getViewport();
     const firstWidth = pending.inspected.sizes[0]?.width ?? 600;
@@ -431,12 +455,17 @@ export function BoardView({ boardId, onBack }: Props) {
         inspected: pending.inspected,
         layout,
         origin,
+        signal: ac.signal,
         onPagesPlanned: (ids) =>
           ids.forEach((id) => h.renderer.pendingAssets.add(id)),
         onPageReady: (id) => h.renderer.assetReady(id),
-        onProgress: (done, total) =>
-          setImportProgress({ fileName: pending.file.name, done, total }),
+        onProgress: (done, total) => {
+          if (!ac.signal.aborted) {
+            setImportProgress({ fileName: pending.file.name, done, total });
+          }
+        },
       });
+      if (ac.signal.aborted) return;
       if (result.failedPages.length) {
         setImportProgress({
           fileName: pending.file.name,
@@ -449,6 +478,7 @@ export function BoardView({ boardId, onBack }: Props) {
         setTimeout(() => setImportProgress(null), 1500);
       }
     } catch (err) {
+      if (ac.signal.aborted) return;
       console.error(err);
       setImportProgress({
         fileName: pending.file.name,
@@ -457,6 +487,8 @@ export function BoardView({ boardId, onBack }: Props) {
         error: "Import failed. See console for details.",
       });
       setTimeout(() => setImportProgress(null), 5000);
+    } finally {
+      if (importAbortRef.current === ac) importAbortRef.current = null;
     }
   };
 
@@ -465,7 +497,9 @@ export function BoardView({ boardId, onBack }: Props) {
     if (!session) return;
     const all = session.doc.getAll();
     const selectedIds = new Set(
-      handlesRef.current?.controller.getSelectedIds() ?? [],
+      (handlesRef.current?.controller.getSelectedObjects() ?? []).map((o) =>
+        o.id
+      ),
     );
     const objects = choice.scope === "selection"
       ? all.filter((o) => selectedIds.has(o.id))
@@ -534,7 +568,11 @@ export function BoardView({ boardId, onBack }: Props) {
   let exportSelection: CanvasObject[] = [];
   if (exportOpen) {
     exportObjects = session.doc.getAll();
-    const ids = new Set(handlesRef.current?.controller.getSelectedIds() ?? []);
+    const ids = new Set(
+      (handlesRef.current?.controller.getSelectedObjects() ?? []).map((o) =>
+        o.id
+      ),
+    );
     exportSelection = exportObjects.filter((o) => ids.has(o.id));
   }
 
@@ -688,6 +726,10 @@ export function BoardView({ boardId, onBack }: Props) {
             setExportState({ busy: null, error: null });
             setExportOpen(true);
           }}
+          onOpenMcpBridge={() => setMcpOpen(true)}
+          onZoomIn={() => handlesRef.current?.controller.zoomAtCenter(1.2)}
+          onZoomOut={() => handlesRef.current?.controller.zoomAtCenter(1 / 1.2)}
+          onResetZoom={resetZoom}
         />
         <SelectionBar />
         {croppingImage?.type === "image" && (
@@ -735,6 +777,7 @@ export function BoardView({ boardId, onBack }: Props) {
           onExport={runExport}
         />
       )}
+      {mcpOpen && <McpBridgeDialog onClose={() => setMcpOpen(false)} />}
     </div>
   );
 }

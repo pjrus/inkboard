@@ -60,6 +60,16 @@ The app theme (Light, Dark or System) restyles only the toolbar, menus and board
 
 ![Light theme](docs/canvas-light.png)
 
+### MCP Server & Local Live Bridge
+
+Connect local AI assistants (Claude Desktop, Claude Code, Cursor, VS Code) to your live Inkboard canvas over an opt-in `127.0.0.1` WebSocket bridge, or query `.inkboard` backups offline via `packages/mcp-server` (`inkboard-mcp`).
+
+- **Enable live bridge:** Open **Board menu → Local MCP Bridge...** (or **Local MCP Bridge...** in the **My Boards** footer), toggle the bridge on, and copy the session pairing token or generated JSON config snippet
+- **Tools, resources & prompts:** Read boards and objects (`list_boards`, `get_board_summary`, `query_objects`, `export_board_pdf`), inspect PNG previews (`inkboard://boards/{boardId}/preview`), and apply CRDT-safe, Cmd/Ctrl+Z undoable edits (`create_board`, `add_text_box`, `update_text_box`, `add_stroke`, `delete_objects`)
+- **Modes & safety:** Run over MCP v2 (`2026-07-28`) `stdio` or stateless Streamable HTTP (`--http-port <port>` on `127.0.0.1`), live (`--token <token>`, bridge port `4197`) or offline (`--inkboard-dir <dir>` / `--inkboard-file <file>`), restrict mutations with `--read-only`, and sandbox PDF file writes with `--export-dir <dir>`
+
+See [docs/mcp-tutorial.md](docs/mcp-tutorial.md) for setup, MCP Inspector testing, and client configuration, and [docs/mcp-server-plan.md](docs/mcp-server-plan.md) for the architecture.
+
 ## Licence
 
 MIT — see [LICENSE.md](LICENSE.md).

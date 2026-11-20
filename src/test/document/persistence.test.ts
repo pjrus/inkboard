@@ -148,4 +148,25 @@ describe("board persistence", () => {
       (await new DocumentPersistence(board.id, doc2).load()).updateCount,
     ).toBe(0);
   });
+
+  it("serializes concurrent flush calls without losing updates", async () => {
+    const board = await boardRepository.create("Concurrent");
+    const doc = new CanvasDocument();
+    const p = new DocumentPersistence(board.id, doc);
+    await p.load();
+    p.start();
+
+    doc.addStroke(stroke(0));
+    const f1 = p.flush();
+    doc.addStroke(stroke(10));
+    const f2 = p.flush();
+    doc.addStroke(stroke(20));
+    const f3 = p.flush();
+    await Promise.all([f1, f2, f3]);
+    await p.destroy();
+
+    const doc2 = new CanvasDocument();
+    await new DocumentPersistence(board.id, doc2).load();
+    expect(doc2.getAll()).toHaveLength(3);
+  });
 });

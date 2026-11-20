@@ -61,7 +61,7 @@ export function CanvasViewport({
           const s = store.getState();
           if (s.tool === "highlighter") return s.highlighterColor ?? s.color;
           if (s.tool === "pencil") return s.pencilColor ?? s.color;
-          return s.color;
+          return s.penColor ?? s.color;
         },
         getWidth: () => {
           const s = store.getState();
@@ -121,11 +121,6 @@ export function CanvasViewport({
     window.addEventListener("resize", resize);
 
     handlesRef.current = { renderer, controller };
-    (window as unknown as Record<string, unknown>).__debug = {
-      renderer,
-      controller,
-      doc,
-    };
     onReady(handlesRef.current);
     store.getState().setZoom(initialViewport.scale);
 
